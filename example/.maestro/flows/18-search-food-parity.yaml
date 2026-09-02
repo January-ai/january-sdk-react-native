@@ -1,0 +1,68 @@
+appId: ai.january.sdk.demo
+name: Android parity - search and food detail surfaces
+tags:
+  - parity
+---
+- launchApp:
+    clearState: false
+    stopApp: true
+- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
+- runFlow:
+    when:
+      visible: http://127.0.0.1:8081
+    commands:
+      - tapOn: http://127.0.0.1:8081
+- extendedWaitUntil:
+    visible:
+      id: tab-search
+    timeout: 15000
+- tapOn:
+    id: tab-search
+- assertVisible:
+    id: search-scope-restaurants
+- assertVisible:
+    id: search-mode-barcode
+- takeScreenshot: example/.maestro/artifacts/react-native-search-initial
+- tapOn:
+    id: search-input
+- inputText: oatmeal
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: food-result-0
+    timeout: 15000
+- takeScreenshot: example/.maestro/artifacts/react-native-search-results
+- tapOn:
+    id: food-result-0
+- assertVisible: Food details
+- takeScreenshot: example/.maestro/artifacts/react-native-food-detail
+- scrollUntilVisible:
+    element:
+      id: food-nutrition
+    direction: DOWN
+- takeScreenshot: example/.maestro/artifacts/react-native-food-nutrition
+- scrollUntilVisible:
+    element:
+      id: food-check-glucose
+    direction: DOWN
+- tapOn:
+    id: food-check-glucose
+- assertVisible: Glucose response
+- takeScreenshot: example/.maestro/artifacts/react-native-food-glucose-result
+- tapOn: Close Glucose response
+- scrollUntilVisible:
+    element:
+      id: food-alternatives
+    direction: DOWN
+- tapOn:
+    id: food-alternatives
+- assertVisible: Food alternatives
+- takeScreenshot: example/.maestro/artifacts/react-native-alternatives-initial
+- scrollUntilVisible:
+    element:
+      id: alternatives-refresh
+    direction: DOWN
+- tapOn:
+    id: alternatives-refresh
+- assertVisible: SUGGESTIONS · 1
+- takeScreenshot: example/.maestro/artifacts/react-native-alternatives-results

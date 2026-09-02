@@ -1,4 +1,4 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -29,6 +29,7 @@ import {
 } from '@januaryai/react-native';
 
 import { searchFixtureFoods } from './e2eFixtures';
+import { FoodDetailScreen } from './FoodDetailScreen';
 import { FoodLogsScreen } from './FoodLogsScreen';
 import { GlucoseScreen } from './GlucoseScreen';
 import { ScanScreen } from './ScanScreen';
@@ -79,6 +80,13 @@ function DemoScreen() {
   const [hasSearched, setHasSearched] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('search');
+  const [searchScope, setSearchScope] = useState<'foods' | 'restaurants'>(
+    'foods'
+  );
+  const [foodMode, setFoodMode] = useState<'name' | 'description' | 'barcode'>(
+    'name'
+  );
+  const [selectedFood, setSelectedFood] = useState<FoodSearchItem>();
   const nativeVersion = getNativeModuleVersion();
 
   const client = useMemo(
@@ -138,9 +146,34 @@ function DemoScreen() {
 
       {developmentApiKey ? <DevelopmentBanner /> : null}
 
-      {activeTab === 'search' ? (
+      {activeTab === 'search' && selectedFood ? (
+        <FoodDetailScreen
+          food={selectedFood}
+          onBack={() => setSelectedFood(undefined)}
+        />
+      ) : activeTab === 'search' ? (
         <View style={styles.screenBody} testID="search-screen">
           <View style={styles.navigationRow}>
+            <View style={styles.navigationActions}>
+              <View />
+              <Pressable
+                accessibilityLabel="Open settings"
+                accessibilityRole="button"
+                hitSlop={8}
+                onPress={() => setShowSettings(true)}
+                style={({ pressed }) => [
+                  styles.iconButton,
+                  pressed && styles.pressed,
+                ]}
+                testID="settings-button"
+              >
+                <MaterialCommunityIcons
+                  color={palette.ink}
+                  name="cog-outline"
+                  size={25}
+                />
+              </Pressable>
+            </View>
             <Text
               accessibilityRole="header"
               style={styles.screenTitle}
@@ -148,23 +181,6 @@ function DemoScreen() {
             >
               Search
             </Text>
-            <Pressable
-              accessibilityLabel="Open settings"
-              accessibilityRole="button"
-              hitSlop={8}
-              onPress={() => setShowSettings(true)}
-              style={({ pressed }) => [
-                styles.iconButton,
-                pressed && styles.pressed,
-              ]}
-              testID="settings-button"
-            >
-              <MaterialCommunityIcons
-                color={palette.ink}
-                name="tune-variant"
-                size={22}
-              />
-            </Pressable>
           </View>
 
           <ScrollView
@@ -187,43 +203,100 @@ function DemoScreen() {
               onSubmit={() => {
                 if (configured) search().catch(() => undefined);
               }}
+              placeholder={
+                searchScope === 'restaurants'
+                  ? 'Restaurant name'
+                  : foodMode === 'description'
+                    ? 'Describe what was eaten'
+                    : foodMode === 'barcode'
+                      ? '6–14 digit barcode'
+                      : 'Food name'
+              }
               value={query}
             />
 
-            <View style={styles.chips}>
-              <CategoryChip
-                label="All"
-                onPress={() => setCategory(undefined)}
-                selected={category == null}
-              />
-              <CategoryChip
-                label="General"
-                onPress={() => setCategory(FoodCategory.generic)}
-                selected={category === FoodCategory.generic}
-              />
-              <CategoryChip
-                label="Branded"
-                onPress={() => setCategory(FoodCategory.branded)}
-                selected={category === FoodCategory.branded}
-              />
-              <CategoryChip
-                label="Recipe"
-                onPress={() => setCategory(FoodCategory.recipe)}
-                selected={category === FoodCategory.recipe}
-              />
-            </View>
+            <SearchSegmentedControl
+              items={[
+                { id: 'foods', label: 'Foods' },
+                { id: 'restaurants', label: 'Restaurants' },
+              ]}
+              onSelect={(value) => {
+                setSearchScope(value as 'foods' | 'restaurants');
+                setResults([]);
+                setHasSearched(false);
+              }}
+              selected={searchScope}
+              testIDPrefix="search-scope"
+            />
 
-            {!query.trim() ? <SearchPromptCard /> : null}
+            {searchScope === 'foods' ? (
+              <SearchSegmentedControl
+                items={[
+                  { id: 'name', label: 'Name' },
+                  { id: 'description', label: 'Description' },
+                  { id: 'barcode', label: 'Barcode' },
+                ]}
+                onSelect={(value) => {
+                  setFoodMode(value as 'name' | 'description' | 'barcode');
+                  setResults([]);
+                  setHasSearched(false);
+                }}
+                selected={foodMode}
+                testIDPrefix="search-mode"
+              />
+            ) : (
+              <SearchSegmentedControl
+                items={[
+                  { id: 'restaurants', label: 'Restaurants' },
+                  { id: 'menu', label: 'Menu items' },
+                ]}
+                onSelect={() => undefined}
+                selected="restaurants"
+                testIDPrefix="restaurant-mode"
+              />
+            )}
+
+            {searchScope === 'foods' && foodMode === 'name' ? (
+              <View style={styles.chips}>
+                <CategoryChip
+                  label="All"
+                  onPress={() => setCategory(undefined)}
+                  selected={category == null}
+                />
+                <CategoryChip
+                  label="General"
+                  onPress={() => setCategory(FoodCategory.generic)}
+                  selected={category === FoodCategory.generic}
+                />
+                <CategoryChip
+                  label="Branded"
+                  onPress={() => setCategory(FoodCategory.branded)}
+                  selected={category === FoodCategory.branded}
+                />
+                <View style={styles.chipLineBreak} />
+                <CategoryChip
+                  label="Recipe"
+                  onPress={() => setCategory(FoodCategory.recipe)}
+                  selected={category === FoodCategory.recipe}
+                />
+              </View>
+            ) : null}
+
+            {!query.trim() ? (
+              <SearchPromptCard
+                restaurant={searchScope === 'restaurants'}
+                mode={foodMode}
+              />
+            ) : null}
 
             <Pressable
               accessibilityRole="button"
-              disabled={!configured || isSearching || !query.trim()}
+              disabled={!configured || isSearching}
               onPress={() => search().catch(() => undefined)}
               style={({ pressed }) => [
                 styles.primaryButton,
                 pressed && styles.primaryButtonPressed,
-                (!configured || isSearching || !query.trim()) &&
-                  styles.primaryButtonDisabled,
+                (!configured || isSearching) && styles.primaryButtonDisabled,
               ]}
               testID="search-submit"
             >
@@ -235,10 +308,16 @@ function DemoScreen() {
                 <Text
                   style={[
                     styles.primaryButtonText,
-                    (!configured || !query.trim()) && styles.disabledButtonText,
+                    !configured && styles.disabledButtonText,
                   ]}
                 >
-                  Search foods
+                  {searchScope === 'restaurants'
+                    ? 'Search nearby'
+                    : foodMode === 'description'
+                      ? 'Parse meal'
+                      : foodMode === 'barcode'
+                        ? 'Look up barcode'
+                        : 'Search foods'}
                 </Text>
               )}
             </Pressable>
@@ -252,7 +331,7 @@ function DemoScreen() {
             ) : null}
 
             {results.length > 0 ? (
-              <ResultsList items={results} />
+              <ResultsList items={results} onSelect={setSelectedFood} />
             ) : hasSearched && !isSearching && !error ? (
               <EmptyResults />
             ) : null}
@@ -324,6 +403,7 @@ interface SearchFieldProps {
   onChangeText: (value: string) => void;
   onClear: () => void;
   onSubmit: () => void;
+  placeholder: string;
   value: string;
 }
 
@@ -331,6 +411,7 @@ function SearchField({
   onChangeText,
   onClear,
   onSubmit,
+  placeholder,
   value,
 }: SearchFieldProps) {
   return (
@@ -341,7 +422,7 @@ function SearchField({
         autoCapitalize="none"
         onChangeText={onChangeText}
         onSubmitEditing={onSubmit}
-        placeholder="Food name"
+        placeholder={placeholder}
         placeholderTextColor={palette.subdued}
         returnKeyType="search"
         style={styles.searchInput}
@@ -394,22 +475,80 @@ function CategoryChip({ label, onPress, selected }: CategoryChipProps) {
   );
 }
 
-function SearchPromptCard() {
+function SearchSegmentedControl({
+  items,
+  onSelect,
+  selected,
+  testIDPrefix,
+}: {
+  items: { id: string; label: string }[];
+  onSelect: (value: string) => void;
+  selected: string;
+  testIDPrefix: string;
+}) {
+  return (
+    <View style={styles.searchSegmented}>
+      {items.map((item) => {
+        const isSelected = selected === item.id;
+        return (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ selected: isSelected }}
+            key={item.id}
+            onPress={() => onSelect(item.id)}
+            style={[
+              styles.searchSegment,
+              isSelected && styles.searchSegmentSelected,
+            ]}
+            testID={`${testIDPrefix}-${item.id}`}
+          >
+            <Text
+              style={[
+                styles.searchSegmentText,
+                isSelected && styles.searchSegmentSelectedText,
+              ]}
+            >
+              {item.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function SearchPromptCard({
+  restaurant,
+  mode,
+}: {
+  restaurant: boolean;
+  mode: 'name' | 'description' | 'barcode';
+}) {
+  const title = restaurant
+    ? 'Search nearby'
+    : mode === 'description'
+      ? 'Describe a meal'
+      : mode === 'barcode'
+        ? 'Enter or scan a barcode'
+        : 'Find a food';
+  const description = restaurant
+    ? 'Find restaurants or dishes around a location.'
+    : mode === 'description'
+      ? 'January will identify foods, servings, and nutrition from a sentence.'
+      : "Search January's database, then choose a serving and quantity.";
   return (
     <View style={styles.promptCard} testID="search-prompt">
-      <View style={styles.promptIcon}>
+      {restaurant ? (
+        <MaterialIcons color={palette.green} name="location-on" size={25} />
+      ) : (
         <MaterialCommunityIcons
           color={palette.green}
           name="silverware-fork-knife"
-          size={23}
+          size={25}
         />
-      </View>
-      <View style={styles.promptCopy}>
-        <Text style={styles.cardTitle}>Find a food</Text>
-        <Text style={styles.cardBody}>
-          Search January’s database, then choose a serving and quantity.
-        </Text>
-      </View>
+      )}
+      <Text style={styles.cardTitle}>{title}</Text>
+      <Text style={styles.cardBody}>{description}</Text>
     </View>
   );
 }
@@ -488,7 +627,13 @@ function EmptyResults() {
   );
 }
 
-function ResultsList({ items }: { items: FoodSearchItem[] }) {
+function ResultsList({
+  items,
+  onSelect,
+}: {
+  items: FoodSearchItem[];
+  onSelect: (item: FoodSearchItem) => void;
+}) {
   return (
     <View style={styles.resultsSection} testID="search-results">
       <View style={styles.resultsHeading}>
@@ -498,7 +643,7 @@ function ResultsList({ items }: { items: FoodSearchItem[] }) {
       <View style={styles.resultsCard}>
         {items.map((item, index) => (
           <View key={item.id}>
-            <FoodRow index={index} item={item} />
+            <FoodRow index={index} item={item} onPress={() => onSelect(item)} />
             {index < items.length - 1 ? <View style={styles.divider} /> : null}
           </View>
         ))}
@@ -507,7 +652,15 @@ function ResultsList({ items }: { items: FoodSearchItem[] }) {
   );
 }
 
-function FoodRow({ item, index }: { item: FoodSearchItem; index: number }) {
+function FoodRow({
+  item,
+  index,
+  onPress,
+}: {
+  item: FoodSearchItem;
+  index: number;
+  onPress: () => void;
+}) {
   const serving =
     item.servings.find((candidate) => candidate.isPrimary) ?? item.servings[0];
   const servingLabel = serving
@@ -515,7 +668,12 @@ function FoodRow({ item, index }: { item: FoodSearchItem; index: number }) {
     : undefined;
 
   return (
-    <View style={styles.foodRow} testID={`food-result-${index}`}>
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={styles.foodRow}
+      testID={`food-result-${index}`}
+    >
       <View style={styles.foodImageFrame}>
         {item.photoURL ? (
           <Image source={{ uri: item.photoURL }} style={styles.foodImage} />
@@ -550,7 +708,7 @@ function FoodRow({ item, index }: { item: FoodSearchItem; index: number }) {
         name="chevron-right"
         size={20}
       />
-    </View>
+    </Pressable>
   );
 }
 
@@ -561,10 +719,10 @@ function formatNumber(value: number): string {
 type TabId = 'search' | 'scan' | 'foodLogs' | 'glucose';
 
 const tabs = [
-  { id: 'search', label: 'Search', icon: 'magnify' },
-  { id: 'scan', label: 'Scan', icon: 'camera-outline' },
-  { id: 'foodLogs', label: 'Food Logs', icon: 'format-list-bulleted' },
-  { id: 'glucose', label: 'Glucose', icon: 'chart-line' },
+  { id: 'search', label: 'Search', icon: 'search' },
+  { id: 'scan', label: 'Scan', icon: 'center-focus-weak' },
+  { id: 'foodLogs', label: 'Food Logs', icon: 'list-alt' },
+  { id: 'glucose', label: 'Glucose', icon: 'show-chart' },
 ] as const;
 
 function AppTabBar({
@@ -592,11 +750,7 @@ function AppTabBar({
             style={[styles.tab, tab.id === activeTab && styles.tabSelected]}
             testID={`tab-${tab.label.toLowerCase().replace(' ', '-')}`}
           >
-            <MaterialCommunityIcons
-              color={palette.ink}
-              name={tab.icon}
-              size={24}
-            />
+            <MaterialIcons color={palette.ink} name={tab.icon} size={25} />
             <Text style={styles.tabLabel}>{tab.label}</Text>
           </Pressable>
         ))}
@@ -751,19 +905,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   navigationRow: {
-    minHeight: 94,
+    height: 112,
+  },
+  navigationActions: {
+    height: 56,
     paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 12,
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     justifyContent: 'space-between',
   },
   screenTitle: {
+    paddingHorizontal: 16,
     color: palette.ink,
-    fontFamily: serifFont,
     fontSize: 34,
     lineHeight: 41,
+    fontWeight: '700',
   },
   iconButton: {
     width: 44,
@@ -796,7 +952,28 @@ const styles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 24,
   },
+  searchSegmented: {
+    minHeight: 36,
+    padding: 2,
+    borderRadius: 20,
+    flexDirection: 'row',
+    backgroundColor: '#EAE8E5',
+  },
+  searchSegment: {
+    flex: 1,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchSegmentSelected: {
+    borderWidth: 1,
+    borderColor: '#E7E4DF',
+    backgroundColor: palette.surface,
+  },
+  searchSegmentText: { color: palette.ink, fontSize: 14, fontWeight: '600' },
+  searchSegmentSelectedText: { fontWeight: '700' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chipLineBreak: { width: '100%', height: 0 },
   chip: {
     minHeight: 38,
     paddingHorizontal: 16,
@@ -811,19 +988,15 @@ const styles = StyleSheet.create({
   chipText: { color: palette.body, fontSize: 15, fontWeight: '600' },
   chipTextSelected: { color: palette.paper },
   promptCard: {
+    minHeight: 184,
     padding: 22,
-    borderWidth: 1,
-    borderColor: 'rgba(29, 26, 20, 0.06)',
+    borderWidth: 1.5,
+    borderColor: palette.border,
     borderRadius: 24,
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    justifyContent: 'center',
+    gap: 8,
     backgroundColor: palette.surface,
-    shadowColor: palette.ink,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 20,
-    elevation: 3,
   },
   promptIcon: {
     width: 48,
@@ -840,7 +1013,13 @@ const styles = StyleSheet.create({
     fontSize: 24,
     lineHeight: 30,
   },
-  cardBody: { color: palette.body, fontSize: 15, lineHeight: 21 },
+  cardBody: {
+    maxWidth: 320,
+    color: palette.body,
+    fontSize: 17,
+    lineHeight: 24,
+    textAlign: 'center',
+  },
   primaryButton: {
     minHeight: 56,
     borderRadius: 18,
@@ -980,7 +1159,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tabSelected: { backgroundColor: palette.controlStrong },
+  tabSelected: { backgroundColor: '#EBE9E6' },
   tabDisabled: { opacity: 0.42 },
   tabLabel: {
     color: palette.ink,

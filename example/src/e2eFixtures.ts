@@ -37,6 +37,28 @@ export async function searchFixtureFoods(
       const item = fixtureFood(`${capitalize(label)} category fixture`, label);
       return { items: [item], totalCount: 1 };
     }
+    case 'oatmeal': {
+      const item = fixtureFood('Fixture oatmeal', 'generic', 160, '1 cup');
+      return {
+        items: [
+          {
+            ...item,
+            brandName: 'January fixture',
+            calories: 100,
+            carbohydrates: 20,
+            fiber: 3,
+            protein: 4,
+            sodium: 10,
+            totalFat: 2,
+            servings: item.servings.map((serving) => ({
+              ...serving,
+              weightGrams: 100,
+            })),
+          },
+        ],
+        totalCount: 1,
+      };
+    }
     default:
       return defaultFixtureFoods();
   }
@@ -159,13 +181,13 @@ export const fixtureFoodLogs: FoodLog[] = [
 
 export const fixtureGlucosePrediction: GlucosePrediction = {
   impact: 'medium',
-  chart: { min: 92, max: 142 },
+  chart: { min: 90, max: 140 },
   prediction: [
-    { minutes: 0, value: 96 },
-    { minutes: 30, value: 124 },
-    { minutes: 60, value: 142 },
-    { minutes: 90, value: 126 },
-    { minutes: 120, value: 108 },
+    { minutes: 0, value: 90 },
+    { minutes: 30, value: 120 },
+    { minutes: 60, value: 140 },
+    { minutes: 90, value: 122 },
+    { minutes: 120, value: 106 },
     { minutes: 180, value: 94 },
   ],
 };
