@@ -1,0 +1,43 @@
+appId: ai.january.sdk.demo
+name: Search loading failure retry and state retention
+tags:
+  - fixture
+---
+- launchApp:
+    clearState: false
+    stopApp: true
+- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
+- runFlow:
+    when:
+      visible: http://127.0.0.1:8081
+    commands:
+      - tapOn: http://127.0.0.1:8081
+- extendedWaitUntil:
+    visible:
+      id: search-input
+    timeout: 15000
+- tapOn:
+    id: search-input
+- inputText: retry search
+- hideKeyboard
+- tapOn:
+    id: search-submit
+- assertVisible:
+    id: search-loading
+- extendedWaitUntil:
+    visible:
+      id: search-error
+    timeout: 15000
+- assertVisible: Temporary fixture search failure.
+- assertVisible: retry search
+- tapOn:
+    id: search-retry
+- assertVisible:
+    id: search-loading
+- extendedWaitUntil:
+    visible:
+      id: search-results
+    timeout: 15000
+- assertVisible: Greek yogurt
+- assertNotVisible:
+    id: search-error

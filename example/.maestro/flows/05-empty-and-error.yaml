@@ -1,0 +1,40 @@
+appId: ai.january.sdk.demo
+name: Empty and error states are actionable
+tags:
+  - fixture
+---
+- launchApp:
+    clearState: false
+    stopApp: true
+- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
+- runFlow:
+    when:
+      visible: http://127.0.0.1:8081
+    commands:
+      - tapOn: http://127.0.0.1:8081
+- extendedWaitUntil:
+    visible:
+      id: search-input
+    timeout: 15000
+- tapOn:
+    id: search-input
+- inputText: no results
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: empty-results
+    timeout: 15000
+- assertVisible: No foods found
+- assertVisible: Try another name or broaden the selected food category.
+- tapOn:
+    id: search-clear
+- tapOn:
+    id: search-input
+- inputText: force error
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: search-error
+    timeout: 15000
+- assertVisible: January couldn’t complete the request
+- assertVisible: Fixture request failed.

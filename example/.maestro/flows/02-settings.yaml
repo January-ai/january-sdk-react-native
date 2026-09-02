@@ -1,0 +1,32 @@
+appId: ai.january.sdk.demo
+name: Settings shows SDK configuration
+tags:
+  - fixture
+---
+- launchApp:
+    clearState: false
+    stopApp: true
+- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
+- runFlow:
+    when:
+      visible: http://127.0.0.1:8081
+    commands:
+      - tapOn: http://127.0.0.1:8081
+- extendedWaitUntil:
+    visible:
+      id: settings-button
+    timeout: 15000
+- tapOn:
+    id: settings-button
+- assertVisible:
+    id: settings-sheet
+- assertVisible: January SDK
+- assertVisible: UI test fixtures
+- assertVisible: Connected
+- assertVisible: End user ID
+- assertVisible: react-native-demo-user
+- assertVisible: Native module
+- tapOn:
+    id: settings-close
+- assertNotVisible:
+    id: settings-sheet

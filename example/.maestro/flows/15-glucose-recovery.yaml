@@ -1,0 +1,91 @@
+appId: ai.january.sdk.demo
+name: Glucose failure retains profile and meal then recovers
+tags:
+  - fixture
+---
+- launchApp:
+    clearState: false
+    stopApp: true
+- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
+- runFlow:
+    when:
+      visible: http://127.0.0.1:8081
+    commands:
+      - tapOn: http://127.0.0.1:8081
+- extendedWaitUntil:
+    visible:
+      id: tab-glucose
+    timeout: 15000
+- tapOn:
+    id: tab-glucose
+- tapOn:
+    id: glucose-age
+- eraseText: 10
+- inputText: 99
+- hideKeyboard
+- tapOn:
+    id: glucose-sex-male
+- scrollUntilVisible:
+    element:
+      id: glucose-add-food
+    direction: DOWN
+- tapOn:
+    id: glucose-add-food
+- tapOn:
+    id: food-picker-input
+- inputText: greek yogurt
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: food-picker-result-0
+    timeout: 15000
+- tapOn:
+    id: food-picker-result-0
+- tapOn: Increase Greek yogurt quantity
+- assertVisible: '1.25'
+- scrollUntilVisible:
+    element:
+      id: glucose-predict
+    direction: DOWN
+- tapOn:
+    id: glucose-predict
+- assertVisible:
+    id: glucose-loading
+- extendedWaitUntil:
+    visible:
+      id: glucose-error
+    timeout: 15000
+- assertVisible: Temporary fixture prediction failure.
+- assertVisible:
+    id: glucose-food-0
+- tapOn:
+    id: glucose-retry
+- extendedWaitUntil:
+    visible:
+      id: glucose-result
+    timeout: 15000
+- assertVisible:
+    id: glucose-chart
+- assertVisible: Greek yogurt
+- assertVisible: 1.25 serving
+- tapOn:
+    id: glucose-adjust
+- assertVisible:
+    id: glucose-food-0
+- assertVisible: '99'
+- scrollUntilVisible:
+    element:
+      id: glucose-predict
+    direction: DOWN
+- tapOn:
+    id: glucose-predict
+- extendedWaitUntil:
+    visible:
+      id: glucose-result
+    timeout: 15000
+- tapOn:
+    id: glucose-start-over
+- assertVisible:
+    id: glucose-screen
+- assertNotVisible:
+    id: glucose-food-0

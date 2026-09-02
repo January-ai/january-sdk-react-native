@@ -1,0 +1,42 @@
+appId: ai.january.sdk.demo
+name: Launch and primary navigation
+tags:
+  - fixture
+---
+- launchApp:
+    clearState: false
+    stopApp: true
+- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
+- runFlow:
+    when:
+      visible: http://127.0.0.1:8081
+    commands:
+      - tapOn: http://127.0.0.1:8081
+- extendedWaitUntil:
+    visible:
+      id: search-screen
+    timeout: 15000
+- assertVisible:
+    id: search-title
+- assertVisible:
+    id: search-input
+- assertVisible:
+    id: search-prompt
+- assertVisible:
+    id: category-all
+- assertVisible:
+    id: category-general
+- assertVisible:
+    id: category-branded
+- assertVisible:
+    id: category-recipe
+- assertVisible:
+    id: tab-search
+- assertVisible:
+    id: tab-scan
+- assertVisible:
+    id: tab-food-logs
+- assertVisible:
+    id: tab-glucose
+- assertNotVisible:
+    id: search-results

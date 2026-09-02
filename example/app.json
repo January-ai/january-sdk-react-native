@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "January SDK Demo",
+    "slug": "january-sdk-demo",
+    "version": "1.0.0",
+    "scheme": "january-sdk-demo",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
+        }
+      ],
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow January SDK Demo to photograph meals for nutrition analysis.",
+          "photosPermission": "Allow January SDK Demo to select meal photos for nutrition analysis."
+        }
+      ]
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ai.january.sdk.demo"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "package": "ai.january.sdk.demo"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}

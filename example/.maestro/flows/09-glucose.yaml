@@ -1,0 +1,52 @@
+appId: ai.january.sdk.demo
+name: Glucose meal prediction
+tags:
+  - fixture
+---
+- launchApp:
+    clearState: false
+    stopApp: true
+- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
+- runFlow:
+    when:
+      visible: http://127.0.0.1:8081
+    commands:
+      - tapOn: http://127.0.0.1:8081
+- extendedWaitUntil:
+    visible:
+      id: tab-glucose
+    timeout: 15000
+- tapOn:
+    id: tab-glucose
+- assertVisible: Estimate this meal’s response
+- scrollUntilVisible:
+    element:
+      id: glucose-add-food
+    direction: DOWN
+- tapOn:
+    id: glucose-add-food
+- tapOn:
+    id: food-picker-input
+- inputText: greek yogurt
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: food-picker-result-0
+    timeout: 15000
+- tapOn:
+    id: food-picker-result-0
+- assertVisible:
+    id: glucose-food-0
+- scrollUntilVisible:
+    element:
+      id: glucose-predict
+    direction: DOWN
+- tapOn:
+    id: glucose-predict
+- extendedWaitUntil:
+    visible:
+      id: glucose-result
+    timeout: 15000
+- assertVisible: Moderate impact
+- assertVisible:
+    id: glucose-chart

@@ -1,0 +1,76 @@
+appId: ai.january.sdk.demo
+name: Food picker loading empty error retry and validation
+tags:
+  - fixture
+---
+- launchApp:
+    clearState: false
+    stopApp: true
+- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
+- runFlow:
+    when:
+      visible: http://127.0.0.1:8081
+    commands:
+      - tapOn: http://127.0.0.1:8081
+- extendedWaitUntil:
+    visible:
+      id: tab-glucose
+    timeout: 15000
+- tapOn:
+    id: tab-glucose
+- scrollUntilVisible:
+    element:
+      id: glucose-add-food
+    direction: DOWN
+- tapOn:
+    id: glucose-add-food
+- tapOn:
+    id: food-picker-input
+- inputText: no results
+- hideKeyboard
+- tapOn:
+    id: food-picker-search
+- assertVisible:
+    id: food-picker-loading
+- extendedWaitUntil:
+    visible:
+      id: food-picker-empty
+    timeout: 15000
+- assertVisible: No foods found
+- tapOn:
+    id: food-picker-input
+- eraseText: 30
+- inputText: retry picker
+- hideKeyboard
+- tapOn:
+    id: food-picker-search
+- extendedWaitUntil:
+    visible:
+      id: food-picker-error
+    timeout: 15000
+- assertVisible: Temporary fixture picker failure.
+- tapOn:
+    id: food-picker-retry
+- extendedWaitUntil:
+    visible:
+      id: food-picker-result-0
+    timeout: 15000
+- tapOn:
+    id: food-picker-close
+- tapOn:
+    id: glucose-add-food
+- tapOn:
+    id: food-picker-input
+- inputText: missing serving
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: food-picker-result-0
+    timeout: 15000
+- tapOn:
+    id: food-picker-result-0
+- assertVisible:
+    id: food-picker-error
+- assertVisible: This result does not contain a selectable serving.
+- assertVisible:
+    id: food-picker

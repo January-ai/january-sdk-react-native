@@ -1,0 +1,55 @@
+appId: ai.january.sdk.demo
+name: Food logs loading empty failure and retry
+tags:
+  - fixture
+---
+- launchApp:
+    clearState: false
+    stopApp: true
+- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
+- runFlow:
+    when:
+      visible: http://127.0.0.1:8081
+    commands:
+      - tapOn: http://127.0.0.1:8081
+- extendedWaitUntil:
+    visible:
+      id: tab-food-logs
+    timeout: 15000
+- tapOn:
+    id: tab-food-logs
+- assertVisible:
+    id: food-logs-loading
+- extendedWaitUntil:
+    visible: Fixture breakfast
+    timeout: 15000
+- tapOn:
+    id: logs-range-month
+- assertVisible:
+    id: food-logs-loading
+- extendedWaitUntil:
+    visible:
+      id: food-logs-empty
+    timeout: 15000
+- assertVisible: No food logs in this range
+- tapOn:
+    id: logs-range-week
+- extendedWaitUntil:
+    visible: Fixture breakfast
+    timeout: 15000
+- longPressOn:
+    id: food-logs-refresh
+- assertVisible:
+    id: food-logs-loading
+- extendedWaitUntil:
+    visible:
+      id: food-logs-error
+    timeout: 15000
+- assertVisible: Temporary fixture food logs failure.
+- tapOn:
+    id: food-logs-retry
+- extendedWaitUntil:
+    visible: Fixture breakfast
+    timeout: 15000
+- assertNotVisible:
+    id: food-logs-error

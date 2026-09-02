@@ -1,0 +1,47 @@
+appId: ai.january.sdk.demo
+name: Glucose food picker remains usable above the Android keyboard
+tags:
+  - fixture
+---
+- launchApp:
+    clearState: false
+    stopApp: true
+- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
+- runFlow:
+    when:
+      visible: http://127.0.0.1:8081
+    commands:
+      - tapOn: http://127.0.0.1:8081
+- extendedWaitUntil:
+    visible:
+      id: tab-glucose
+    timeout: 15000
+- tapOn:
+    id: tab-glucose
+- scrollUntilVisible:
+    element:
+      id: glucose-add-food
+    direction: DOWN
+- tapOn:
+    id: glucose-add-food
+- assertVisible:
+    id: food-picker
+- tapOn:
+    id: food-picker-input
+- inputText: greek yogurt
+- assertVisible: Add food
+- assertVisible:
+    id: food-picker-input
+- assertVisible:
+    id: food-picker-search
+- takeScreenshot: example/.maestro/artifacts/food-picker-keyboard-open
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: food-picker-result-0
+    timeout: 15000
+- assertVisible: Greek yogurt
+- tapOn:
+    id: food-picker-result-0
+- assertVisible:
+    id: glucose-food-0

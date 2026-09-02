@@ -1,0 +1,45 @@
+appId: ai.january.sdk.demo
+name: Meal scan and correction
+tags:
+  - fixture
+---
+- launchApp:
+    clearState: false
+    stopApp: true
+- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
+- runFlow:
+    when:
+      visible: http://127.0.0.1:8081
+    commands:
+      - tapOn: http://127.0.0.1:8081
+- extendedWaitUntil:
+    visible:
+      id: tab-scan
+    timeout: 15000
+- tapOn:
+    id: tab-scan
+- tapOn:
+    id: scan-sample
+- assertVisible:
+    id: scan-preview
+- tapOn:
+    id: scan-analyze
+- extendedWaitUntil:
+    visible:
+      id: scan-results
+    timeout: 15000
+- assertVisible: Fixture breakfast
+- assertVisible: Oatmeal with berries
+- scrollUntilVisible:
+    element:
+      id: scan-correction-input
+    direction: DOWN
+- tapOn:
+    id: scan-correction-input
+- inputText: This was lentils
+- hideKeyboard
+- tapOn:
+    id: scan-correction-submit
+- extendedWaitUntil:
+    visible: Corrected breakfast
+    timeout: 15000

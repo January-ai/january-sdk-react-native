@@ -1,0 +1,39 @@
+appId: ai.january.sdk.demo
+name: Food category selection reaches search
+tags:
+  - fixture
+---
+- launchApp:
+    clearState: false
+    stopApp: true
+- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
+- runFlow:
+    when:
+      visible: http://127.0.0.1:8081
+    commands:
+      - tapOn: http://127.0.0.1:8081
+- extendedWaitUntil:
+    visible:
+      id: category-general
+    timeout: 15000
+- tapOn:
+    id: category-general
+- tapOn:
+    id: search-input
+- inputText: category
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: Generic category fixture
+    timeout: 15000
+- tapOn:
+    id: search-clear
+- tapOn:
+    id: category-branded
+- tapOn:
+    id: search-input
+- inputText: category
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: Branded category fixture
+    timeout: 15000
+- assertNotVisible: Generic category fixture

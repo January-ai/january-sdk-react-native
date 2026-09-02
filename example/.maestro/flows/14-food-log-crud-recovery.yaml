@@ -1,0 +1,96 @@
+appId: ai.january.sdk.demo
+name: Food log create update delete and retry preserve state
+tags:
+  - fixture
+---
+- launchApp:
+    clearState: false
+    stopApp: true
+- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
+- runFlow:
+    when:
+      visible: http://127.0.0.1:8081
+    commands:
+      - tapOn: http://127.0.0.1:8081
+- extendedWaitUntil:
+    visible:
+      id: tab-food-logs
+    timeout: 15000
+- tapOn:
+    id: tab-food-logs
+- extendedWaitUntil:
+    visible: Fixture breakfast
+    timeout: 15000
+- tapOn:
+    id: food-log-add
+- tapOn:
+    id: food-log-name
+- inputText: Retry meal
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: food-log-add-food
+    direction: DOWN
+- tapOn:
+    id: food-log-add-food
+- tapOn:
+    id: food-picker-input
+- inputText: greek yogurt
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: food-picker-result-0
+    timeout: 15000
+- tapOn:
+    id: food-picker-result-0
+- tapOn:
+    id: food-log-save
+- assertVisible:
+    id: food-log-save-loading
+- extendedWaitUntil:
+    visible:
+      id: food-log-save-error
+    timeout: 15000
+- assertVisible: Temporary fixture food log save failure.
+- assertVisible: Retry meal
+- tapOn:
+    id: food-log-save-retry
+- extendedWaitUntil:
+    visible: Retry meal
+    timeout: 15000
+- tapOn:
+    id: food-log-0
+- assertVisible:
+    id: food-log-detail
+- assertVisible: Greek yogurt
+- tapOn:
+    id: food-log-edit
+- assertVisible: Edit food log
+- tapOn:
+    id: food-log-name
+- eraseText: 30
+- inputText: Updated meal
+- hideKeyboard
+- tapOn:
+    id: food-log-save
+- extendedWaitUntil:
+    visible: Updated meal
+    timeout: 15000
+- tapOn:
+    id: food-log-0
+- tapOn:
+    id: food-log-delete
+- tapOn: Delete food log
+- extendedWaitUntil:
+    visible:
+      id: food-logs-error
+    timeout: 15000
+- assertVisible: Temporary fixture deletion failure.
+- tapOn:
+    id: food-logs-retry
+- extendedWaitUntil:
+    visible: Fixture breakfast
+    timeout: 15000
+- assertNotVisible: Updated meal
+- assertNotVisible:
+    id: food-logs-error
