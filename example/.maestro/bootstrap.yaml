@@ -1,0 +1,37 @@
+appId: ai.january.sdk.demo
+---
+- retry:
+    maxRetries: 2
+    commands:
+      - runFlow:
+          when:
+            platform: iOS
+          commands:
+            - launchApp:
+                clearState: false
+                stopApp: true
+                arguments:
+                  --initialUrl: http://127.0.0.1:8081
+      - runFlow:
+          when:
+            platform: Android
+          commands:
+            - launchApp:
+                clearState: false
+                stopApp: true
+            - extendedWaitUntil:
+                visible: New development server
+                timeout: 15000
+            - openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
+            - waitForAnimationToEnd
+            - openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
+      - tapOn:
+          text: Continue
+          optional: true
+      - tapOn:
+          text: Close
+          optional: true
+      - extendedWaitUntil:
+          visible:
+            id: search-screen
+          timeout: 30000

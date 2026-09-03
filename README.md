@@ -7,9 +7,6 @@ The package exposes one TypeScript API and delegates platform work to January's
 native Swift SDK on iOS and Kotlin SDK on Android through a React Native
 TurboModule.
 
-> **Controlled preview:** APIs and minimum platform versions may change before
-> the first stable release.
-
 ## Install
 
 ### React Native
@@ -86,6 +83,13 @@ const january = new JanuaryClient({
 const results = await january.foods.search({ query: 'greek yogurt' });
 ```
 
+## Documentation
+
+The complete integration guide is in
+[`Documentation/GitBook`](Documentation/GitBook/README.md), including native
+installation, production authentication, feature guides, API reference,
+testing, and troubleshooting.
+
 Create one client for the signed-in user, reuse it, and call `dispose()` when
 that user signs out. Token caching and refresh remain inside the native SDK.
 
@@ -101,6 +105,7 @@ ios/                         Swift and Objective-C++ React Native bridge
 android/                     Kotlin React Native bridge
 JanuaryReactNative.podspec   iOS package and native SDK dependency metadata
 example/                     Expo development-build demo application
+Documentation/GitBook/       GitBook integration and API documentation
 qa/                          Cross-platform UI parity evidence
 example/.maestro/            Device UI test flows
 ```
@@ -152,6 +157,10 @@ Then run the Maestro device suite in another terminal:
 corepack yarn ui:test
 ```
 
+The default suite runs every deterministic fixture and native-demo parity flow.
+Use `corepack yarn ui:test:fixtures` when you only need the shorter functional
+fixture suite during development.
+
 For live local testing, configure either a partner token endpoint or a Debug-only
 API key. See [`example/.env.example`](example/.env.example) for the supported
 environment variables.
@@ -183,7 +192,7 @@ Keep Metro running while editing TypeScript to use Fast Refresh.
 Every React Native release pins native SDK versions that passed the complete
 bridge, build, and demo test suite. The current native dependencies are:
 
-- iOS: `January` `0.1.0-beta.2`
+- iOS: `January` `0.1.0`
 - Android: `ai.january:january-sdk-android:0.1.1`
 
 Native releases are updated through a tested React Native release rather than a

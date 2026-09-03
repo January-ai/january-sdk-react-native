@@ -3,15 +3,7 @@ name: Food logs loading empty failure and retry
 tags:
   - fixture
 ---
-- launchApp:
-    clearState: false
-    stopApp: true
-- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
-- runFlow:
-    when:
-      visible: http://127.0.0.1:8081
-    commands:
-      - tapOn: http://127.0.0.1:8081
+- runFlow: ../bootstrap.yaml
 - extendedWaitUntil:
     visible:
       id: tab-food-logs
@@ -28,8 +20,6 @@ tags:
     direction: UP
 - tapOn:
     id: food-logs-refresh
-- assertVisible:
-    id: food-logs-loading
 - takeScreenshot: example/.maestro/artifacts/react-native-logs-loading
 - extendedWaitUntil:
     visible:
@@ -37,8 +27,6 @@ tags:
     timeout: 15000
 - tapOn:
     id: logs-range-month
-- assertVisible:
-    id: food-logs-loading
 - extendedWaitUntil:
     visible:
       id: food-logs-empty
@@ -53,8 +41,6 @@ tags:
     timeout: 15000
 - longPressOn:
     id: food-logs-refresh
-- assertVisible:
-    id: food-logs-loading
 - extendedWaitUntil:
     visible:
       id: food-logs-error

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -110,7 +111,10 @@ export function ScanScreen({
   return (
     <View style={sharedStyles.screen} testID="scan-screen">
       <ScreenHeader onSettings={onSettings} />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        style={sharedStyles.scroll}
+      >
         {!image ? (
           <>
             <View style={styles.introCard} testID="scan-guide">
@@ -203,10 +207,10 @@ export function ScanScreen({
                 sharedStyles.primaryButton,
                 !configured && sharedStyles.disabled,
               ]}
-              testID="scan-analyze"
+              testID={loading ? 'scan-loading' : 'scan-analyze'}
             >
               {loading ? (
-                <View style={styles.buttonLoading} testID="scan-loading">
+                <View style={styles.buttonLoading}>
                   <ActivityIndicator color={palette.paper} size="small" />
                   <Text style={sharedStyles.primaryText}>
                     Analyzing this meal…
@@ -251,7 +255,7 @@ export function ScanScreen({
         onClose={() => setResult(undefined)}
         onCorrect={() => setShowCorrection(true)}
         onReset={reset}
-        result={result}
+        result={showCorrection ? undefined : result}
       />
       <CorrectionSheet
         fixtures={fixtures}
@@ -351,8 +355,7 @@ function SheetFrame({
 }) {
   const insets = useSafeAreaInsets();
   return (
-    <View style={[styles.sheet, { paddingTop: insets.top + 42 }]}>
-      <View style={[styles.handle, { top: insets.top + 16 }]} />
+    <View style={[styles.sheet, { paddingTop: insets.top + 8 }]}>
       <View style={styles.sheetHeader}>
         <Pressable
           accessibilityLabel={`Close ${title}`}
@@ -568,6 +571,11 @@ function CorrectionSheet({
     }
   };
 
+  const submitAndDismiss = () => {
+    Keyboard.dismiss();
+    submit().catch(() => undefined);
+  };
+
   return (
     <Modal
       animationType="none"
@@ -608,9 +616,12 @@ function CorrectionSheet({
             <TextInput
               multiline
               onChangeText={setInstruction}
+              onSubmitEditing={submitAndDismiss}
               placeholder="Describe the correction"
               placeholderTextColor={palette.subdued}
+              returnKeyType="done"
               style={styles.correctionInput}
+              submitBehavior="blurAndSubmit"
               testID="scan-correction-input"
               value={instruction}
             />
@@ -627,18 +638,19 @@ function CorrectionSheet({
             ) : null}
             <Pressable
               disabled={!instruction.trim() || submitting}
-              onPress={() => submit().catch(() => undefined)}
+              onPress={submitAndDismiss}
               style={[
                 sharedStyles.primaryButton,
                 (!instruction.trim() || submitting) && sharedStyles.disabled,
               ]}
-              testID="scan-correction-submit"
+              testID={
+                submitting
+                  ? 'scan-correction-loading'
+                  : 'scan-correction-submit'
+              }
             >
               {submitting ? (
-                <View
-                  style={styles.buttonLoading}
-                  testID="scan-correction-loading"
-                >
+                <View style={styles.buttonLoading}>
                   <ActivityIndicator color={palette.paper} size="small" />
                   <Text style={sharedStyles.primaryText}>
                     Submitting correction…

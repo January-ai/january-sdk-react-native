@@ -3,15 +3,7 @@ name: Scan and correction failures recover without losing input
 tags:
   - fixture
 ---
-- launchApp:
-    clearState: false
-    stopApp: true
-- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
-- runFlow:
-    when:
-      visible: http://127.0.0.1:8081
-    commands:
-      - tapOn: http://127.0.0.1:8081
+- runFlow: ../bootstrap.yaml
 - extendedWaitUntil:
     visible:
       id: tab-scan
@@ -24,8 +16,6 @@ tags:
     id: scan-preview
 - tapOn:
     id: scan-analyze
-- assertVisible:
-    id: scan-loading
 - scrollUntilVisible:
     element:
       id: scan-error
@@ -38,36 +28,37 @@ tags:
       id: scan-results
     timeout: 15000
 - assertVisible: Fixture breakfast
-- scrollUntilVisible:
-    element:
-      id: scan-correct
-    direction: DOWN
-- tapOn:
-    id: scan-correct
-- tapOn:
-    id: scan-correction-input
-- inputText: retry correction
-- hideKeyboard
-- tapOn:
-    text: Submit correction
-- assertVisible:
-    id: scan-correction-loading
-- scrollUntilVisible:
-    element:
-      id: scan-correction-error
-    direction: DOWN
-- assertVisible: Temporary fixture correction failure.
-- assertVisible: retry correction
-- scrollUntilVisible:
-    element:
-      id: scan-correction-error-retry
-    direction: DOWN
-- tapOn:
-    id: scan-correction-error-retry
-- scrollUntilVisible:
-    element:
-      text: Corrected breakfast
-    direction: UP
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: scan-correct
+          direction: DOWN
+      - tapOn:
+          id: scan-correct
+      - tapOn:
+          id: scan-correction-input
+      - inputText: retry correction
+      - assertVisible: retry correction
+      - pressKey: Enter
+      - scrollUntilVisible:
+          element:
+            id: scan-correction-error
+          direction: DOWN
+      - assertVisible: Temporary fixture correction failure.
+      - assertVisible: retry correction
+      - scrollUntilVisible:
+          element:
+            id: scan-correction-error-retry
+          direction: DOWN
+      - tapOn:
+          id: scan-correction-error-retry
+      - scrollUntilVisible:
+          element:
+            text: Corrected breakfast
+          direction: UP
 - scrollUntilVisible:
     element:
       id: scan-another

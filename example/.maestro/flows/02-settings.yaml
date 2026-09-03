@@ -3,24 +3,16 @@ name: Settings shows SDK configuration
 tags:
   - fixture
 ---
-- launchApp:
-    clearState: false
-    stopApp: true
-- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
-- runFlow:
-    when:
-      visible: http://127.0.0.1:8081
-    commands:
-      - tapOn: http://127.0.0.1:8081
+- runFlow: ../bootstrap.yaml
 - extendedWaitUntil:
     visible:
       id: settings-button
     timeout: 15000
 - tapOn:
     id: tab-glucose
-- tapOn: Open settings
-- assertVisible:
-    id: settings-sheet
+- tapOn:
+    id: settings-button
+- assertVisible: Settings
 - assertVisible: January SDK
 - assertVisible: Development API key
 - assertVisible: Connected
@@ -29,5 +21,4 @@ tags:
 - takeScreenshot: example/.maestro/artifacts/react-native-settings
 - tapOn:
     id: settings-close
-- assertNotVisible:
-    id: settings-sheet
+- assertNotVisible: Settings

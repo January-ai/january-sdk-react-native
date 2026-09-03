@@ -13,6 +13,7 @@
       "backgroundColor": "#ffffff"
     },
     "plugins": [
+      "./plugins/with-hidden-dev-menu-button",
       [
         "expo-build-properties",
         {
@@ -32,7 +33,12 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "ai.january.sdk.demo"
+      "bundleIdentifier": "ai.january.sdk.demo",
+      "infoPlist": {
+        "EXDevMenuIsOnboardingFinished": true,
+        "EXDevMenuShowsAtLaunch": false,
+        "EXDevMenuShowFloatingActionButton": false
+      }
     },
     "android": {
       "adaptiveIcon": {

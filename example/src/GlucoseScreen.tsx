@@ -125,6 +125,7 @@ export function GlucoseScreen({
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
+        style={sharedStyles.scroll}
       >
         <WorkflowGuide />
 
@@ -346,10 +347,10 @@ export function GlucoseScreen({
             (!configured || foods.length === 0 || loading) &&
               sharedStyles.disabled,
           ]}
-          testID="glucose-predict"
+          testID={loading ? 'glucose-loading' : 'glucose-predict'}
         >
           {loading ? (
-            <View collapsable={false} testID="glucose-loading">
+            <View collapsable={false}>
               <ActivityIndicator color={palette.paper} />
             </View>
           ) : (
@@ -385,6 +386,7 @@ function LargeNavigationHeader({
           accessibilityLabel="Open settings"
           onPress={onSettings}
           style={sharedStyles.iconButton}
+          testID="settings-button"
         >
           <MaterialCommunityIcons
             color={palette.ink}
@@ -483,7 +485,10 @@ function ConditionsScreen({
           Health conditions
         </Text>
       </View>
-      <ScrollView contentContainerStyle={styles.conditionsContent}>
+      <ScrollView
+        contentContainerStyle={styles.conditionsContent}
+        style={sharedStyles.scroll}
+      >
         <Text style={styles.conditionsHelp}>
           Select all that apply. Leave both unselected if neither condition
           applies.
@@ -646,7 +651,10 @@ function PredictionResult({
         <Text style={styles.compactTitle}>Estimated response</Text>
         <View style={styles.headerSpacer} />
       </View>
-      <ScrollView contentContainerStyle={styles.resultContent}>
+      <ScrollView
+        contentContainerStyle={styles.resultContent}
+        style={sharedStyles.scroll}
+      >
         <PredictionChart
           delta={delta}
           impact={result.impact ?? 'unknown'}

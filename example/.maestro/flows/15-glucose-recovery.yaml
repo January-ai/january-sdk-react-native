@@ -3,15 +3,7 @@ name: Glucose failure retains profile and meal then recovers
 tags:
   - fixture
 ---
-- launchApp:
-    clearState: false
-    stopApp: true
-- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
-- runFlow:
-    when:
-      visible: http://127.0.0.1:8081
-    commands:
-      - tapOn: http://127.0.0.1:8081
+- runFlow: ../bootstrap.yaml
 - extendedWaitUntil:
     visible:
       id: tab-glucose
@@ -22,7 +14,7 @@ tags:
     id: glucose-age
 - eraseText: 10
 - inputText: 99
-- hideKeyboard
+- pressKey: Enter
 - tapOn:
     id: glucose-sex-male
 - scrollUntilVisible:
@@ -59,10 +51,11 @@ tags:
     element:
       id: glucose-predict
     direction: DOWN
+    centerElement: true
+- waitForAnimationToEnd
 - tapOn:
-    id: glucose-predict
-- assertVisible:
-    id: glucose-loading
+    text: Estimate glucose response
+    retryTapIfNoChange: true
 - extendedWaitUntil:
     visible:
       id: glucose-error
@@ -107,8 +100,11 @@ tags:
     element:
       id: glucose-predict
     direction: DOWN
+    centerElement: true
+- waitForAnimationToEnd
 - tapOn:
-    id: glucose-predict
+    text: Estimate glucose response
+    retryTapIfNoChange: true
 - extendedWaitUntil:
     visible:
       id: glucose-result

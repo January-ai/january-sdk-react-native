@@ -101,13 +101,12 @@ export function FoodPickerSheet({
           style={[
             styles.sheet,
             {
-              paddingTop: Math.max(insets.top, 20) + 48,
+              paddingTop: Math.max(insets.top, 20) + 8,
               paddingBottom: Math.max(insets.bottom, 12),
             },
           ]}
           testID="food-picker"
         >
-          <View style={[styles.handle, { top: insets.top + 22 }]} />
           <SheetHeader onClose={onClose} title="Add food" />
           <View style={styles.searchField}>
             <MaterialCommunityIcons
@@ -261,7 +260,6 @@ export function FoodPickerSheet({
                   { paddingBottom: Math.max(insets.bottom, 12) },
                 ]}
               >
-                <View style={styles.nestedHandle} />
                 <ServingSelection
                   food={chosenFood}
                   onBack={() => setChosenFood(undefined)}
@@ -543,7 +541,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     height: '50%',
-    paddingTop: 45,
+    paddingTop: 8,
     overflow: 'hidden',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,

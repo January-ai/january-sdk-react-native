@@ -3,15 +3,7 @@ name: Food logs browse and create
 tags:
   - fixture
 ---
-- launchApp:
-    clearState: false
-    stopApp: true
-- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
-- runFlow:
-    when:
-      visible: http://127.0.0.1:8081
-    commands:
-      - tapOn: http://127.0.0.1:8081
+- runFlow: ../bootstrap.yaml
 - extendedWaitUntil:
     visible:
       id: tab-food-logs
@@ -34,7 +26,7 @@ tags:
 - tapOn:
     id: food-log-name
 - inputText: Afternoon snack
-- hideKeyboard
+- pressKey: Enter
 - scrollUntilVisible:
     element:
       id: food-log-add-food
@@ -64,5 +56,5 @@ tags:
 - tapOn:
     id: food-log-save
 - extendedWaitUntil:
-    visible: Afternoon snack
+    visible: .*Afternoon snack.*
     timeout: 15000

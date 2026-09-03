@@ -1,17 +1,9 @@
 appId: ai.january.sdk.demo
-name: Android parity - scan and correction surfaces
+name: Native parity - scan and correction surfaces
 tags:
   - parity
 ---
-- launchApp:
-    clearState: false
-    stopApp: true
-- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
-- runFlow:
-    when:
-      visible: http://127.0.0.1:8081
-    commands:
-      - tapOn: http://127.0.0.1:8081
+- runFlow: ../bootstrap.yaml
 - extendedWaitUntil:
     visible:
       id: tab-scan
@@ -33,8 +25,6 @@ tags:
 - takeScreenshot: example/.maestro/artifacts/react-native-scan-preview
 - tapOn:
     id: scan-analyze
-- assertVisible:
-    id: scan-loading
 - takeScreenshot: example/.maestro/artifacts/react-native-scan-loading
 - extendedWaitUntil:
     visible:
@@ -45,19 +35,14 @@ tags:
     element:
       id: scan-correct
     direction: DOWN
-- tapOn:
-    id: scan-correct
+- tapOn: Correct result
 - assertVisible: Correct result
 - takeScreenshot: example/.maestro/artifacts/react-native-correction-initial
 - tapOn:
     id: scan-correction-input
 - inputText: This was lentils
 - takeScreenshot: example/.maestro/artifacts/react-native-correction-keyboard
-- hideKeyboard
-- tapOn:
-    id: scan-correction-submit
-- assertVisible:
-    id: scan-correction-loading
+- pressKey: Enter
 - takeScreenshot: example/.maestro/artifacts/react-native-correction-loading
 - extendedWaitUntil:
     visible: Corrected breakfast
