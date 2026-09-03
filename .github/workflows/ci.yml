@@ -273,6 +273,7 @@ jobs:
     env:
       RCT_USE_RN_DEP: 1
       RCT_USE_PREBUILT_RNCORE: 1
+      MAESTRO_DRIVER_STARTUP_TIMEOUT: '300000'
 
     steps:
       - name: Checkout
