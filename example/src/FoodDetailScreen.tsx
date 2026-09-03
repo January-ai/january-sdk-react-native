@@ -303,7 +303,7 @@ function FullSheet({
           style={[
             styles.sheet,
             {
-              paddingTop: insets.top + 51,
+              paddingTop: insets.top + 8,
               paddingBottom: Math.max(insets.bottom, 12),
             },
           ]}

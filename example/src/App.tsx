@@ -1740,7 +1740,7 @@ const styles = StyleSheet.create({
   },
   settingsSheet: {
     height: '50%',
-    paddingTop: 42,
+    paddingTop: 8,
     overflow: 'hidden',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,

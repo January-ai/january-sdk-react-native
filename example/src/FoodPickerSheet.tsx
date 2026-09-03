@@ -101,7 +101,7 @@ export function FoodPickerSheet({
           style={[
             styles.sheet,
             {
-              paddingTop: Math.max(insets.top, 20) + 48,
+              paddingTop: Math.max(insets.top, 20) + 8,
               paddingBottom: Math.max(insets.bottom, 12),
             },
           ]}
@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     height: '50%',
-    paddingTop: 45,
+    paddingTop: 8,
     overflow: 'hidden',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,

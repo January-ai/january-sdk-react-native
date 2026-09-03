@@ -467,7 +467,7 @@ function FoodLogEditor({
           style={[
             styles.editorSheet,
             {
-              paddingTop: insets.top + 47,
+              paddingTop: insets.top + 8,
               paddingBottom: insets.bottom,
             },
           ]}

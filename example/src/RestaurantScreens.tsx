@@ -697,7 +697,7 @@ function RestaurantFilters({
     >
       <View style={styles.modalRoot}>
         <View
-          style={[styles.filterSheet, { paddingTop: insets.top + 42 }]}
+          style={[styles.filterSheet, { paddingTop: insets.top + 8 }]}
           testID="restaurant-filters"
         >
           <View style={styles.filterHeader}>
