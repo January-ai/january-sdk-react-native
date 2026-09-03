@@ -271,13 +271,13 @@ export const fixtureFoodLogs: FoodLog[] = [
 
 export const fixtureGlucosePrediction: GlucosePrediction = {
   impact: 'medium',
-  chart: { min: 90, max: 140 },
+  chart: { min: 70, max: 140 },
   prediction: [
     { minutes: 0, value: 90 },
-    { minutes: 30, value: 120 },
+    { minutes: 30, value: 125 },
     { minutes: 60, value: 140 },
-    { minutes: 90, value: 122 },
-    { minutes: 120, value: 106 },
+    { minutes: 90, value: 115 },
+    { minutes: 120, value: 95 },
     { minutes: 180, value: 94 },
   ],
 };
@@ -310,7 +310,7 @@ export async function predictFixtureGlucose(
 ): Promise<GlucosePrediction> {
   await fixtureDelay(6000);
   if (shouldFailOnce && takeFirstAttempt('glucose-prediction')) {
-    throw new Error('Temporary fixture prediction failure.');
+    throw new Error('The test request could not be completed.');
   }
   return fixtureGlucosePrediction;
 }

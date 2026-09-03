@@ -26,8 +26,19 @@ tags:
     id: glucose-height-unit-metric
 - assertVisible:
     id: glucose-height-centimeters
+- takeScreenshot: example/.maestro/artifacts/react-native-glucose-height-metric
 - tapOn:
     id: glucose-height-unit-imperial
+- scrollUntilVisible:
+    element:
+      id: glucose-weight-unit-kg
+    direction: DOWN
+- tapOn:
+    id: glucose-weight-unit-kg
+- assertVisible: Kilograms
+- takeScreenshot: example/.maestro/artifacts/react-native-glucose-weight-metric
+- tapOn:
+    id: glucose-weight-unit-lb
 - scrollUntilVisible:
     element:
       id: glucose-health-conditions
@@ -63,6 +74,7 @@ tags:
 - assertVisible:
     id: food-serving-sheet
 - assertVisible: Choose serving
+- takeScreenshot: example/.maestro/artifacts/react-native-serving
 - tapOn:
     id: food-serving-add
 - assertVisible:
@@ -73,6 +85,9 @@ tags:
     direction: DOWN
 - tapOn:
     id: glucose-predict
+- assertVisible:
+    id: glucose-loading
+- takeScreenshot: example/.maestro/artifacts/react-native-glucose-loading
 - extendedWaitUntil:
     visible:
       id: glucose-result

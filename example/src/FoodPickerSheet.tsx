@@ -101,168 +101,178 @@ export function FoodPickerSheet({
           style={[
             styles.sheet,
             {
-              paddingTop: Math.max(insets.top, 20) + 43,
+              paddingTop: Math.max(insets.top, 20) + 48,
               paddingBottom: Math.max(insets.bottom, 12),
             },
           ]}
           testID="food-picker"
         >
-          <View style={[styles.handle, { top: insets.top + 18 }]} />
-          {chosenFood ? (
-            <ServingSelection
-              food={chosenFood}
-              onBack={() => setChosenFood(undefined)}
-              onSelect={(selection) => {
-                onSelect(selection);
-                onClose();
+          <View style={[styles.handle, { top: insets.top + 22 }]} />
+          <SheetHeader onClose={onClose} title="Add food" />
+          <View style={styles.searchField}>
+            <MaterialCommunityIcons
+              color={palette.body}
+              name="magnify"
+              size={24}
+            />
+            <TextInput
+              accessibilityLabel="Search food to add"
+              autoCapitalize="none"
+              onChangeText={(value) => {
+                setQuery(value);
+                if (!value) {
+                  setItems([]);
+                  setError(undefined);
+                  setHasSearched(false);
+                }
               }}
+              onSubmitEditing={() => search().catch(() => undefined)}
+              placeholder="Search foods"
+              placeholderTextColor={palette.body}
+              returnKeyType="search"
+              style={styles.searchInput}
+              testID="food-picker-input"
+              value={query}
+            />
+            {query ? (
+              <Pressable
+                accessibilityLabel="Clear food search"
+                hitSlop={10}
+                onPress={() => {
+                  setQuery('');
+                  setItems([]);
+                  setError(undefined);
+                  setHasSearched(false);
+                }}
+              >
+                <MaterialCommunityIcons
+                  color={palette.subdued}
+                  name="close-circle"
+                  size={21}
+                />
+              </Pressable>
+            ) : null}
+          </View>
+
+          {loading ? (
+            <View style={styles.loading} testID="food-picker-loading">
+              <ActivityIndicator color={palette.green} />
+            </View>
+          ) : error ? (
+            <View
+              accessibilityRole="alert"
+              style={styles.errorCard}
+              testID="food-picker-error"
+            >
+              <Text style={sharedStyles.errorTitle}>Couldn’t load foods</Text>
+              <Text style={sharedStyles.errorText}>{error}</Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => search().catch(() => undefined)}
+                style={sharedStyles.secondaryButton}
+                testID="food-picker-retry"
+              >
+                <Text style={sharedStyles.secondaryText}>Try again</Text>
+              </Pressable>
+            </View>
+          ) : hasSearched && items.length === 0 ? (
+            <EmptyState
+              description="Try another name or broaden your search."
+              testID="food-picker-empty"
+              title="No foods found"
+            />
+          ) : items.length === 0 ? (
+            <EmptyState
+              description="Start typing for suggestions, or search January’s food database."
+              title="Find a food"
             />
           ) : (
-            <>
-              <SheetHeader onClose={onClose} title="Add food" />
-              <View style={styles.searchField}>
-                <MaterialCommunityIcons
-                  color={palette.body}
-                  name="magnify"
-                  size={24}
-                />
-                <TextInput
-                  accessibilityLabel="Search food to add"
-                  autoCapitalize="none"
-                  onChangeText={(value) => {
-                    setQuery(value);
-                    if (!value) {
-                      setItems([]);
-                      setError(undefined);
-                      setHasSearched(false);
-                    }
-                  }}
-                  onSubmitEditing={() => search().catch(() => undefined)}
-                  placeholder="Search foods"
-                  placeholderTextColor={palette.body}
-                  returnKeyType="search"
-                  style={styles.searchInput}
-                  testID="food-picker-input"
-                  value={query}
-                />
-                {query ? (
-                  <Pressable
-                    accessibilityLabel="Clear food search"
-                    hitSlop={10}
-                    onPress={() => {
-                      setQuery('');
-                      setItems([]);
-                      setError(undefined);
-                      setHasSearched(false);
-                    }}
-                  >
-                    <MaterialCommunityIcons
-                      color={palette.subdued}
-                      name="close-circle"
-                      size={21}
-                    />
-                  </Pressable>
-                ) : null}
-              </View>
-
-              {loading ? (
-                <View style={styles.loading} testID="food-picker-loading">
-                  <ActivityIndicator color={palette.green} />
-                </View>
-              ) : error ? (
-                <View
-                  accessibilityRole="alert"
-                  style={styles.errorCard}
-                  testID="food-picker-error"
-                >
-                  <Text style={sharedStyles.errorTitle}>
-                    Couldn’t load foods
-                  </Text>
-                  <Text style={sharedStyles.errorText}>{error}</Text>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => search().catch(() => undefined)}
-                    style={sharedStyles.secondaryButton}
-                    testID="food-picker-retry"
-                  >
-                    <Text style={sharedStyles.secondaryText}>Try again</Text>
-                  </Pressable>
-                </View>
-              ) : hasSearched && items.length === 0 ? (
-                <EmptyState
-                  description="Try another name or broaden your search."
-                  testID="food-picker-empty"
-                  title="No foods found"
-                />
-              ) : items.length === 0 ? (
-                <EmptyState
-                  description="Start typing for suggestions, or search January’s food database."
-                  title="Find a food"
-                />
-              ) : (
-                <View style={styles.resultsSection}>
-                  <Text style={styles.sectionLabel}>
-                    RESULTS · JANUARY FOOD DATABASE
-                  </Text>
-                  <ScrollView
-                    keyboardDismissMode="on-drag"
-                    keyboardShouldPersistTaps="handled"
-                    style={styles.resultsScroller}
-                  >
-                    <View style={styles.resultsCard}>
-                      {items.map((item, index) => (
-                        <View key={item.id}>
-                          <Pressable
-                            accessibilityRole="button"
-                            onPress={() => setChosenFood(item)}
-                            style={styles.foodRow}
-                            testID={`food-picker-result-${index}`}
-                          >
-                            <View style={styles.foodIcon}>
-                              <MaterialIcons
-                                color={palette.green}
-                                name="restaurant-menu"
-                                size={21}
-                              />
-                            </View>
-                            <View style={styles.foodCopy}>
-                              <Text style={styles.foodName}>
-                                {item.name ?? 'Unnamed food'}
-                              </Text>
-                              {item.brandName ? (
-                                <Text style={styles.foodBrand}>
-                                  {item.brandName}
-                                </Text>
-                              ) : null}
-                              <Text style={styles.foodMeta}>
-                                {item.calories != null
-                                  ? `${Math.round(item.calories)} cal`
-                                  : 'Nutrition available'}
-                                {primaryServing(item)
-                                  ? ` · ${servingName(primaryServing(item)!)} `
-                                  : ''}
-                              </Text>
-                            </View>
-                            <MaterialCommunityIcons
-                              color={palette.subdued}
-                              name="chevron-right"
-                              size={22}
-                            />
-                          </Pressable>
-                          {index < items.length - 1 ? (
-                            <View style={styles.divider} />
-                          ) : null}
+            <View style={styles.resultsSection}>
+              <Text style={styles.sectionLabel}>
+                RESULTS · JANUARY FOOD DATABASE
+              </Text>
+              <ScrollView
+                keyboardDismissMode="on-drag"
+                keyboardShouldPersistTaps="handled"
+                style={styles.resultsScroller}
+              >
+                <View style={styles.resultsCard}>
+                  {items.map((item, index) => (
+                    <View key={item.id}>
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => setChosenFood(item)}
+                        style={styles.foodRow}
+                        testID={`food-picker-result-${index}`}
+                      >
+                        <View style={styles.foodIcon}>
+                          <MaterialIcons
+                            color={palette.green}
+                            name="restaurant-menu"
+                            size={21}
+                          />
                         </View>
-                      ))}
+                        <View style={styles.foodCopy}>
+                          <Text style={styles.foodName}>
+                            {item.name ?? 'Unnamed food'}
+                          </Text>
+                          {item.brandName ? (
+                            <Text style={styles.foodBrand}>
+                              {item.brandName}
+                            </Text>
+                          ) : null}
+                          <Text style={styles.foodMeta}>
+                            {item.calories != null
+                              ? `${Math.round(item.calories)} cal`
+                              : 'Nutrition available'}
+                            {primaryServing(item)
+                              ? ` · ${servingName(primaryServing(item)!)} `
+                              : ''}
+                          </Text>
+                        </View>
+                        <MaterialCommunityIcons
+                          color={palette.subdued}
+                          name="chevron-right"
+                          size={22}
+                        />
+                      </Pressable>
+                      {index < items.length - 1 ? (
+                        <View style={styles.divider} />
+                      ) : null}
                     </View>
-                    <Text style={styles.photoNote}>
-                      Photos load from January’s food database.
-                    </Text>
-                  </ScrollView>
+                  ))}
                 </View>
-              )}
-            </>
+                <Text style={styles.photoNote}>
+                  Photos load from January’s food database.
+                </Text>
+              </ScrollView>
+            </View>
           )}
+          {chosenFood ? (
+            <View style={styles.nestedOverlay}>
+              <Pressable
+                accessibilityLabel="Close Choose serving"
+                onPress={() => setChosenFood(undefined)}
+                style={StyleSheet.absoluteFill}
+              />
+              <View
+                style={[
+                  styles.nestedSheet,
+                  { paddingBottom: Math.max(insets.bottom, 12) },
+                ]}
+              >
+                <View style={styles.nestedHandle} />
+                <ServingSelection
+                  food={chosenFood}
+                  onBack={() => setChosenFood(undefined)}
+                  onSelect={(selection) => {
+                    onSelect(selection);
+                    onClose();
+                  }}
+                />
+              </View>
+            </View>
+          ) : null}
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -338,11 +348,7 @@ function ServingSelection({
           onPress={onBack}
           style={styles.closeButton}
         >
-          <MaterialCommunityIcons
-            color={palette.ink}
-            name="chevron-left"
-            size={26}
-          />
+          <MaterialCommunityIcons color={palette.ink} name="close" size={26} />
         </Pressable>
         <Text accessibilityRole="header" style={styles.sheetTitle}>
           Choose serving
@@ -523,6 +529,36 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: palette.body,
   },
+  nestedOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'rgba(29,26,20,0.32)',
+  },
+  nestedSheet: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    left: 0,
+    height: '50%',
+    paddingTop: 45,
+    overflow: 'hidden',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    backgroundColor: palette.paper,
+  },
+  nestedHandle: {
+    position: 'absolute',
+    top: 23,
+    left: '50%',
+    width: 32,
+    height: 5,
+    marginLeft: -16,
+    borderRadius: 3,
+    backgroundColor: palette.body,
+  },
   sheetHeader: {
     height: 56,
     paddingHorizontal: 16,
@@ -638,7 +674,7 @@ const styles = StyleSheet.create({
     color: palette.muted,
     fontSize: 14,
   },
-  servingRoot: { flex: 1, paddingHorizontal: 16, gap: 14 },
+  servingRoot: { flex: 1, paddingHorizontal: 16, gap: 15 },
   servingFoodName: {
     color: palette.ink,
     fontFamily: serifFont,
@@ -653,7 +689,7 @@ const styles = StyleSheet.create({
     backgroundColor: palette.paper,
   },
   servingRow: {
-    minHeight: 76,
+    minHeight: 73,
     paddingHorizontal: 22,
     flexDirection: 'row',
     alignItems: 'center',
@@ -696,6 +732,7 @@ const styles = StyleSheet.create({
   roundQuantityText: { color: palette.ink, fontSize: 28 },
   roundQuantityTextPrimary: { color: palette.paper },
   metrics: {
+    marginTop: -2,
     paddingHorizontal: 4,
     flexDirection: 'row',
     justifyContent: 'space-between',

@@ -9,7 +9,14 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import Svg, {
+  Circle,
+  Defs,
+  LinearGradient,
+  Path,
+  Rect,
+  Stop,
+} from 'react-native-svg';
 
 import type {
   GlucosePrediction,
@@ -288,20 +295,37 @@ export function GlucoseScreen({
         {error ? (
           <View
             accessibilityRole="alert"
-            style={sharedStyles.error}
+            style={styles.apiErrorCard}
             testID="glucose-error"
           >
-            <Text style={sharedStyles.errorTitle}>
-              January couldn’t complete the request
-            </Text>
-            <Text style={sharedStyles.errorText}>{error}</Text>
+            <View style={styles.apiErrorHeading}>
+              <MaterialCommunityIcons
+                color={palette.rustText}
+                name="alert-circle-outline"
+                size={22}
+              />
+              <Text style={styles.apiErrorTitle}>
+                January couldn’t complete the request
+              </Text>
+            </View>
+            <Text style={styles.apiErrorText}>{error}</Text>
+            <View style={styles.apiErrorDisclosure}>
+              <Text style={styles.apiErrorDisclosureText}>
+                Technical details
+              </Text>
+              <MaterialCommunityIcons
+                color={palette.muted}
+                name="chevron-right"
+                size={20}
+              />
+            </View>
             <Pressable
               accessibilityRole="button"
               onPress={() => predict().catch(() => undefined)}
-              style={sharedStyles.secondaryButton}
+              style={styles.apiErrorRetry}
               testID="glucose-retry"
             >
-              <Text style={sharedStyles.secondaryText}>Try again</Text>
+              <Text style={styles.apiErrorRetryText}>Try again</Text>
             </Pressable>
           </View>
         ) : null}
@@ -753,10 +777,12 @@ function PredictionChart({
 }) {
   const width = 360;
   const chartTop = 0;
-  const chartHeight = 138;
-  const left = 16;
+  const chartHeight = 205;
+  const left = 18;
   const right = 360;
-  const points = result.prediction.filter((point) => point.minutes <= 120);
+  const points = result.prediction
+    .filter((point) => point.minutes >= 0 && point.minutes <= 120)
+    .sort((first, second) => first.minutes - second.minutes);
   const dataMinimum = Math.min(
     ...points.map((point) => point.value),
     result.chart.min ?? Infinity
@@ -775,13 +801,9 @@ function PredictionChart({
     chartTop +
     chartHeight -
     ((value - minValue) / Math.max(1, maxValue - minValue)) * chartHeight;
-  const linePath = points
-    .map(
-      (point, index) =>
-        `${index === 0 ? 'M' : 'L'} ${x(point.minutes)} ${y(point.value)}`
-    )
-    .join(' ');
-  const areaPath = `${linePath} L ${x(points.at(-1)?.minutes ?? 120)} ${chartHeight} L ${left} ${chartHeight} Z`;
+  const linePath = smoothPredictionPath(points, x, y);
+  const areaBase = y(result.chart.min ?? minValue);
+  const areaPath = `${linePath} L ${x(points.at(-1)?.minutes ?? 120)} ${areaBase} L ${x(points[0]?.minutes ?? 0)} ${areaBase} Z`;
   const peakPoint = points.reduce(
     (maximum, point) => (point.value > maximum.value ? point : maximum),
     points[0] ?? { minutes: 0, value: 0 }
@@ -800,25 +822,34 @@ function PredictionChart({
       </View>
       <Svg
         accessibilityLabel="Estimated glucose response chart"
-        height={138}
+        height={chartHeight}
         viewBox={`0 0 ${width} ${chartHeight}`}
         width="100%"
       >
+        <Defs>
+          <LinearGradient id="predictionFill" x1="0" x2="0" y1="0" y2="1">
+            <Stop offset="0" stopColor="#B7653F" stopOpacity="0.24" />
+            <Stop offset="1" stopColor="#B7653F" stopOpacity="0.02" />
+          </LinearGradient>
+        </Defs>
         <Rect
           fill={palette.targetBand}
-          height={chartHeight}
+          height={Math.max(
+            0,
+            y(result.chart.min ?? minValue) - y(result.chart.max ?? maxValue)
+          )}
           width={width}
           x="0"
-          y="0"
+          y={y(result.chart.max ?? maxValue)}
         />
-        <Path d={areaPath} fill="rgba(168,95,61,0.10)" />
+        <Path d={areaPath} fill="url(#predictionFill)" />
         <Path
           d={linePath}
           fill="none"
           stroke="#B7653F"
           strokeLinecap="round"
           strokeLinejoin="round"
-          strokeWidth="3"
+          strokeWidth="3.5"
         />
         <Circle
           cx={x(points[0]?.minutes ?? 0)}
@@ -864,6 +895,29 @@ function PredictionChart({
       </View>
     </View>
   );
+}
+
+function smoothPredictionPath(
+  points: GlucosePrediction['prediction'],
+  x: (minute: number) => number,
+  y: (value: number) => number
+): string {
+  if (points.length === 0) return '';
+  let path = `M ${x(points[0]!.minutes)} ${y(points[0]!.value)}`;
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const first = points[Math.max(0, index - 1)]!;
+    const start = points[index]!;
+    const end = points[index + 1]!;
+    const last = points[Math.min(points.length - 1, index + 2)]!;
+    const firstControlX =
+      x(start.minutes) + (x(end.minutes) - x(first.minutes)) / 6;
+    const firstControlY = y(start.value) + (y(end.value) - y(first.value)) / 6;
+    const secondControlX =
+      x(end.minutes) - (x(last.minutes) - x(start.minutes)) / 6;
+    const secondControlY = y(end.value) - (y(last.value) - y(start.value)) / 6;
+    path += ` C ${firstControlX} ${firstControlY} ${secondControlX} ${secondControlY} ${x(end.minutes)} ${y(end.value)}`;
+  }
+  return path;
 }
 
 function Divider() {
@@ -1103,6 +1157,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   addFoodText: { color: palette.goldText, fontSize: 17, fontWeight: '600' },
+  apiErrorCard: {
+    padding: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(29,26,20,0.06)',
+    borderRadius: 24,
+    gap: 10,
+    backgroundColor: palette.surface,
+  },
+  apiErrorHeading: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  apiErrorTitle: {
+    flex: 1,
+    color: palette.rustText,
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  apiErrorText: { color: palette.body, fontSize: 16, lineHeight: 24 },
+  apiErrorDisclosure: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  apiErrorDisclosureText: { flex: 1, color: palette.body, fontSize: 14 },
+  apiErrorRetry: {
+    minHeight: 48,
+    paddingHorizontal: 12,
+    alignSelf: 'flex-start',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  apiErrorRetryText: { color: palette.ink, fontSize: 17, fontWeight: '600' },
   selectedFoodRow: {
     paddingVertical: 10,
     flexDirection: 'row',
@@ -1179,60 +1263,61 @@ const styles = StyleSheet.create({
     backgroundColor: palette.surface,
     elevation: 4,
   },
-  peakCopy: { paddingHorizontal: 18, paddingTop: 22, paddingBottom: 18 },
-  peakRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  peakCopy: { paddingHorizontal: 18, paddingTop: 18, paddingBottom: 19 },
+  peakRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   peakValue: {
     color: '#B7653F',
     fontFamily: 'monospace',
-    fontSize: 64,
-    lineHeight: 76,
+    fontSize: 58,
+    lineHeight: 66,
     fontWeight: '700',
   },
-  peakDetail: { flex: 1, color: palette.body, fontSize: 15, lineHeight: 20 },
-  peakDelta: { color: '#B7653F', fontSize: 15, fontWeight: '700' },
+  peakDetail: { flex: 1, color: palette.body, fontSize: 14, lineHeight: 20 },
+  peakDelta: { color: '#B7653F', fontSize: 14, fontWeight: '700' },
   axisLabels: {
-    paddingHorizontal: 18,
-    paddingTop: 42,
+    paddingLeft: 18,
+    paddingRight: 8,
+    paddingTop: 9,
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   axisLabel: { color: palette.muted, fontSize: 12, fontWeight: '600' },
   legend: {
-    paddingHorizontal: 16,
-    paddingTop: 20,
+    paddingHorizontal: 18,
+    paddingTop: 13,
     paddingBottom: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 12,
   },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   legendText: { color: palette.body, fontSize: 11, fontWeight: '600' },
   legendLine: {
-    width: 24,
-    height: 3,
+    width: 22,
+    height: 3.5,
     borderRadius: 2,
     backgroundColor: '#B7653F',
   },
   legendMeal: {
-    width: 14,
-    height: 14,
+    width: 12,
+    height: 12,
     borderWidth: 2,
     borderColor: palette.ink,
-    borderRadius: 7,
+    borderRadius: 6,
     backgroundColor: '#F4C63F',
   },
   legendTarget: {
     width: 22,
-    height: 14,
+    height: 12,
     borderRadius: 2,
     backgroundColor: palette.targetBand,
   },
   legendPeak: {
-    width: 14,
-    height: 14,
+    width: 12,
+    height: 12,
     borderWidth: 2,
     borderColor: palette.ink,
-    borderRadius: 7,
+    borderRadius: 6,
     backgroundColor: palette.surface,
   },
   foodImpactCard: {

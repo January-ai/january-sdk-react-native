@@ -35,6 +35,9 @@ tags:
     timeout: 15000
 - tapOn:
     id: food-picker-result-0
+- assertVisible:
+    id: food-serving-sheet
+- takeScreenshot: example/.maestro/artifacts/react-native-serving
 - tapOn:
     id: food-serving-add
 - assertVisible:
@@ -52,3 +55,4 @@ tags:
 - assertVisible: .*medium impact.*
 - assertVisible:
     id: glucose-chart
+- takeScreenshot: example/.maestro/artifacts/react-native-glucose-result

@@ -27,6 +27,16 @@ tags:
     id: glucose-sex-male
 - scrollUntilVisible:
     element:
+      id: glucose-health-conditions
+    direction: DOWN
+- tapOn:
+    id: glucose-health-conditions
+- tapOn:
+    id: condition-type-2-diabetes
+- tapOn:
+    id: conditions-back
+- scrollUntilVisible:
+    element:
       id: glucose-add-food
     direction: DOWN
 - tapOn:
@@ -57,9 +67,14 @@ tags:
     visible:
       id: glucose-error
     timeout: 15000
-- assertVisible: Temporary fixture prediction failure.
+- assertVisible: The test request could not be completed.
 - assertVisible:
     id: glucose-food-0
+- scrollUntilVisible:
+    element:
+      id: glucose-retry
+    direction: DOWN
+- takeScreenshot: example/.maestro/artifacts/react-native-glucose-error
 - tapOn:
     id: glucose-retry
 - extendedWaitUntil:
