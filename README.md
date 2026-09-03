@@ -37,12 +37,15 @@ installs the pinned January iOS SDK, and Gradle downloads the pinned January
 Android SDK from Maven Central. Applications should not install either native
 SDK separately.
 
-Before building Android, set the consuming application's minimum SDK to 26:
+Before building Android, update `minSdkVersion` in the consuming application's
+existing `android/build.gradle` configuration to 26. Keep its other
+`buildscript` and `ext` settings unchanged. For example:
 
 ```groovy
 // android/build.gradle
 buildscript {
     ext {
+        // ...keep the application's other ext values
         minSdkVersion = 26
     }
 }
@@ -69,7 +72,9 @@ The SDK contains custom native code and therefore requires an Expo development
 build. It does not run inside the standard Expo Go application. After installing
 or upgrading the SDK, rebuild the native development client.
 
-Set Android's minimum SDK in the Expo application configuration:
+In the Expo application's existing `app.json` or `app.config.js`, merge the
+`expo-build-properties` plugin configuration below with the application's other
+settings:
 
 ```json
 {
@@ -204,7 +209,8 @@ corepack yarn ui:test
 The default command runs every deterministic fixture and native-demo parity
 flow on the currently selected device. Run it once with an iOS simulator active
 and once with an Android emulator or device active to certify both platforms.
-To select a device explicitly, use the same command as CI:
+To select a device explicitly, use this simplified local form of the CI
+command:
 
 ```sh
 maestro test --device <device-id> example/.maestro/flows \
