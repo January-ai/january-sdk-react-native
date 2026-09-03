@@ -240,12 +240,7 @@ jobs:
             adb install -r example/android/app/build/outputs/apk/debug/app-debug.apk
             adb reverse tcp:8081 tcp:8081
             CI=1 yarn ui:start > "$RUNNER_TEMP/metro-android.log" 2>&1 &
-            metro_pid=$!
-            trap 'kill "$metro_pid" 2>/dev/null || true' EXIT
-            for attempt in {1..60}; do
-              curl --fail --silent http://127.0.0.1:8081/status >/dev/null && break
-              sleep 2
-            done
+            for attempt in $(seq 1 60); do curl --fail --silent http://127.0.0.1:8081/status >/dev/null && break; sleep 2; done
             curl --fail --silent http://127.0.0.1:8081/status
             mkdir -p example/.maestro/artifacts
             maestro test --device emulator-5554 example/.maestro/flows \
