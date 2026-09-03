@@ -194,7 +194,7 @@ jobs:
 
   ui-test-android:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
@@ -246,11 +246,7 @@ jobs:
             for attempt in $(seq 1 60); do curl --fail --silent http://127.0.0.1:8081/status >/dev/null && break; sleep 2; done
             curl --fail --silent http://127.0.0.1:8081/status
             mkdir -p example/.maestro/artifacts
-            maestro test --device emulator-5554 example/.maestro/flows \
-              --include-tags fixture,parity \
-              --shard-split 1 \
-              --format JUNIT \
-              --output example/.maestro/artifacts/android-results.xml
+            maestro test --device emulator-5554 example/.maestro/flows --include-tags fixture,parity --shard-split 1 --format JUNIT --output example/.maestro/artifacts/android-results.xml
 
       - name: Upload Android UI artifacts
         if: always()

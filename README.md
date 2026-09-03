@@ -7,6 +7,11 @@ The package exposes one TypeScript API and delegates platform work to January's
 native Swift SDK on iOS and Kotlin SDK on Android through a React Native
 TurboModule.
 
+This package supports native iOS and Android applications. It does not support
+React Native Web because browsers cannot load the native TurboModule. Use
+`@januaryai/web-sdk` for browser applications. The example's web export is a
+compile-time check for shared UI code, not a supported SDK web runtime.
+
 ## Install
 
 ### React Native
@@ -32,10 +37,32 @@ installs the pinned January iOS SDK, and Gradle downloads the pinned January
 Android SDK from Maven Central. Applications should not install either native
 SDK separately.
 
+Before building Android, update `minSdkVersion` in the consuming application's
+existing `android/build.gradle` configuration to 26. Keep its other
+`buildscript` and `ext` settings unchanged. For example:
+
+```groovy
+// android/build.gradle
+buildscript {
+    ext {
+        // ...keep the application's other ext values
+        minSdkVersion = 26
+    }
+}
+```
+
+Then run the generated application normally:
+
+```sh
+npm run ios
+npm run android
+```
+
 ### Expo
 
 ```sh
 npx expo install @januaryai/react-native
+npx expo install expo-build-properties
 npx expo run:ios
 # or
 npx expo run:android
@@ -45,12 +72,34 @@ The SDK contains custom native code and therefore requires an Expo development
 build. It does not run inside the standard Expo Go application. After installing
 or upgrading the SDK, rebuild the native development client.
 
+In the Expo application's existing `app.json` or `app.config.js`, merge the
+`expo-build-properties` plugin configuration below with the application's other
+settings:
+
+```json
+{
+  "expo": {
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
+        }
+      ]
+    ]
+  }
+}
+```
+
 ## Requirements
 
 - React Native 0.86 or later
 - React 19.2 or later
 - iOS 15 or later
 - Android API 26 or later
+- JDK 17 for Android builds
 - New Architecture enabled
 
 ## Quick start
@@ -157,7 +206,18 @@ Then run the Maestro device suite in another terminal:
 corepack yarn ui:test
 ```
 
-The default suite runs every deterministic fixture and native-demo parity flow.
+The default command runs every deterministic fixture and native-demo parity
+flow on the currently selected device. Run it once with an iOS simulator active
+and once with an Android emulator or device active to certify both platforms.
+To select a device explicitly, use this simplified local form of the CI
+command:
+
+```sh
+maestro test --device <device-id> example/.maestro/flows \
+  --include-tags fixture,parity \
+  --shard-split 1
+```
+
 Use `corepack yarn ui:test:fixtures` when you only need the shorter functional
 fixture suite during development.
 

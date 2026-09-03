@@ -5,6 +5,9 @@ glucose-prediction experiences from one typed TypeScript API. The package uses
 January's native Swift SDK on iOS and Kotlin SDK on Android through a React
 Native TurboModule.
 
+The package supports native iOS and Android applications. React Native Web is
+not supported; browser applications should use `@januaryai/web-sdk`.
+
 ## What you can build
 
 * Food autocomplete, search, barcode lookup, hydration, and alternatives
@@ -21,7 +24,9 @@ Native TurboModule.
 | React | 19.2 or later |
 | iOS | 15 or later |
 | Android | API 26 or later |
+| Android toolchain | JDK 17 |
 | Expo | A development build; Expo Go is not supported |
+| React Native Web | Not supported; use `@januaryai/web-sdk` |
 | Production integration | A partner backend that issues short-lived January client tokens |
 
 ## Start here

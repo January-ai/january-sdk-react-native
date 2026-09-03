@@ -33,10 +33,28 @@ npx react-native run-android
 Autolinking adds the bridge and Gradle resolves the pinned January Android SDK
 from Maven Central. The application should not declare the native SDK directly.
 
+Update `minSdkVersion` in the consuming application's existing
+`android/build.gradle` configuration to 26. Keep its other `buildscript` and
+`ext` settings unchanged. For example:
+
+```groovy
+// android/build.gradle
+buildscript {
+    ext {
+        // ...keep the application's other ext values
+        minSdkVersion = 26
+    }
+}
+```
+
+Use JDK 17 for Android builds. Newer Java releases may not be compatible with
+the React Native Gradle and native CMake toolchain.
+
 ## Expo
 
 ```sh
 npx expo install @januaryai/react-native
+npx expo install expo-build-properties
 npx expo run:ios
 # or
 npx expo run:android
@@ -45,6 +63,27 @@ npx expo run:android
 This package contains native code. Use an Expo development build and rebuild it
 after installing or upgrading the SDK. The standard Expo Go app cannot load the
 module.
+
+In the Expo application's existing `app.json` or `app.config.js`, merge the
+`expo-build-properties` plugin configuration below with the application's other
+settings:
+
+```json
+{
+  "expo": {
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
+        }
+      ]
+    ]
+  }
+}
+```
 
 ## Confirm linking
 
