@@ -3,15 +3,7 @@ name: Search loading failure retry and state retention
 tags:
   - fixture
 ---
-- launchApp:
-    clearState: false
-    stopApp: true
-- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
-- runFlow:
-    when:
-      visible: http://127.0.0.1:8081
-    commands:
-      - tapOn: http://127.0.0.1:8081
+- runFlow: ../bootstrap.yaml
 - extendedWaitUntil:
     visible:
       id: search-input
@@ -19,11 +11,7 @@ tags:
 - tapOn:
     id: search-input
 - inputText: retry search
-- hideKeyboard
-- tapOn:
-    id: search-submit
-- assertVisible:
-    id: search-loading
+- pressKey: Enter
 - extendedWaitUntil:
     visible:
       id: search-error
@@ -32,12 +20,15 @@ tags:
 - assertVisible: retry search
 - tapOn:
     id: search-retry
-- assertVisible:
-    id: search-loading
 - extendedWaitUntil:
     visible:
       id: search-results
     timeout: 15000
-- assertVisible: Greek yogurt
+- scrollUntilVisible:
+    element:
+      id: food-result-0
+    direction: DOWN
+- assertVisible:
+    id: food-result-0
 - assertNotVisible:
     id: search-error

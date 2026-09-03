@@ -199,6 +199,7 @@ export function RestaurantScreens({
       <ScrollView
         contentContainerStyle={styles.searchContent}
         keyboardShouldPersistTaps="handled"
+        style={sharedStyles.scroll}
         testID="restaurant-search-content"
       >
         <View style={styles.searchField}>
@@ -443,18 +444,22 @@ function Segmented({
 }
 
 function CompactHeader({
+  backTestID,
   onBack,
   title,
 }: {
+  backTestID: string;
   onBack: () => void;
   title: string;
 }) {
   return (
     <View style={styles.compactHeader}>
       <Pressable
+        accessibilityLabel="Back"
+        accessibilityRole="button"
         onPress={onBack}
         style={sharedStyles.iconButton}
-        testID="detail-back"
+        testID={backTestID}
       >
         <MaterialIcons color={palette.ink} name="chevron-left" size={28} />
       </Pressable>
@@ -481,8 +486,15 @@ function RestaurantDetail({
 }) {
   return (
     <View style={sharedStyles.screen} testID="restaurant-detail-screen">
-      <CompactHeader onBack={onBack} title="Restaurant" />
-      <ScrollView contentContainerStyle={styles.detailContent}>
+      <CompactHeader
+        backTestID="restaurant-detail-back"
+        onBack={onBack}
+        title="Restaurant"
+      />
+      <ScrollView
+        contentContainerStyle={styles.detailContent}
+        style={sharedStyles.scroll}
+      >
         <Text style={styles.detailTitle}>{restaurant.name}</Text>
         <View style={sharedStyles.card}>
           <SectionLabel>Location</SectionLabel>
@@ -552,8 +564,15 @@ function MenuItemDetail({
 }) {
   return (
     <View style={sharedStyles.screen} testID="menu-item-detail-screen">
-      <CompactHeader onBack={onBack} title="Menu item" />
-      <ScrollView contentContainerStyle={styles.detailContent}>
+      <CompactHeader
+        backTestID="menu-item-detail-back"
+        onBack={onBack}
+        title="Menu item"
+      />
+      <ScrollView
+        contentContainerStyle={styles.detailContent}
+        style={sharedStyles.scroll}
+      >
         <View style={styles.menuHero}>
           <MaterialCommunityIcons
             color={palette.green}

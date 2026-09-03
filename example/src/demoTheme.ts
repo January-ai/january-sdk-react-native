@@ -25,7 +25,8 @@ export const serifFont = Platform.select({
 });
 
 export const sharedStyles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: palette.paper },
+  screen: { flex: 1, overflow: 'hidden', backgroundColor: palette.paper },
+  scroll: { flex: 1 },
   header: {
     minHeight: 94,
     paddingHorizontal: 16,

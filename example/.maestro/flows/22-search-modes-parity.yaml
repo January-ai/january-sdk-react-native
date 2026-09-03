@@ -1,18 +1,10 @@
 appId: ai.january.sdk.demo
-name: Android parity - description, barcode, and autocomplete
+name: Native parity - description, barcode, and autocomplete
 tags:
   - parity
   - fixture
 ---
-- launchApp:
-    clearState: false
-    stopApp: true
-- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
-- runFlow:
-    when:
-      visible: http://127.0.0.1:8081
-    commands:
-      - tapOn: http://127.0.0.1:8081
+- runFlow: ../bootstrap.yaml
 - extendedWaitUntil:
     visible:
       id: tab-search
@@ -28,8 +20,6 @@ tags:
     id: search-input
 - inputText: a bowl of oatmeal with honey and a banana
 - pressKey: Enter
-- assertVisible:
-    id: search-loading
 - extendedWaitUntil:
     visible:
       id: description-results

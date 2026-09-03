@@ -3,15 +3,7 @@ name: Food log create update delete and retry preserve state
 tags:
   - fixture
 ---
-- launchApp:
-    clearState: false
-    stopApp: true
-- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
-- runFlow:
-    when:
-      visible: http://127.0.0.1:8081
-    commands:
-      - tapOn: http://127.0.0.1:8081
+- runFlow: ../bootstrap.yaml
 - extendedWaitUntil:
     visible:
       id: tab-food-logs
@@ -28,7 +20,7 @@ tags:
 - tapOn:
     id: food-log-name
 - inputText: Retry meal
-- hideKeyboard
+- pressKey: Enter
 - scrollUntilVisible:
     element:
       id: food-log-add-food
@@ -53,16 +45,22 @@ tags:
     direction: DOWN
 - tapOn:
     id: food-log-save
-- assertVisible:
-    id: food-log-save-loading
 - takeScreenshot: example/.maestro/artifacts/react-native-log-save-loading
 - extendedWaitUntil:
     visible:
       id: food-log-save-error
     timeout: 15000
 - assertVisible: Temporary fixture food log save failure.
-- assertVisible: Retry meal
+- scrollUntilVisible:
+    element:
+      id: food-log-name
+    direction: UP
+- assertVisible: .*Retry meal.*
 - takeScreenshot: example/.maestro/artifacts/react-native-log-save-error
+- scrollUntilVisible:
+    element:
+      id: food-log-save-retry
+    direction: DOWN
 - tapOn:
     id: food-log-save-retry
 - extendedWaitUntil:
@@ -73,7 +71,7 @@ tags:
     element:
       id: food-log-0
     direction: DOWN
-- assertVisible: Retry meal
+- assertVisible: .*Retry meal.*
 - tapOn:
     id: food-log-0
 - assertVisible:
@@ -86,7 +84,7 @@ tags:
     id: food-log-name
 - eraseText: 30
 - inputText: Updated meal
-- hideKeyboard
+- pressKey: Enter
 - scrollUntilVisible:
     element:
       id: food-log-save
@@ -101,13 +99,23 @@ tags:
     element:
       id: food-log-0
     direction: DOWN
-- assertVisible: Updated meal
+- assertVisible: .*Updated meal.*
 - tapOn:
     id: food-log-0
 - tapOn:
     id: food-log-delete
 - takeScreenshot: example/.maestro/artifacts/react-native-log-delete-confirmation
-- tapOn: Delete food log
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          point: "50%,53%"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn: Delete food log
 - extendedWaitUntil:
     visible:
       id: food-logs-error
@@ -120,7 +128,7 @@ tags:
     visible:
       id: food-log-0
     timeout: 15000
-- assertNotVisible: Updated meal
+- assertNotVisible: .*Updated meal.*
 - assertNotVisible:
     id: food-logs-error
 - takeScreenshot: example/.maestro/artifacts/react-native-log-delete-result

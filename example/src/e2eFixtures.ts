@@ -284,6 +284,10 @@ export const fixtureGlucosePrediction: GlucosePrediction = {
 
 const attempts = new Set<string>();
 
+export function resetFixtureAttempts(): void {
+  attempts.clear();
+}
+
 export async function analyzeFixturePhoto(image: string): Promise<FoodScan> {
   await fixtureDelay();
   if (image.includes('#retry') && takeFirstAttempt('scan-analysis')) {
@@ -298,7 +302,7 @@ export async function correctFixtureScan(
   await fixtureDelay();
   if (
     instruction.toLowerCase().includes('retry') &&
-    takeFirstAttempt('scan-correction')
+    takeFirstAttempt(`scan-correction-${instruction.toLowerCase()}`)
   ) {
     throw new Error('Temporary fixture correction failure.');
   }

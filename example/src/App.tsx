@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Image,
   Keyboard,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -34,6 +35,7 @@ import {
   analyzeFixtureDescription,
   autocompleteFixtureFoods,
   lookupFixtureBarcode,
+  resetFixtureAttempts,
   searchFixtureFoods,
 } from './e2eFixtures';
 import { FoodDetailScreen } from './FoodDetailScreen';
@@ -99,6 +101,13 @@ function DemoScreen() {
   const [suggestions, setSuggestions] = useState<FoodSuggestion[]>([]);
   const [naturalResult, setNaturalResult] = useState<FoodScan>();
   const nativeVersion = getNativeModuleVersion();
+
+  useEffect(() => {
+    if (!e2eFixturesEnabled) return;
+    resetFixtureAttempts();
+    const subscription = Linking.addEventListener('url', resetFixtureAttempts);
+    return () => subscription.remove();
+  }, []);
 
   const client = useMemo(
     () =>
@@ -265,6 +274,7 @@ function DemoScreen() {
           <ScrollView
             contentContainerStyle={styles.content}
             keyboardShouldPersistTaps="handled"
+            style={styles.scroll}
           >
             <SearchField
               onChangeText={(value) => {
@@ -415,10 +425,10 @@ function DemoScreen() {
                 pressed && styles.primaryButtonPressed,
                 (!configured || isSearching) && styles.primaryButtonDisabled,
               ]}
-              testID="search-submit"
+              testID={isSearching ? 'search-loading' : 'search-submit'}
             >
               {isSearching ? (
-                <View collapsable={false} testID="search-loading">
+                <View collapsable={false}>
                   <ActivityIndicator color={palette.paper} />
                 </View>
               ) : (
@@ -1296,6 +1306,7 @@ async function fetchClientToken(
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.paper },
+  scroll: { flex: 1 },
   setupContent: {
     paddingHorizontal: 16,
     gap: 24,

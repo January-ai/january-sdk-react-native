@@ -3,15 +3,7 @@ name: Food category selection reaches search
 tags:
   - fixture
 ---
-- launchApp:
-    clearState: false
-    stopApp: true
-- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
-- runFlow:
-    when:
-      visible: http://127.0.0.1:8081
-    commands:
-      - tapOn: http://127.0.0.1:8081
+- runFlow: ../bootstrap.yaml
 - extendedWaitUntil:
     visible:
       id: category-general
@@ -23,7 +15,7 @@ tags:
 - inputText: category
 - pressKey: Enter
 - extendedWaitUntil:
-    visible: Generic category fixture
+    visible: .*Generic category fixture.*
     timeout: 15000
 - tapOn:
     id: search-clear
@@ -34,6 +26,6 @@ tags:
 - inputText: category
 - pressKey: Enter
 - extendedWaitUntil:
-    visible: Branded category fixture
+    visible: .*Branded category fixture.*
     timeout: 15000
-- assertNotVisible: Generic category fixture
+- assertNotVisible: .*Generic category fixture.*

@@ -1,17 +1,9 @@
 appId: ai.january.sdk.demo
-name: Android parity - restaurants and menu surfaces
+name: Native parity - restaurants and menu surfaces
 tags:
   - parity
 ---
-- launchApp:
-    clearState: false
-    stopApp: true
-- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
-- runFlow:
-    when:
-      visible: http://127.0.0.1:8081
-    commands:
-      - tapOn: http://127.0.0.1:8081
+- runFlow: ../bootstrap.yaml
 - extendedWaitUntil:
     visible:
       id: tab-search
@@ -53,9 +45,17 @@ tags:
     id: menu-item-detail-screen
 - takeScreenshot: example/.maestro/artifacts/react-native-menu-detail
 - tapOn:
-    id: detail-back
+    point: "9%,11%"
+- extendedWaitUntil:
+    visible:
+      id: restaurant-detail-screen
+    timeout: 15000
 - tapOn:
-    id: detail-back
+    point: "9%,11%"
+- extendedWaitUntil:
+    visible:
+      id: restaurant-search-screen
+    timeout: 15000
 - tapOn:
     id: restaurant-mode-menu
 - tapOn:

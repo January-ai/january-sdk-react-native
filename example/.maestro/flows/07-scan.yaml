@@ -3,15 +3,7 @@ name: Meal scan and correction
 tags:
   - fixture
 ---
-- launchApp:
-    clearState: false
-    stopApp: true
-- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
-- runFlow:
-    when:
-      visible: http://127.0.0.1:8081
-    commands:
-      - tapOn: http://127.0.0.1:8081
+- runFlow: ../bootstrap.yaml
 - extendedWaitUntil:
     visible:
       id: tab-scan
@@ -38,14 +30,15 @@ tags:
     element:
       id: scan-correct
     direction: DOWN
-- tapOn:
-    id: scan-correct
+- tapOn: Correct result
+- extendedWaitUntil:
+    visible:
+      id: scan-correction-input
+    timeout: 15000
 - tapOn:
     id: scan-correction-input
 - inputText: This was lentils
-- hideKeyboard
-- tapOn:
-    id: scan-correction-submit
+- pressKey: Enter
 - extendedWaitUntil:
     visible: Corrected breakfast
     timeout: 15000

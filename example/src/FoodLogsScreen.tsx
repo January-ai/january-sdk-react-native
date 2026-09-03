@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
   Modal,
   Pressable,
   ScrollView,
@@ -149,7 +150,10 @@ export function FoodLogsScreen({
         </Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.logsContent}>
+      <ScrollView
+        contentContainerStyle={styles.logsContent}
+        style={sharedStyles.scroll}
+      >
         <WorkflowGuideCard
           icon="clipboard-text-outline"
           message="One food log represents one meal or eating event. It can contain multiple foods, each with its own serving and quantity."
@@ -251,10 +255,10 @@ export function FoodLogsScreen({
             sharedStyles.primaryButton,
             (!configured || loading) && sharedStyles.disabled,
           ]}
-          testID="food-logs-refresh"
+          testID={loading ? 'food-logs-loading' : 'food-logs-refresh'}
         >
           {loading ? (
-            <View collapsable={false} testID="food-logs-loading">
+            <View collapsable={false}>
               <ActivityIndicator color={palette.paper} />
             </View>
           ) : (
@@ -498,9 +502,12 @@ function FoodLogEditor({
               <TextInput
                 accessibilityLabel="Food log name"
                 onChangeText={setName}
+                onSubmitEditing={Keyboard.dismiss}
                 placeholder="Optional name"
                 placeholderTextColor={palette.subdued}
+                returnKeyType="done"
                 style={styles.editorNameInput}
+                submitBehavior="blurAndSubmit"
                 testID="food-log-name"
                 value={name}
               />
@@ -594,10 +601,10 @@ function FoodLogEditor({
                 (saving || (!existing && selected.length === 0)) &&
                   sharedStyles.disabled,
               ]}
-              testID="food-log-save"
+              testID={saving ? 'food-log-save-loading' : 'food-log-save'}
             >
               {saving ? (
-                <View collapsable={false} testID="food-log-save-loading">
+                <View collapsable={false}>
                   <ActivityIndicator color={palette.paper} />
                 </View>
               ) : (
@@ -787,7 +794,10 @@ function FoodLogDetail({
           <Text style={styles.editText}>Edit</Text>
         </Pressable>
       </View>
-      <ScrollView contentContainerStyle={sharedStyles.content}>
+      <ScrollView
+        contentContainerStyle={sharedStyles.content}
+        style={sharedStyles.scroll}
+      >
         <Text style={styles.detailTitle}>{log.name || 'Meal'}</Text>
         <Text style={styles.logMeta}>{formatDate(log.timestampUTC)}</Text>
         {log.foods.map((food, index) => (

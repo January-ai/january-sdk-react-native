@@ -1,17 +1,9 @@
 appId: ai.january.sdk.demo
-name: Android parity - search and food detail surfaces
+name: Native parity - search and food detail surfaces
 tags:
   - parity
 ---
-- launchApp:
-    clearState: false
-    stopApp: true
-- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
-- runFlow:
-    when:
-      visible: http://127.0.0.1:8081
-    commands:
-      - tapOn: http://127.0.0.1:8081
+- runFlow: ../bootstrap.yaml
 - extendedWaitUntil:
     visible:
       id: tab-search

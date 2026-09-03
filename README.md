@@ -152,6 +152,10 @@ Then run the Maestro device suite in another terminal:
 corepack yarn ui:test
 ```
 
+The default suite runs every deterministic fixture and native-demo parity flow.
+Use `corepack yarn ui:test:fixtures` when you only need the shorter functional
+fixture suite during development.
+
 For live local testing, configure either a partner token endpoint or a Debug-only
 API key. See [`example/.env.example`](example/.env.example) for the supported
 environment variables.
@@ -183,7 +187,7 @@ Keep Metro running while editing TypeScript to use Fast Refresh.
 Every React Native release pins native SDK versions that passed the complete
 bridge, build, and demo test suite. The current native dependencies are:
 
-- iOS: `January` `0.1.0-beta.2`
+- iOS: `January` `0.1.0`
 - Android: `ai.january:january-sdk-android:0.1.1`
 
 Native releases are updated through a tested React Native release rather than a

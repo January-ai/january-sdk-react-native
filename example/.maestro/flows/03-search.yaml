@@ -3,15 +3,7 @@ name: Food search renders fixture results
 tags:
   - fixture
 ---
-- launchApp:
-    clearState: false
-    stopApp: true
-- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
-- runFlow:
-    when:
-      visible: http://127.0.0.1:8081
-    commands:
-      - tapOn: http://127.0.0.1:8081
+- runFlow: ../bootstrap.yaml
 - extendedWaitUntil:
     visible:
       id: search-input
@@ -26,8 +18,8 @@ tags:
     timeout: 15000
 - assertVisible: Results · January food database
 - assertVisible: Greek yogurt
-- assertVisible: 100 cal
-- assertVisible: Greek Yogurt, Strawberry or Vanilla
+- assertVisible: .*100 cal.*
+- assertVisible: .*Greek Yogurt, Strawberry or Vanilla.*
 - assertVisible:
     id: food-result-0
 - assertVisible:
