@@ -41,6 +41,8 @@ tags:
     timeout: 15000
 - tapOn:
     id: food-picker-result-0
+- tapOn:
+    id: food-serving-add
 - tapOn: Increase Greek yogurt quantity
 - assertVisible: '1.25'
 - scrollUntilVisible:
@@ -67,12 +69,25 @@ tags:
 - assertVisible:
     id: glucose-chart
 - assertVisible: Greek yogurt
-- assertVisible: 1.25 serving
+- assertVisible: .*6 oz · quantity 1.25.*
+- scrollUntilVisible:
+    element:
+      id: glucose-adjust
+    direction: DOWN
 - tapOn:
     id: glucose-adjust
+- scrollUntilVisible:
+    element:
+      id: glucose-food-0
+    direction: DOWN
 - assertVisible:
     id: glucose-food-0
-- assertVisible: '99'
+- scrollUntilVisible:
+    element:
+      id: glucose-age
+    direction: UP
+- assertVisible:
+    id: glucose-age
 - scrollUntilVisible:
     element:
       id: glucose-predict
@@ -83,6 +98,10 @@ tags:
     visible:
       id: glucose-result
     timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: glucose-start-over
+    direction: DOWN
 - tapOn:
     id: glucose-start-over
 - assertVisible:

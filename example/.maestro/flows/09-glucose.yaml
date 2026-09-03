@@ -35,6 +35,8 @@ tags:
     timeout: 15000
 - tapOn:
     id: food-picker-result-0
+- tapOn:
+    id: food-serving-add
 - assertVisible:
     id: glucose-food-0
 - scrollUntilVisible:
@@ -47,6 +49,6 @@ tags:
     visible:
       id: glucose-result
     timeout: 15000
-- assertVisible: Moderate impact
+- assertVisible: .*medium impact.*
 - assertVisible:
     id: glucose-chart

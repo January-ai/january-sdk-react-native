@@ -51,17 +51,17 @@ marked complete.
 | Search 422           | `android-search-error-422.png`     | Partial   |
 | Search 429           | `android-search-error-429.png`     | Partial   |
 | Search 504           | `android-search-error-504.png`     | Partial   |
-| Food detail          | `android-food-detail.png`          | Missing   |
-| Serving controls     | `android-serving.png`              | Missing   |
-| Food nutrition       | `android-food-nutrition.png`       | Missing   |
-| Food glucose loading | `android-food-glucose-loading.png` | Missing   |
-| Food glucose error   | `android-food-glucose-error.png`   | Missing   |
-| Food glucose result  | `android-food-glucose-result.png`  | Missing   |
-| Alternatives initial | `android-alternatives-initial.png` | Missing   |
-| Alternatives loading | `android-alternatives-loading.png` | Missing   |
-| Alternatives error   | `android-alternatives-error.png`   | Missing   |
-| Alternatives empty   | `android-alternatives-empty.png`   | Missing   |
-| Alternatives results | `android-alternatives-results.png` | Missing   |
+| Food detail          | `android-food-detail.png`          | Partial   |
+| Serving controls     | `android-serving.png`              | Partial   |
+| Food nutrition       | `android-food-nutrition.png`       | Partial   |
+| Food glucose loading | `android-food-glucose-loading.png` | Partial   |
+| Food glucose error   | `android-food-glucose-error.png`   | Partial   |
+| Food glucose result  | `android-food-glucose-result.png`  | Partial   |
+| Alternatives initial | `android-alternatives-initial.png` | Partial   |
+| Alternatives loading | `android-alternatives-loading.png` | Partial   |
+| Alternatives error   | `android-alternatives-error.png`   | Partial   |
+| Alternatives empty   | `android-alternatives-empty.png`   | Partial   |
+| Alternatives results | `android-alternatives-results.png` | Partial   |
 
 Additional source-defined states to capture: autocomplete suggestions; Foods /
 Restaurants scope switch; Name / Description / Barcode modes; General / Branded /
@@ -73,16 +73,16 @@ disclosures.
 
 | State               | Android evidence                  | RN status |
 | ------------------- | --------------------------------- | --------- |
-| Restaurants initial | `android-restaurants-initial.png` | Missing   |
-| Restaurants loading | `android-restaurants-loading.png` | Missing   |
-| Restaurants error   | `android-restaurants-error.png`   | Missing   |
-| Restaurants empty   | `android-restaurants-empty.png`   | Missing   |
-| Restaurant filters  | `android-restaurant-filters.png`  | Missing   |
-| Restaurant detail   | `android-restaurant-detail.png`   | Missing   |
-| Menu loading        | `android-menu-loading.png`        | Missing   |
-| Menu error          | `android-menu-error.png`          | Missing   |
-| Menu empty          | `android-menu-empty.png`          | Missing   |
-| Menu item detail    | `android-menu-detail.png`         | Missing   |
+| Restaurants initial | `android-restaurants-initial.png` | Partial   |
+| Restaurants loading | `android-restaurants-loading.png` | Partial   |
+| Restaurants error   | `android-restaurants-error.png`   | Partial   |
+| Restaurants empty   | `android-restaurants-empty.png`   | Partial   |
+| Restaurant filters  | `android-restaurant-filters.png`  | Partial   |
+| Restaurant detail   | `android-restaurant-detail.png`   | Partial   |
+| Menu loading        | `android-menu-loading.png`        | Partial   |
+| Menu error          | `android-menu-error.png`          | Partial   |
+| Menu empty          | `android-menu-empty.png`          | Partial   |
+| Menu item detail    | `android-menu-detail.png`         | Partial   |
 
 Additional source-defined states to capture: Restaurants / Menu items switch;
 preset-city menu; current-location permission granted, denied, and unavailable;
@@ -138,7 +138,7 @@ with unsaved input; details disclosure.
 | State               | Android evidence                  | RN status |
 | ------------------- | --------------------------------- | --------- |
 | Prediction profile  | `android-glucose-profile.png`     | Partial   |
-| Health conditions   | `android-conditions.png`          | Missing   |
+| Health conditions   | `android-conditions.png`          | Partial   |
 | Food picker initial | `android-food-picker-initial.png` | Partial   |
 | Prediction loading  | `android-glucose-loading.png`     | Partial   |
 | Prediction error    | `android-glucose-error.png`       | Partial   |

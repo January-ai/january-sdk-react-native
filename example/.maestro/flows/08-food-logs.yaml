@@ -18,14 +18,15 @@ tags:
     timeout: 15000
 - tapOn:
     id: tab-food-logs
-- extendedWaitUntil:
-    visible: Fixture breakfast
-    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: food-log-0
+    direction: DOWN
 - tapOn:
     id: food-log-0
 - assertVisible:
     id: food-log-detail
-- assertVisible: Oatmeal with berries
+- assertVisible: Fixture oatmeal
 - tapOn: Back from food log
 - tapOn:
     id: food-log-add
@@ -52,6 +53,14 @@ tags:
     timeout: 15000
 - tapOn:
     id: food-picker-result-0
+- assertVisible:
+    id: food-serving-sheet
+- tapOn:
+    id: food-serving-add
+- scrollUntilVisible:
+    element:
+      id: food-log-save
+    direction: DOWN
 - tapOn:
     id: food-log-save
 - extendedWaitUntil:

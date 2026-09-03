@@ -25,7 +25,6 @@ tags:
 - assertVisible: Connected
 - assertVisible: End user ID
 - assertVisible: react-native-demo-user
-- assertVisible: Native module
 - tapOn:
     id: settings-close
 - assertNotVisible:

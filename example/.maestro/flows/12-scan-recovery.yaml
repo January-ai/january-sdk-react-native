@@ -32,7 +32,7 @@ tags:
     direction: DOWN
 - assertVisible: Temporary fixture scan failure.
 - tapOn:
-    id: scan-retry
+    id: scan-error-retry
 - extendedWaitUntil:
     visible:
       id: scan-results
@@ -40,28 +40,30 @@ tags:
 - assertVisible: Fixture breakfast
 - scrollUntilVisible:
     element:
-      id: scan-correction-input
+      id: scan-correct
     direction: DOWN
+- tapOn:
+    id: scan-correct
 - tapOn:
     id: scan-correction-input
 - inputText: retry correction
 - hideKeyboard
 - tapOn:
-    id: scan-correction-submit
+    text: Submit correction
 - assertVisible:
     id: scan-correction-loading
 - scrollUntilVisible:
     element:
-      id: scan-error
+      id: scan-correction-error
     direction: DOWN
 - assertVisible: Temporary fixture correction failure.
 - assertVisible: retry correction
 - scrollUntilVisible:
     element:
-      id: scan-retry
+      id: scan-correction-error-retry
     direction: DOWN
 - tapOn:
-    id: scan-retry
+    id: scan-correction-error-retry
 - scrollUntilVisible:
     element:
       text: Corrected breakfast

@@ -32,6 +32,7 @@ import { searchFixtureFoods } from './e2eFixtures';
 import { FoodDetailScreen } from './FoodDetailScreen';
 import { FoodLogsScreen } from './FoodLogsScreen';
 import { GlucoseScreen } from './GlucoseScreen';
+import { RestaurantScreens } from './RestaurantScreens';
 import { ScanScreen } from './ScanScreen';
 
 const tokenEndpoint = process.env.EXPO_PUBLIC_JANUARY_TOKEN_ENDPOINT;
@@ -139,6 +140,8 @@ function DemoScreen() {
     e2eFixturesEnabled || developmentApiKey || tokenEndpoint
   );
 
+  if (!configured) return <SetupScreen />;
+
   return (
     <View style={styles.root} testID="app-root">
       <StatusBar style="dark" />
@@ -150,6 +153,12 @@ function DemoScreen() {
         <FoodDetailScreen
           food={selectedFood}
           onBack={() => setSelectedFood(undefined)}
+        />
+      ) : activeTab === 'search' && searchScope === 'restaurants' ? (
+        <RestaurantScreens
+          configured={configured}
+          onSettings={() => setShowSettings(true)}
+          onSwitchFoods={() => setSearchScope('foods')}
         />
       ) : activeTab === 'search' ? (
         <View style={styles.screenBody} testID="search-screen">
@@ -379,6 +388,82 @@ function DemoScreen() {
         onClose={() => setShowSettings(false)}
         visible={showSettings}
       />
+    </View>
+  );
+}
+
+function SetupScreen() {
+  const insets = useSafeAreaInsets();
+  return (
+    <ScrollView
+      contentContainerStyle={[
+        styles.setupContent,
+        { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 40 },
+      ]}
+      style={styles.root}
+      testID="setup-screen"
+    >
+      <View style={styles.setupIcon}>
+        <MaterialCommunityIcons
+          color={palette.green}
+          name="auto-fix"
+          size={25}
+        />
+      </View>
+      <Text style={styles.setupTitle}>Welcome to January</Text>
+      <Text style={styles.setupBody}>
+        To use this demo app, initialize the SDK in code with your token
+        provider or a local development API key.
+      </Text>
+      <View style={styles.setupCard}>
+        <SetupOption
+          badge="Recommended"
+          message="Set EXPO_PUBLIC_JANUARY_TOKEN_ENDPOINT and EXPO_PUBLIC_DEMO_SESSION_TOKEN in the local .env file."
+          number="1"
+          title="Use your token provider"
+        />
+        <View style={styles.divider} />
+        <SetupOption
+          badge="Debug only"
+          message="Set EXPO_PUBLIC_JANUARY_API_KEY in the local .env file. Never commit or ship it."
+          number="2"
+          title="Use a development API key"
+        />
+      </View>
+      <View style={styles.setupCard}>
+        <Text style={styles.settingsSectionLabel}>Where to configure</Text>
+        <Text style={styles.setupCardTitle}>example/.env</Text>
+        <Text style={styles.setupBody}>
+          Edit the local configuration file, then build again.
+        </Text>
+      </View>
+    </ScrollView>
+  );
+}
+
+function SetupOption({
+  badge,
+  message,
+  number,
+  title,
+}: {
+  badge: string;
+  message: string;
+  number: string;
+  title: string;
+}) {
+  return (
+    <View style={styles.setupOption}>
+      <View style={styles.setupNumber}>
+        <Text style={styles.setupNumberText}>{number}</Text>
+      </View>
+      <View style={styles.promptCopy}>
+        <View style={styles.setupBadge}>
+          <Text style={styles.setupBadgeText}>{badge}</Text>
+        </View>
+        <Text style={styles.setupCardTitle}>{title}</Text>
+        <Text style={styles.setupBody}>{message}</Text>
+      </View>
     </View>
   );
 }
@@ -775,6 +860,7 @@ function SettingsSheet({
   visible,
 }: SettingsSheetProps) {
   const insets = useSafeAreaInsets();
+  const [draftUserId, setDraftUserId] = useState(userId);
   return (
     <Modal
       animationType="none"
@@ -784,19 +870,17 @@ function SettingsSheet({
       visible={visible}
     >
       <View style={styles.modalRoot}>
-        <Pressable
-          accessibilityLabel="Close settings"
-          onPress={onClose}
-          style={StyleSheet.absoluteFill}
-        />
         <View
-          style={[styles.settingsSheet, { paddingBottom: insets.bottom + 24 }]}
+          style={[
+            styles.settingsSheet,
+            {
+              paddingBottom: insets.bottom,
+            },
+          ]}
           testID="settings-sheet"
         >
+          <View style={styles.settingsHandle} />
           <View style={styles.sheetHeader}>
-            <Text accessibilityRole="header" style={styles.sheetTitle}>
-              Settings
-            </Text>
             <Pressable
               accessibilityLabel="Close settings"
               accessibilityRole="button"
@@ -811,32 +895,67 @@ function SettingsSheet({
                 size={22}
               />
             </Pressable>
+            <Text accessibilityRole="header" style={styles.sheetTitle}>
+              Settings
+            </Text>
+            <View style={styles.settingsHeaderSpacer} />
           </View>
-
-          <View style={styles.connectionCard}>
-            <MaterialCommunityIcons
-              color={palette.green}
-              name="check-circle"
-              size={24}
-            />
-            <View style={styles.promptCopy}>
-              <Text style={styles.connectionTitle}>January SDK</Text>
-              <Text style={styles.connectionDetail}>{authentication}</Text>
+          <ScrollView
+            contentContainerStyle={styles.settingsContent}
+            keyboardShouldPersistTaps="handled"
+            style={styles.settingsScroll}
+          >
+            <Text style={styles.settingsSectionLabel}>Connection</Text>
+            <View style={styles.connectionCard}>
+              <MaterialCommunityIcons
+                color={palette.green}
+                name="check-circle"
+                size={24}
+              />
+              <View style={styles.promptCopy}>
+                <Text style={styles.connectionTitle}>January SDK</Text>
+                <Text style={styles.connectionDetail}>{authentication}</Text>
+              </View>
+              <View style={styles.connectedBadge}>
+                <Text style={styles.connectedText}>Connected</Text>
+              </View>
             </View>
-            <View style={styles.connectedBadge}>
-              <Text style={styles.connectedText}>Connected</Text>
-            </View>
-          </View>
 
-          <View style={styles.settingsList}>
-            <SettingsRow label="End user ID" value={userId} />
-            <View style={styles.divider} />
-            <SettingsRow label="Timezone" value="America/New_York" />
-            <View style={styles.divider} />
-            <SettingsRow label="Native module" value={nativeVersion} />
-            <View style={styles.divider} />
-            <SettingsRow label="January API" value="Production" />
-          </View>
+            <Text style={styles.settingsSectionLabel}>Request context</Text>
+            <View style={styles.settingsFieldGroup}>
+              <Text style={styles.settingsFieldLabel}>End user ID</Text>
+              <TextInput
+                accessibilityLabel="End user ID"
+                onChangeText={setDraftUserId}
+                placeholder="Partner user identifier"
+                placeholderTextColor={palette.subdued}
+                style={styles.settingsInput}
+                testID="settings-user-id"
+                value={draftUserId}
+              />
+              <Text style={styles.settingsHelp}>
+                Food Logs requires a stable ID. Other requests include it when
+                available.
+              </Text>
+            </View>
+            <View style={styles.timezoneCard}>
+              <View style={styles.promptCopy}>
+                <Text style={styles.settingsFieldLabel}>Timezone</Text>
+                <Text style={styles.connectionDetail}>America/New York</Text>
+              </View>
+              <MaterialCommunityIcons
+                color={palette.green}
+                name="unfold-more-horizontal"
+                size={22}
+              />
+            </View>
+            <Text style={styles.settingsSectionLabel}>About</Text>
+            <View style={styles.settingsList}>
+              <SettingsRow label="Native module" value={nativeVersion} />
+              <View style={styles.divider} />
+              <SettingsRow label="January API" value="Production" />
+            </View>
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -845,7 +964,10 @@ function SettingsSheet({
 
 function SettingsRow({ label, value }: { label: string; value: string }) {
   return (
-    <View style={styles.settingsRow}>
+    <View
+      style={styles.settingsRow}
+      testID={`settings-row-${label.toLowerCase().replace(/ /g, '-')}`}
+    >
       <Text style={styles.settingsLabel}>{label}</Text>
       <Text numberOfLines={1} style={styles.settingsValue}>
         {value}
@@ -887,6 +1009,60 @@ async function fetchClientToken(
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.paper },
+  setupContent: {
+    paddingHorizontal: 16,
+    gap: 24,
+    backgroundColor: palette.paper,
+  },
+  setupIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.targetBand,
+  },
+  setupTitle: {
+    color: palette.ink,
+    fontFamily: serifFont,
+    fontSize: 34,
+    lineHeight: 41,
+  },
+  setupBody: { color: palette.body, fontSize: 15, lineHeight: 20 },
+  setupCard: {
+    padding: 20,
+    borderRadius: 24,
+    gap: 18,
+    backgroundColor: palette.surface,
+  },
+  setupOption: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 14,
+  },
+  setupNumber: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.targetBand,
+  },
+  setupNumberText: { color: palette.green, fontSize: 14, fontWeight: '700' },
+  setupBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 14,
+    backgroundColor: palette.targetBand,
+  },
+  setupBadgeText: {
+    color: palette.green,
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  setupCardTitle: { color: palette.ink, fontSize: 17, fontWeight: '600' },
   screenBody: { flex: 1 },
   developmentBanner: {
     minHeight: 38,
@@ -1173,25 +1349,37 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(29, 26, 20, 0.3)',
   },
   settingsSheet: {
-    paddingTop: 24,
-    paddingHorizontal: 16,
+    height: '60%',
+    paddingTop: 42,
+    overflow: 'hidden',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    gap: 20,
     backgroundColor: palette.paper,
   },
+  settingsHandle: {
+    position: 'absolute',
+    top: 16,
+    left: '50%',
+    width: 32,
+    height: 5,
+    marginLeft: -16,
+    borderRadius: 3,
+    backgroundColor: palette.body,
+  },
   sheetHeader: {
-    minHeight: 44,
+    height: 56,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   sheetTitle: {
     color: palette.ink,
-    fontFamily: serifFont,
-    fontSize: 28,
-    lineHeight: 34,
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '700',
   },
+  settingsHeaderSpacer: { width: 40 },
   sheetClose: {
     width: 40,
     height: 40,
@@ -1221,6 +1409,39 @@ const styles = StyleSheet.create({
     backgroundColor: palette.targetBand,
   },
   connectedText: { color: palette.green, fontSize: 12, fontWeight: '700' },
+  settingsContent: {
+    paddingHorizontal: 16,
+    paddingTop: 28,
+    paddingBottom: 32,
+    gap: 20,
+  },
+  settingsScroll: { flex: 1 },
+  settingsSectionLabel: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  settingsFieldGroup: { gap: 8 },
+  settingsFieldLabel: { color: palette.ink, fontSize: 17, fontWeight: '600' },
+  settingsInput: {
+    minHeight: 56,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    color: palette.ink,
+    backgroundColor: palette.control,
+    fontSize: 16,
+  },
+  settingsHelp: { color: palette.muted, fontSize: 14, lineHeight: 20 },
+  timezoneCard: {
+    minHeight: 82,
+    padding: 20,
+    borderRadius: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: palette.surface,
+  },
   settingsList: {
     paddingHorizontal: 20,
     borderRadius: 24,

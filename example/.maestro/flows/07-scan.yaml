@@ -29,11 +29,17 @@ tags:
       id: scan-results
     timeout: 15000
 - assertVisible: Fixture breakfast
-- assertVisible: Oatmeal with berries
 - scrollUntilVisible:
     element:
-      id: scan-correction-input
+      text: Fixture oatmeal
     direction: DOWN
+- assertVisible: Fixture oatmeal
+- scrollUntilVisible:
+    element:
+      id: scan-correct
+    direction: DOWN
+- tapOn:
+    id: scan-correct
 - tapOn:
     id: scan-correction-input
 - inputText: This was lentils

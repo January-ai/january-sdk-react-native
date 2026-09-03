@@ -1,0 +1,71 @@
+appId: ai.january.sdk.demo
+name: Android parity - restaurants and menu surfaces
+tags:
+  - parity
+---
+- launchApp:
+    clearState: false
+    stopApp: true
+- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
+- runFlow:
+    when:
+      visible: http://127.0.0.1:8081
+    commands:
+      - tapOn: http://127.0.0.1:8081
+- extendedWaitUntil:
+    visible:
+      id: tab-search
+    timeout: 15000
+- tapOn:
+    id: tab-search
+- tapOn:
+    id: search-scope-restaurants
+- assertVisible:
+    id: restaurant-search-screen
+- takeScreenshot: example/.maestro/artifacts/react-native-restaurants-initial
+- tapOn:
+    id: restaurant-filters-button
+- assertVisible:
+    id: restaurant-filters
+- takeScreenshot: example/.maestro/artifacts/react-native-restaurant-filters
+- tapOn:
+    id: restaurant-filters-close
+- tapOn:
+    id: restaurant-search-input
+- inputText: Fixture Cafe
+- pressKey: Enter
+- assertVisible:
+    id: restaurants-loading
+- takeScreenshot: example/.maestro/artifacts/react-native-restaurants-loading
+- extendedWaitUntil:
+    visible:
+      id: restaurant-result-0
+    timeout: 8000
+- takeScreenshot: example/.maestro/artifacts/react-native-restaurants-results
+- tapOn:
+    id: restaurant-result-0
+- assertVisible:
+    id: restaurant-detail-screen
+- takeScreenshot: example/.maestro/artifacts/react-native-restaurant-detail
+- tapOn:
+    id: restaurant-menu-item-0
+- assertVisible:
+    id: menu-item-detail-screen
+- takeScreenshot: example/.maestro/artifacts/react-native-menu-detail
+- tapOn:
+    id: detail-back
+- tapOn:
+    id: detail-back
+- tapOn:
+    id: restaurant-mode-menu
+- tapOn:
+    id: restaurant-search-input
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: menu-result-0
+    timeout: 5000
+- tapOn:
+    id: menu-result-0
+- assertVisible:
+    id: menu-item-detail-screen

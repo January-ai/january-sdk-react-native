@@ -107,22 +107,27 @@ function fixtureFood(
 export const fixtureScan: FoodScan = {
   mealName: 'Fixture breakfast',
   totalNutrients: {
-    calories: { value: 420, unit: 'cal' },
-    protein: { value: 24, unit: 'g' },
-    carbohydrates: { value: 48, unit: 'g' },
-    totalFat: { value: 14, unit: 'g' },
+    calories: { value: 100, unit: 'cal' },
+    protein: { value: 4, unit: 'g' },
+    carbohydrates: { value: 20, unit: 'g' },
+    totalFat: { value: 2, unit: 'g' },
+    fiber: { value: 3, unit: 'g' },
+    sodium: { value: 10, unit: 'mg' },
   },
   detections: [
     {
       confidenceScore: 'high',
       food: {
         id: 'fixture-oatmeal',
-        name: 'Oatmeal with berries',
+        name: 'Fixture oatmeal',
+        brandName: 'January fixture',
         nutrients: {
-          calories: { value: 300, unit: 'cal' },
-          protein: { value: 10, unit: 'g' },
-          carbohydrates: { value: 44, unit: 'g' },
-          totalFat: { value: 8, unit: 'g' },
+          calories: { value: 100, unit: 'cal' },
+          protein: { value: 4, unit: 'g' },
+          carbohydrates: { value: 20, unit: 'g' },
+          totalFat: { value: 2, unit: 'g' },
+          fiber: { value: 3, unit: 'g' },
+          sodium: { value: 10, unit: 'mg' },
         },
         servings: [
           {
@@ -134,27 +139,6 @@ export const fixtureScan: FoodScan = {
         ],
       },
     },
-    {
-      confidenceScore: 'medium',
-      food: {
-        id: 'fixture-coffee',
-        name: 'Coffee with milk',
-        nutrients: {
-          calories: { value: 120, unit: 'cal' },
-          protein: { value: 14, unit: 'g' },
-          carbohydrates: { value: 4, unit: 'g' },
-          totalFat: { value: 6, unit: 'g' },
-        },
-        servings: [
-          {
-            id: 'fixture-coffee-serving',
-            quantity: 1,
-            selectedQuantity: 1,
-            unit: 'cup',
-          },
-        ],
-      },
-    },
   ],
 };
 
@@ -162,11 +146,12 @@ export const fixtureFoodLogs: FoodLog[] = [
   {
     id: 'fixture-log-breakfast',
     name: 'Fixture breakfast',
-    timestampUTC: new Date().toISOString(),
+    timestampUTC: '2026-08-31T12:00:00Z',
     foods: [
       {
         id: 'fixture-oatmeal',
-        name: 'Oatmeal with berries',
+        name: 'Fixture oatmeal',
+        brandName: 'January fixture',
         nutrients: fixtureScan.detections[0]!.food.nutrients,
         consumedServing: { id: 'fixture-oatmeal-serving', quantity: 1 },
         servingDetails: {

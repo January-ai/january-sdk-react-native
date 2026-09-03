@@ -27,9 +27,7 @@ tags:
 - tapOn:
     id: food-picker-input
 - inputText: no results
-- hideKeyboard
-- tapOn:
-    id: food-picker-search
+- pressKey: Enter
 - assertVisible:
     id: food-picker-loading
 - extendedWaitUntil:
@@ -41,9 +39,7 @@ tags:
     id: food-picker-input
 - eraseText: 30
 - inputText: retry picker
-- hideKeyboard
-- tapOn:
-    id: food-picker-search
+- pressKey: Enter
 - extendedWaitUntil:
     visible:
       id: food-picker-error
@@ -70,7 +66,10 @@ tags:
 - tapOn:
     id: food-picker-result-0
 - assertVisible:
-    id: food-picker-error
-- assertVisible: This result does not contain a selectable serving.
+    id: food-serving-sheet
+- assertVisible:
+    id: food-serving-add
+- tapOn:
+    id: food-serving-add
 - assertVisible:
     id: food-picker

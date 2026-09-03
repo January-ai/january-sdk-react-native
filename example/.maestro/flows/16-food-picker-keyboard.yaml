@@ -32,8 +32,6 @@ tags:
 - assertVisible: Add food
 - assertVisible:
     id: food-picker-input
-- assertVisible:
-    id: food-picker-search
 - takeScreenshot: example/.maestro/artifacts/food-picker-keyboard-open
 - pressKey: Enter
 - extendedWaitUntil:
@@ -43,5 +41,7 @@ tags:
 - assertVisible: Greek yogurt
 - tapOn:
     id: food-picker-result-0
+- tapOn:
+    id: food-serving-add
 - assertVisible:
     id: glucose-food-0

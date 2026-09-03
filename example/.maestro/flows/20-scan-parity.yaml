@@ -1,0 +1,65 @@
+appId: ai.january.sdk.demo
+name: Android parity - scan and correction surfaces
+tags:
+  - parity
+---
+- launchApp:
+    clearState: false
+    stopApp: true
+- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
+- runFlow:
+    when:
+      visible: http://127.0.0.1:8081
+    commands:
+      - tapOn: http://127.0.0.1:8081
+- extendedWaitUntil:
+    visible:
+      id: tab-scan
+    timeout: 15000
+- tapOn:
+    id: tab-scan
+- assertVisible:
+    id: scan-guide
+- takeScreenshot: example/.maestro/artifacts/react-native-scan-initial
+- tapOn:
+    id: scan-image-url
+- assertVisible: Use image URL
+- takeScreenshot: example/.maestro/artifacts/react-native-image-url
+- tapOn: Close Use image URL
+- tapOn:
+    id: scan-sample
+- assertVisible:
+    id: scan-preview
+- takeScreenshot: example/.maestro/artifacts/react-native-scan-preview
+- tapOn:
+    id: scan-analyze
+- assertVisible:
+    id: scan-loading
+- takeScreenshot: example/.maestro/artifacts/react-native-scan-loading
+- extendedWaitUntil:
+    visible:
+      id: scan-results
+    timeout: 15000
+- takeScreenshot: example/.maestro/artifacts/react-native-scan-result
+- scrollUntilVisible:
+    element:
+      id: scan-correct
+    direction: DOWN
+- tapOn:
+    id: scan-correct
+- assertVisible: Correct result
+- takeScreenshot: example/.maestro/artifacts/react-native-correction-initial
+- tapOn:
+    id: scan-correction-input
+- inputText: This was lentils
+- takeScreenshot: example/.maestro/artifacts/react-native-correction-keyboard
+- hideKeyboard
+- tapOn:
+    id: scan-correction-submit
+- assertVisible:
+    id: scan-correction-loading
+- takeScreenshot: example/.maestro/artifacts/react-native-correction-loading
+- extendedWaitUntil:
+    visible: Corrected breakfast
+    timeout: 15000
+- takeScreenshot: example/.maestro/artifacts/react-native-correction-result
