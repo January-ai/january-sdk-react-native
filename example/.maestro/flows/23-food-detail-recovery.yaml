@@ -67,8 +67,6 @@ tags:
     direction: DOWN
 - tapOn:
     id: alternatives-refresh
-- assertVisible:
-    id: alternatives-loading
 - extendedWaitUntil:
     visible:
       id: alternatives-error

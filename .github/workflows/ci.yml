@@ -217,6 +217,13 @@ jobs:
       - name: Build Android UI APK
         run: yarn example build:android
 
+      - name: Reclaim build disk for Android emulator
+        run: |
+          rm -rf /home/runner/.gradle/caches
+          rm -rf example/android/.gradle
+          rm -rf example/android/app/build/intermediates
+          sudo rm -rf /usr/local/lib/android/sdk/ndk
+
       - name: Enable KVM group permissions
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules

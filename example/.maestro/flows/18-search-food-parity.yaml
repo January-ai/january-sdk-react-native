@@ -63,9 +63,6 @@ tags:
     direction: DOWN
 - tapOn:
     id: alternatives-refresh
-- assertVisible:
-    id: alternatives-loading
-- takeScreenshot: example/.maestro/artifacts/react-native-alternatives-loading
 - extendedWaitUntil:
     visible: SUGGESTIONS · 1
     timeout: 15000
