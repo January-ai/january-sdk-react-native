@@ -1,0 +1,72 @@
+appId: ai.january.sdk.demo
+name: Android parity - description, barcode, and autocomplete
+tags:
+  - parity
+  - fixture
+---
+- launchApp:
+    clearState: false
+    stopApp: true
+- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
+- runFlow:
+    when:
+      visible: http://127.0.0.1:8081
+    commands:
+      - tapOn: http://127.0.0.1:8081
+- extendedWaitUntil:
+    visible:
+      id: tab-search
+    timeout: 15000
+- tapOn:
+    id: tab-search
+- tapOn:
+    id: search-mode-description
+- assertVisible: Describe a meal
+- assertVisible: Try “a bowl of oatmeal with honey and a banana.”
+- takeScreenshot: example/.maestro/artifacts/react-native-description-initial
+- tapOn:
+    id: search-input
+- inputText: a bowl of oatmeal with honey and a banana
+- pressKey: Enter
+- assertVisible:
+    id: search-loading
+- extendedWaitUntil:
+    visible:
+      id: description-results
+    timeout: 15000
+- takeScreenshot: example/.maestro/artifacts/react-native-description-results
+- tapOn:
+    id: search-clear
+- tapOn:
+    id: search-mode-barcode
+- assertVisible: Enter or scan a barcode
+- assertVisible:
+    id: scan-barcode-button
+- takeScreenshot: example/.maestro/artifacts/react-native-barcode-initial
+- tapOn:
+    id: search-input
+- inputText: 012345678905
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: food-result-0
+    timeout: 15000
+- takeScreenshot: example/.maestro/artifacts/react-native-barcode-results
+- tapOn:
+    id: search-clear
+- tapOn:
+    id: search-mode-name
+- tapOn:
+    id: search-input
+- inputText: oa
+- extendedWaitUntil:
+    visible:
+      id: autocomplete-suggestions
+    timeout: 10000
+- takeScreenshot: example/.maestro/artifacts/react-native-autocomplete
+- tapOn:
+    id: autocomplete-result-0
+- extendedWaitUntil:
+    visible:
+      id: food-result-0
+    timeout: 15000

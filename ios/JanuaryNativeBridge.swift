@@ -146,6 +146,87 @@ public final class JanuaryNativeBridge: NSObject, @unchecked Sendable {
         }
     }
 
+    @objc(foodsAutocomplete:query:category:limit:completion:)
+    public func foodsAutocomplete(
+        _ clientID: String,
+        query: String,
+        category rawCategory: String?,
+        limit: Int,
+        completion: @escaping (NSString?, NSError?) -> Void
+    ) {
+        let category = rawCategory.flatMap(AutocompleteFoodCategory.init(rawValue:))
+        perform(clientID, completion: completion) { client in
+            try await client.foods.autocomplete(
+                .init(query: query, category: category, limit: limit)
+            )
+        }
+    }
+
+    @objc(foodsGet:foodId:completion:)
+    public func foodsGet(
+        _ clientID: String,
+        foodID: String,
+        completion: @escaping (NSString?, NSError?) -> Void
+    ) {
+        perform(clientID, completion: completion) { client in
+            try await client.foods.get(id: .init(rawValue: foodID))
+        }
+    }
+
+    @objc(foodsLookupBarcode:upc:completion:)
+    public func foodsLookupBarcode(
+        _ clientID: String,
+        upc: String,
+        completion: @escaping (NSString?, NSError?) -> Void
+    ) {
+        perform(clientID, completion: completion) { client in
+            try await client.foods.lookupBarcode(.init(upc: upc))
+        }
+    }
+
+    @objc(foodsSuggestAlternatives:foodId:dietRestrictionsJson:dietPreferencesJson:completion:)
+    public func foodsSuggestAlternatives(
+        _ clientID: String,
+        foodID: String,
+        dietRestrictionsJSON: String,
+        dietPreferencesJSON: String,
+        completion: @escaping (NSString?, NSError?) -> Void
+    ) {
+        do {
+            let decoder = JSONDecoder()
+            let restrictions = try decoder.decode(
+                [DietRestriction].self,
+                from: Data(dietRestrictionsJSON.utf8)
+            )
+            let preferences = try decoder.decode(
+                [DietPreference].self,
+                from: Data(dietPreferencesJSON.utf8)
+            )
+            perform(clientID, completion: completion) { client in
+                try await client.foods.suggestAlternatives(
+                    .init(
+                        foodID: .init(rawValue: foodID),
+                        dietRestrictions: restrictions,
+                        dietPreferences: preferences
+                    )
+                )
+            }
+        } catch {
+            completion(nil, nativeError(error))
+        }
+    }
+
+    @objc(foodAnalysisAnalyzeDescription:query:completion:)
+    public func foodAnalysisAnalyzeDescription(
+        _ clientID: String,
+        query: String,
+        completion: @escaping (NSString?, NSError?) -> Void
+    ) {
+        perform(clientID, completion: completion) { client in
+            try await client.foodAnalysis.analyzeDescription(.init(query: query))
+        }
+    }
+
     @objc(restaurantsSearch:query:latitude:longitude:radius:limit:completion:)
     public func restaurantsSearch(
         _ clientID: String,

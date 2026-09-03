@@ -92,6 +92,65 @@
   }];
 }
 
+- (void)foodsAutocomplete:(NSString *)clientId
+                     query:(NSString *)query
+                  category:(NSString * _Nullable)category
+                     limit:(double)limit
+                   resolve:(RCTPromiseResolveBlock)resolve
+                    reject:(RCTPromiseRejectBlock)reject
+{
+  [_bridge foodsAutocomplete:clientId query:query category:category limit:(NSInteger)limit completion:^(NSString *json, NSError *error) {
+    if (error) { reject(error.userInfo[@"code"] ?: @"january_error", error.localizedDescription, error); return; }
+    resolve(json);
+  }];
+}
+
+- (void)foodsGet:(NSString *)clientId
+           foodId:(NSString *)foodId
+          resolve:(RCTPromiseResolveBlock)resolve
+           reject:(RCTPromiseRejectBlock)reject
+{
+  [_bridge foodsGet:clientId foodId:foodId completion:^(NSString *json, NSError *error) {
+    if (error) { reject(error.userInfo[@"code"] ?: @"january_error", error.localizedDescription, error); return; }
+    resolve(json);
+  }];
+}
+
+- (void)foodsLookupBarcode:(NSString *)clientId
+                         upc:(NSString *)upc
+                     resolve:(RCTPromiseResolveBlock)resolve
+                      reject:(RCTPromiseRejectBlock)reject
+{
+  [_bridge foodsLookupBarcode:clientId upc:upc completion:^(NSString *json, NSError *error) {
+    if (error) { reject(error.userInfo[@"code"] ?: @"january_error", error.localizedDescription, error); return; }
+    resolve(json);
+  }];
+}
+
+- (void)foodsSuggestAlternatives:(NSString *)clientId
+                           foodId:(NSString *)foodId
+             dietRestrictionsJson:(NSString *)dietRestrictionsJson
+              dietPreferencesJson:(NSString *)dietPreferencesJson
+                          resolve:(RCTPromiseResolveBlock)resolve
+                           reject:(RCTPromiseRejectBlock)reject
+{
+  [_bridge foodsSuggestAlternatives:clientId foodId:foodId dietRestrictionsJson:dietRestrictionsJson dietPreferencesJson:dietPreferencesJson completion:^(NSString *json, NSError *error) {
+    if (error) { reject(error.userInfo[@"code"] ?: @"january_error", error.localizedDescription, error); return; }
+    resolve(json);
+  }];
+}
+
+- (void)foodAnalysisAnalyzeDescription:(NSString *)clientId
+                                  query:(NSString *)query
+                                resolve:(RCTPromiseResolveBlock)resolve
+                                 reject:(RCTPromiseRejectBlock)reject
+{
+  [_bridge foodAnalysisAnalyzeDescription:clientId query:query completion:^(NSString *json, NSError *error) {
+    if (error) { reject(error.userInfo[@"code"] ?: @"january_error", error.localizedDescription, error); return; }
+    resolve(json);
+  }];
+}
+
 - (void)restaurantsSearch:(NSString *)clientId
                     query:(NSString *)query
                  latitude:(double)latitude

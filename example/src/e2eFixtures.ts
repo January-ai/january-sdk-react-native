@@ -1,11 +1,30 @@
 import type {
+  AutocompleteFoodsResponse,
   FoodLog,
   FoodScan,
   FoodCategoryValue,
   FoodSearchItem,
   FoodSearchResults,
   GlucosePrediction,
+  SuggestFoodAlternativesResponse,
 } from '@januaryai/react-native';
+
+export async function autocompleteFixtureFoods(
+  query: string
+): Promise<AutocompleteFoodsResponse> {
+  await fixtureDelay(300);
+  if (query.trim().length < 2) return { items: [] };
+  return {
+    items: [
+      {
+        id: 'fixture-oatmeal',
+        name: 'Fixture oatmeal',
+        brandName: 'January fixture',
+      },
+      { id: 'fixture-oat-milk', name: 'Oat milk' },
+    ],
+  };
+}
 
 export async function searchFixtureFoods(
   query: string,
@@ -16,6 +35,42 @@ export async function searchFixtureFoods(
   switch (query.toLowerCase()) {
     case 'force error':
       throw new Error('Fixture request failed.');
+    case 'error 401':
+      throw fixtureError(
+        'The test request could not be completed.',
+        'authentication',
+        401
+      );
+    case 'error 403':
+      throw fixtureError(
+        'The test request could not be completed.',
+        'authorization',
+        403
+      );
+    case 'error 404':
+      throw fixtureError(
+        'The test request could not be completed.',
+        'not_found',
+        404
+      );
+    case 'error 422':
+      throw fixtureError(
+        'The test request could not be completed.',
+        'validation',
+        422
+      );
+    case 'error 429':
+      throw fixtureError(
+        'The test request could not be completed.',
+        'rate_limited',
+        429
+      );
+    case 'error 504':
+      throw fixtureError(
+        'The test request could not be completed.',
+        'timeout',
+        504
+      );
     case 'retry search':
       if (takeFirstAttempt('retry-search')) {
         throw new Error('Temporary fixture search failure.');
@@ -59,9 +114,38 @@ export async function searchFixtureFoods(
         totalCount: 1,
       };
     }
+    case 'glucose recovery': {
+      const item = fixtureFood('Fixture oatmeal', 'generic', 100, '1 cup');
+      return {
+        items: [{ ...item, barcode: 'fixture-glucose-retry' }],
+        totalCount: 1,
+      };
+    }
+    case 'alternatives error': {
+      const item = fixtureFood('Fixture oatmeal', 'generic', 100, '1 cup');
+      return {
+        items: [{ ...item, barcode: 'fixture-alternatives-retry' }],
+        totalCount: 1,
+      };
+    }
+    case 'alternatives empty': {
+      const item = fixtureFood('Fixture oatmeal', 'generic', 100, '1 cup');
+      return {
+        items: [{ ...item, barcode: 'fixture-alternatives-empty' }],
+        totalCount: 1,
+      };
+    }
     default:
       return defaultFixtureFoods();
   }
+}
+
+function fixtureError(message: string, code: string, status: number): Error {
+  return Object.assign(new Error(message), {
+    code,
+    requestId: 'fixture-request',
+    status,
+  });
 }
 
 function defaultFixtureFoods(): FoodSearchResults {
@@ -142,6 +226,27 @@ export const fixtureScan: FoodScan = {
   ],
 };
 
+export async function analyzeFixtureDescription(
+  query: string
+): Promise<FoodScan> {
+  await fixtureDelay();
+  if (query.toLowerCase().includes('error')) {
+    throw new Error('Fixture request failed.');
+  }
+  return fixtureScan;
+}
+
+export async function lookupFixtureBarcode(
+  upc: string
+): Promise<FoodSearchResults> {
+  await fixtureDelay();
+  if (upc.toLowerCase().includes('error')) {
+    throw new Error('Fixture request failed.');
+  }
+  if (/^0+$/.test(upc)) return { items: [], totalCount: 0 };
+  return searchFixtureFoods('oatmeal');
+}
+
 export const fixtureFoodLogs: FoodLog[] = [
   {
     id: 'fixture-log-breakfast',
@@ -208,6 +313,43 @@ export async function predictFixtureGlucose(
     throw new Error('Temporary fixture prediction failure.');
   }
   return fixtureGlucosePrediction;
+}
+
+export async function suggestFixtureAlternatives(
+  foodId: string,
+  behavior?: string
+): Promise<SuggestFoodAlternativesResponse> {
+  await fixtureDelay(4000);
+  if (
+    behavior === 'fixture-alternatives-retry' &&
+    takeFirstAttempt(`alternatives-${foodId}`)
+  ) {
+    throw new Error('Fixture alternatives request failed.');
+  }
+  if (behavior === 'fixture-alternatives-empty') return { alternatives: [] };
+  return {
+    alternatives: [
+      {
+        id: 'fixture-lentils',
+        name: 'Fixture lentils',
+        brandName: 'January fixture',
+        nutrients: {
+          calories: { value: 116, unit: 'cal' },
+          protein: { value: 9, unit: 'g' },
+          carbohydrates: { value: 20, unit: 'g' },
+          totalFat: { value: 0.4, unit: 'g' },
+        },
+        servings: [
+          {
+            id: 'fixture-lentils-serving',
+            quantity: 1,
+            selectedQuantity: 1,
+            unit: 'cup',
+          },
+        ],
+      },
+    ],
+  };
 }
 
 export async function fixtureDelay(milliseconds = 2000): Promise<void> {

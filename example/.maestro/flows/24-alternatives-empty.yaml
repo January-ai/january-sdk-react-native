@@ -1,0 +1,53 @@
+appId: ai.january.sdk.demo
+name: Android parity - no suitable food alternatives
+tags:
+  - fixture
+  - parity
+---
+- launchApp:
+    clearState: false
+    stopApp: true
+- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
+- runFlow:
+    when:
+      visible: http://127.0.0.1:8081
+    commands:
+      - tapOn: http://127.0.0.1:8081
+- extendedWaitUntil:
+    visible:
+      id: tab-search
+    timeout: 15000
+- tapOn:
+    id: tab-search
+- tapOn:
+    id: search-clear
+    optional: true
+- tapOn:
+    id: search-input
+- inputText: alternatives empty
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: food-result-0
+    timeout: 15000
+- tapOn:
+    id: food-result-0
+- scrollUntilVisible:
+    element:
+      id: food-alternatives
+    direction: DOWN
+- tapOn:
+    id: food-alternatives
+- scrollUntilVisible:
+    element:
+      id: alternatives-refresh
+    direction: DOWN
+- tapOn:
+    id: alternatives-refresh
+- assertVisible:
+    id: alternatives-loading
+- extendedWaitUntil:
+    visible:
+      id: alternatives-empty
+    timeout: 15000
+- takeScreenshot: example/.maestro/artifacts/react-native-alternatives-empty

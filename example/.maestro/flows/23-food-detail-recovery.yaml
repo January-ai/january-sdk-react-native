@@ -1,7 +1,8 @@
 appId: ai.january.sdk.demo
-name: Android parity - search and food detail surfaces
+name: Food detail glucose and alternatives recover without losing context
 tags:
-  - parity
+  - fixture
+  - recovery
 ---
 - launchApp:
     clearState: false
@@ -18,53 +19,56 @@ tags:
     timeout: 15000
 - tapOn:
     id: tab-search
-- assertVisible:
-    id: search-scope-restaurants
-- assertVisible:
-    id: search-mode-barcode
-- takeScreenshot: example/.maestro/artifacts/react-native-search-initial
 - tapOn:
     id: search-input
-- inputText: oatmeal
+- inputText: glucose recovery
 - pressKey: Enter
 - extendedWaitUntil:
     visible:
       id: food-result-0
     timeout: 15000
-- takeScreenshot: example/.maestro/artifacts/react-native-search-results
 - tapOn:
     id: food-result-0
-- assertVisible: Food details
-- takeScreenshot: example/.maestro/artifacts/react-native-food-detail
-- scrollUntilVisible:
-    element:
-      id: food-nutrition
-    direction: DOWN
-- takeScreenshot: example/.maestro/artifacts/react-native-food-nutrition
 - scrollUntilVisible:
     element:
       id: food-check-glucose
     direction: DOWN
 - tapOn:
     id: food-check-glucose
-- assertVisible: Glucose response
 - assertVisible:
     id: food-glucose-loading
-- takeScreenshot: example/.maestro/artifacts/react-native-food-glucose-loading
+- extendedWaitUntil:
+    visible:
+      id: food-glucose-error
+    timeout: 15000
+- takeScreenshot: example/.maestro/artifacts/react-native-food-glucose-error
+- tapOn:
+    id: food-glucose-error-retry
 - extendedWaitUntil:
     visible:
       id: food-glucose-result
     timeout: 15000
-- takeScreenshot: example/.maestro/artifacts/react-native-food-glucose-result
 - tapOn: Close Glucose response
+- tapOn:
+    id: food-detail-back
+- tapOn:
+    id: search-clear
+- tapOn:
+    id: search-input
+- inputText: alternatives error
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: food-result-0
+    timeout: 15000
+- tapOn:
+    id: food-result-0
 - scrollUntilVisible:
     element:
       id: food-alternatives
     direction: DOWN
 - tapOn:
     id: food-alternatives
-- assertVisible: Food alternatives
-- takeScreenshot: example/.maestro/artifacts/react-native-alternatives-initial
 - scrollUntilVisible:
     element:
       id: alternatives-refresh
@@ -73,8 +77,18 @@ tags:
     id: alternatives-refresh
 - assertVisible:
     id: alternatives-loading
-- takeScreenshot: example/.maestro/artifacts/react-native-alternatives-loading
 - extendedWaitUntil:
-    visible: SUGGESTIONS · 1
+    visible:
+      id: alternatives-error
     timeout: 15000
-- takeScreenshot: example/.maestro/artifacts/react-native-alternatives-results
+- takeScreenshot: example/.maestro/artifacts/react-native-alternatives-error
+- scrollUntilVisible:
+    element:
+      id: alternatives-error-retry
+    direction: DOWN
+- tapOn:
+    id: alternatives-error-retry
+- extendedWaitUntil:
+    visible:
+      id: alternatives-results
+    timeout: 15000

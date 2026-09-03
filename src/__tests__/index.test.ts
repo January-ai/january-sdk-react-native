@@ -8,6 +8,9 @@ jest.mock('../NativeJanuaryReactNative', () => ({
     foodAnalysisAnalyzePhoto: jest.fn(async () =>
       JSON.stringify({ detections: [], totalNutrients: {} })
     ),
+    foodAnalysisAnalyzeDescription: jest.fn(async () =>
+      JSON.stringify({ detections: [], totalNutrients: {} })
+    ),
     foodAnalysisCorrect: jest.fn(async () =>
       JSON.stringify({ detections: [], totalNutrients: {} })
     ),
@@ -22,6 +25,16 @@ jest.mock('../NativeJanuaryReactNative', () => ({
       JSON.stringify({ foods: [], id: 'log-1', timestamp_utc: 'now' })
     ),
     foodsSearch: jest.fn(async () => '{"totalCount":0,"items":[]}'),
+    foodsAutocomplete: jest.fn(async () => '{"items":[]}'),
+    foodsGet: jest.fn(async () =>
+      JSON.stringify({ id: 'food-1', servings: [], type: 'generic' })
+    ),
+    foodsLookupBarcode: jest.fn(async () =>
+      JSON.stringify({ items: [], total_count: 0 })
+    ),
+    foodsSuggestAlternatives: jest.fn(async () =>
+      JSON.stringify({ alternatives: [] })
+    ),
     getNativeModuleVersion: jest.fn(() => '0.1.0'),
     glucosePredict: jest.fn(async () =>
       JSON.stringify({ chart: {}, prediction: [] })
@@ -144,6 +157,41 @@ describe('January React Native SDK', () => {
       100,
       0
     );
+  });
+
+  it('exposes the complete native food discovery surface', async () => {
+    const client = new JanuaryClient({
+      clientTokenProvider: async () => ({ token: 'ct-test', expiresIn: 1_800 }),
+      endUserId: 'demo-user',
+    });
+
+    await client.foods.autocomplete({ query: 'oat' });
+    await client.foods.get({ foodId: 'food-1' });
+    await client.foods.lookupBarcode({ upc: '012345678905' });
+    await client.foods.suggestAlternatives({
+      dietPreferences: ['high_protein'],
+      dietRestrictions: ['gluten'],
+      foodId: 'food-1',
+    });
+    await client.foodAnalysis.analyzeDescription({
+      query: 'oatmeal and fruit',
+    });
+
+    expect(mockNativeModule.foodsAutocomplete).toHaveBeenCalledWith(
+      expect.any(String),
+      'oat',
+      null,
+      8
+    );
+    expect(mockNativeModule.foodsGet).toHaveBeenCalled();
+    expect(mockNativeModule.foodsLookupBarcode).toHaveBeenCalled();
+    expect(mockNativeModule.foodsSuggestAlternatives).toHaveBeenCalledWith(
+      expect.any(String),
+      'food-1',
+      '["gluten"]',
+      '["high_protein"]'
+    );
+    expect(mockNativeModule.foodAnalysisAnalyzeDescription).toHaveBeenCalled();
   });
 
   it('validates restaurant requests before crossing the native bridge', async () => {

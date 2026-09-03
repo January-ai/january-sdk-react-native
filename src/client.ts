@@ -2,7 +2,10 @@ import type { EventSubscription } from 'react-native';
 
 import NativeJanuaryReactNative from './NativeJanuaryReactNative';
 import type {
+  AnalyzeDescriptionRequest,
   AnalyzePhotoRequest,
+  AutocompleteFoodsRequest,
+  AutocompleteFoodsResponse,
   CorrectPhotoScanRequest,
   CreateFoodLogRequest,
   FoodLog,
@@ -11,14 +14,18 @@ import type {
   GetRestaurantMenuItemsResponse,
   FoodScan,
   FoodSearchResults,
+  GetFoodRequest,
   JanuaryClientOptions,
   ListFoodLogsRequest,
+  LookupFoodByBarcodeRequest,
   GlucosePrediction,
   PredictGlucoseRequest,
   SearchRestaurantMenuItemsResponse,
   SearchRestaurantsRequest,
   SearchRestaurantsResponse,
   SearchFoodsRequest,
+  SuggestFoodAlternativesRequest,
+  SuggestFoodAlternativesResponse,
   UpdateFoodLogRequest,
 } from './types';
 
@@ -35,9 +42,24 @@ function requireNativeModule() {
 
 export class JanuaryClient {
   readonly foods: {
+    autocomplete: (
+      request: AutocompleteFoodsRequest
+    ) => Promise<AutocompleteFoodsResponse>;
+    get: (
+      request: GetFoodRequest
+    ) => Promise<FoodSearchResults['items'][number]>;
+    lookupBarcode: (
+      request: LookupFoodByBarcodeRequest
+    ) => Promise<FoodSearchResults>;
     search: (request: SearchFoodsRequest) => Promise<FoodSearchResults>;
+    suggestAlternatives: (
+      request: SuggestFoodAlternativesRequest
+    ) => Promise<SuggestFoodAlternativesResponse>;
   };
   readonly foodAnalysis: {
+    analyzeDescription: (
+      request: AnalyzeDescriptionRequest
+    ) => Promise<FoodScan>;
     analyzePhoto: (request: AnalyzePhotoRequest) => Promise<FoodScan>;
     correct: (request: CorrectPhotoScanRequest) => Promise<FoodScan>;
   };
@@ -103,6 +125,39 @@ export class JanuaryClient {
     }
 
     this.foods = {
+      autocomplete: async (request) => {
+        this.assertActive();
+        const query = request.query.trim();
+        if (!query) throw new Error('query is required.');
+        const limit = request.limit ?? 8;
+        if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+          throw new Error('limit must be an integer between 1 and 100.');
+        }
+        return parseNativeJson<AutocompleteFoodsResponse>(
+          await native.foodsAutocomplete(
+            this.clientId,
+            query,
+            request.category ?? null,
+            limit
+          )
+        );
+      },
+      get: async (request) => {
+        this.assertActive();
+        const foodId = request.foodId.trim();
+        if (!foodId) throw new Error('foodId is required.');
+        return parseNativeJson<FoodSearchResults['items'][number]>(
+          await native.foodsGet(this.clientId, foodId)
+        );
+      },
+      lookupBarcode: async (request) => {
+        this.assertActive();
+        const upc = request.upc.trim();
+        if (!upc) throw new Error('upc is required.');
+        return parseNativeJson<FoodSearchResults>(
+          await native.foodsLookupBarcode(this.clientId, upc)
+        );
+      },
       search: async (request) => {
         this.assertActive();
         const query = request.query.trim();
@@ -119,9 +174,30 @@ export class JanuaryClient {
         );
         return camelizeKeys(JSON.parse(json)) as FoodSearchResults;
       },
+      suggestAlternatives: async (request) => {
+        this.assertActive();
+        const foodId = request.foodId.trim();
+        if (!foodId) throw new Error('foodId is required.');
+        return parseNativeJson<SuggestFoodAlternativesResponse>(
+          await native.foodsSuggestAlternatives(
+            this.clientId,
+            foodId,
+            JSON.stringify(request.dietRestrictions ?? []),
+            JSON.stringify(request.dietPreferences ?? [])
+          )
+        );
+      },
     };
 
     this.foodAnalysis = {
+      analyzeDescription: async (request) => {
+        this.assertActive();
+        const query = request.query.trim();
+        if (!query) throw new Error('query is required.');
+        return parseNativeJson<FoodScan>(
+          await native.foodAnalysisAnalyzeDescription(this.clientId, query)
+        );
+      },
       analyzePhoto: async (request) => {
         this.assertActive();
         const image = request.image.trim();

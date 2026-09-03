@@ -41,6 +41,78 @@ export interface SearchFoodsRequest {
   query: string;
 }
 
+export type AutocompleteFoodCategory = 'generic' | 'branded';
+
+export interface AutocompleteFoodsRequest {
+  category?: AutocompleteFoodCategory;
+  limit?: number;
+  query: string;
+}
+
+export interface FoodSuggestion {
+  brandName?: string;
+  id: string;
+  imageURL?: string;
+  name?: string;
+  nutrients?: NutritionFacts;
+}
+
+export interface AutocompleteFoodsResponse {
+  items: FoodSuggestion[];
+}
+
+export interface GetFoodRequest {
+  foodId: string;
+}
+
+export interface LookupFoodByBarcodeRequest {
+  upc: string;
+}
+
+export interface AnalyzeDescriptionRequest {
+  query: string;
+}
+
+export type DietRestriction =
+  | 'gluten'
+  | 'lactose'
+  | 'yeast'
+  | 'tree_nuts'
+  | 'peanuts'
+  | 'dairy'
+  | 'eggs'
+  | 'sulfites'
+  | 'soy'
+  | 'wheat'
+  | 'shellfish'
+  | 'fish'
+  | 'mushrooms'
+  | 'sesame'
+  | 'msg'
+  | 'caffeine'
+  | 'fodmaps';
+
+export type DietPreference =
+  | 'vegetarian'
+  | 'vegan'
+  | 'keto'
+  | 'paleo'
+  | 'pescatarian'
+  | 'low_carbohydrate'
+  | 'high_protein'
+  | 'kosher'
+  | 'halal';
+
+export interface SuggestFoodAlternativesRequest {
+  dietPreferences?: DietPreference[];
+  dietRestrictions?: DietRestriction[];
+  foodId: string;
+}
+
+export interface SuggestFoodAlternativesResponse {
+  alternatives: DetectedFood[];
+}
+
 export interface NutrientAmount {
   unit: string;
   value: number;

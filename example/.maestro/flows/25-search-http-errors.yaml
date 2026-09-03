@@ -1,0 +1,118 @@
+appId: ai.january.sdk.demo
+name: Android parity - categorized food search errors
+tags:
+  - fixture
+  - parity
+---
+- launchApp:
+    clearState: false
+    stopApp: true
+- openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
+- runFlow:
+    when:
+      visible: http://127.0.0.1:8081
+    commands:
+      - tapOn: http://127.0.0.1:8081
+- extendedWaitUntil:
+    visible:
+      id: tab-search
+    timeout: 15000
+- tapOn:
+    id: tab-search
+- tapOn:
+    id: search-clear
+    optional: true
+- tapOn:
+    id: search-input
+- inputText: error 401
+- pressKey: Enter
+- assertVisible: Couldn’t use the configured credentials
+- scrollUntilVisible:
+    element:
+      id: search-error
+    direction: DOWN
+- takeScreenshot: example/.maestro/artifacts/react-native-search-error-401
+- tapOn:
+    id: search-error-details
+- assertVisible:
+    id: search-error-details-body
+- assertVisible: HTTP status
+- assertVisible: "401"
+- takeScreenshot: example/.maestro/artifacts/react-native-search-error-401-details
+- tapOn:
+    id: search-error-details
+- scrollUntilVisible:
+    element:
+      id: search-input
+    direction: UP
+- tapOn:
+    id: search-input
+- eraseText: 9
+- inputText: error 403
+- pressKey: Enter
+- assertVisible: Couldn’t use the configured credentials
+- scrollUntilVisible:
+    element:
+      id: search-error
+    direction: DOWN
+- takeScreenshot: example/.maestro/artifacts/react-native-search-error-403
+- scrollUntilVisible:
+    element:
+      id: search-input
+    direction: UP
+- tapOn:
+    id: search-input
+- eraseText: 9
+- inputText: error 404
+- pressKey: Enter
+- assertVisible: No matching result was found
+- scrollUntilVisible:
+    element:
+      id: search-error
+    direction: DOWN
+- takeScreenshot: example/.maestro/artifacts/react-native-search-error-404
+- scrollUntilVisible:
+    element:
+      id: search-input
+    direction: UP
+- tapOn:
+    id: search-input
+- eraseText: 9
+- inputText: error 422
+- pressKey: Enter
+- assertVisible: Check the information you entered
+- scrollUntilVisible:
+    element:
+      id: search-error
+    direction: DOWN
+- takeScreenshot: example/.maestro/artifacts/react-native-search-error-422
+- scrollUntilVisible:
+    element:
+      id: search-input
+    direction: UP
+- tapOn:
+    id: search-input
+- eraseText: 9
+- inputText: error 429
+- pressKey: Enter
+- assertVisible: Too many requests
+- scrollUntilVisible:
+    element:
+      id: search-error
+    direction: DOWN
+- takeScreenshot: example/.maestro/artifacts/react-native-search-error-429
+- scrollUntilVisible:
+    element:
+      id: search-input
+    direction: UP
+- tapOn:
+    id: search-input
+- eraseText: 9
+- inputText: error 504
+- pressKey: Enter
+- assertVisible: The request took too long
+- scrollUntilVisible:
+    element:
+      id: search-error
+    direction: DOWN
+- takeScreenshot: example/.maestro/artifacts/react-native-search-error-504

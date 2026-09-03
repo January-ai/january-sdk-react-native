@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   Modal,
   Pressable,
@@ -12,20 +13,55 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
-import type { FoodSearchItem } from '@januaryai/react-native';
+import type {
+  DietPreference,
+  DietRestriction,
+  DetectedFood,
+  FoodSearchItem,
+  GlucosePrediction,
+  JanuaryClient,
+} from '@januaryai/react-native';
 
 import { palette, serifFont, sharedStyles } from './demoTheme';
+import {
+  predictFixtureGlucose,
+  suggestFixtureAlternatives,
+} from './e2eFixtures';
 
 export function FoodDetailScreen({
-  food,
+  client,
+  fixtures,
+  food: initialFood,
   onBack,
 }: {
+  client: JanuaryClient;
+  fixtures: boolean;
   food: FoodSearchItem;
   onBack: () => void;
 }) {
   const [quantity, setQuantity] = useState(1);
   const [showAlternatives, setShowAlternatives] = useState(false);
   const [showGlucose, setShowGlucose] = useState(false);
+  const [food, setFood] = useState(initialFood);
+  const [detailLoadFailed, setDetailLoadFailed] = useState(false);
+  useEffect(() => {
+    if (fixtures) return;
+    let active = true;
+    client.foods
+      .get({ foodId: initialFood.id })
+      .then((result) => {
+        if (active) {
+          setFood(result);
+          setDetailLoadFailed(false);
+        }
+      })
+      .catch(() => {
+        if (active) setDetailLoadFailed(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [client, fixtures, initialFood]);
   const serving =
     food.servings.find((item) => item.isPrimary) ?? food.servings[0];
   const servingQuantity = serving?.quantity ?? 1;
@@ -57,7 +93,10 @@ export function FoodDetailScreen({
           ) : null}
         </View>
 
-        <View style={styles.card} testID="food-serving-controls">
+        <View
+          style={[styles.card, styles.servingCard]}
+          testID="food-serving-controls"
+        >
           <View>
             <Text style={styles.smallLabel}>Serving unit</Text>
             <View style={styles.servingTitleRow}>
@@ -145,15 +184,27 @@ export function FoodDetailScreen({
           <MaterialIcons color={palette.green} name="eco" size={22} />
           <Text style={sharedStyles.secondaryText}>Find food alternatives</Text>
         </Pressable>
+        <Text style={styles.disclosure}>Technical details　›</Text>
+        {detailLoadFailed ? (
+          <Text style={styles.detailWarning}>
+            Complete serving details could not be loaded. Showing the serving
+            returned by search.
+          </Text>
+        ) : null}
       </ScrollView>
       <FoodGlucoseSheet
+        client={client}
+        fixtures={fixtures}
         food={food}
         onClose={() => setShowGlucose(false)}
         quantity={quantity}
         serving={`${formatNumber(servingQuantity)} ${servingUnit}`}
+        servingId={serving?.id}
         visible={showGlucose}
       />
       <AlternativesSheet
+        client={client}
+        fixtures={fixtures}
         food={food}
         onClose={() => setShowAlternatives(false)}
         visible={showAlternatives}
@@ -252,12 +303,12 @@ function FullSheet({
           style={[
             styles.sheet,
             {
-              paddingTop: insets.top + 43,
+              paddingTop: insets.top + 51,
               paddingBottom: Math.max(insets.bottom, 12),
             },
           ]}
         >
-          <View style={[styles.sheetHandle, { top: insets.top + 18 }]} />
+          <View style={[styles.sheetHandle, { top: insets.top + 25 }]} />
           <View style={styles.sheetHeader}>
             <Pressable
               accessibilityLabel={`Close ${title}`}
@@ -277,97 +328,183 @@ function FullSheet({
 }
 
 function FoodGlucoseSheet({
+  client,
+  fixtures,
   food,
   onClose,
   quantity,
   serving,
+  servingId,
   visible,
 }: {
+  client: JanuaryClient;
+  fixtures: boolean;
   food: FoodSearchItem;
   onClose: () => void;
   quantity: number;
   serving: string;
+  servingId?: string;
   visible: boolean;
 }) {
+  const [result, setResult] = useState<GlucosePrediction>();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string>();
+
+  async function predict() {
+    if (!servingId) return;
+    setLoading(true);
+    setError(undefined);
+    try {
+      const response = fixtures
+        ? await predictFixtureGlucose(food.barcode === 'fixture-glucose-retry')
+        : await client.glucose.predict({
+            foods: [{ id: food.id, serving: { id: servingId, quantity } }],
+            startTime: new Date().toISOString(),
+            userProfile: {
+              age: 42,
+              height: { unit: 'in', value: 66 },
+              sex: 'female',
+              weight: { unit: 'lb', value: 150 },
+            },
+          });
+      setResult(response);
+    } catch (caught) {
+      setResult(undefined);
+      setError(
+        caught instanceof Error ? caught.message : 'Glucose prediction failed.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!visible) return;
+    predict().catch(() => undefined);
+    // Opening the sheet is the explicit request trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
+  const peak = result
+    ? result.prediction.reduce(
+        (best, point) => (point.value > best.value ? point : best),
+        result.prediction[0] ?? { minutes: 0, value: 0 }
+      )
+    : undefined;
   return (
     <FullSheet onClose={onClose} title="Glucose response" visible={visible}>
       <ScrollView contentContainerStyle={styles.sheetContent}>
-        <Text style={styles.foodName}>{food.name ?? 'Unnamed food'}</Text>
-        <Text style={styles.brand}>{serving}</Text>
-        <View style={styles.impactBanner}>
-          <MaterialIcons color="#F4C63F" name="monitor-heart" size={25} />
-          <Text style={styles.impactTitle}>Medium impact</Text>
-          <Text style={styles.impactCaption}>Estimated impact</Text>
+        <View style={styles.sheetFoodHeading}>
+          <Text style={styles.sheetFoodName}>
+            {food.name ?? 'Unnamed food'}
+          </Text>
+          <Text style={styles.sheetServing}>{serving}</Text>
         </View>
-        <View style={styles.glucoseChart}>
-          <View style={styles.chartHeading}>
-            <Text style={styles.label}>PREDICTED RESPONSE</Text>
-            <Text style={styles.chartUnit}>mg/dL</Text>
-          </View>
-          <Text style={styles.peakCaption}>Likely peak 140 · +60 min</Text>
-          <Svg height={250} viewBox="0 0 360 205" width="100%">
-            <Rect
-              fill={palette.targetBand}
-              height="140"
-              width="360"
-              x="0"
-              y="35"
-            />
-            <Path
-              d="M 18 140 C 110 75, 170 35, 205 35 C 255 50, 300 105, 360 126 L 360 175 L 18 175 Z"
-              fill="rgba(168,95,61,0.12)"
-            />
-            <Path
-              d="M 18 140 C 110 75, 170 35, 205 35 C 255 50, 300 105, 360 126"
-              fill="none"
-              stroke="#B7653F"
-              strokeWidth="4"
-            />
-            <Circle
-              cx="18"
-              cy="140"
-              fill="#F4C63F"
-              r="9"
-              stroke={palette.ink}
-              strokeWidth="3"
-            />
-            <Circle
-              cx="205"
-              cy="35"
-              fill="white"
-              r="8"
-              stroke={palette.ink}
-              strokeWidth="3"
-            />
-          </Svg>
-          <View style={styles.chartAxis}>
-            {[0, 40, 80, 120].map((item) => (
-              <Text key={item} style={styles.smallLabel}>
-                {item}
-              </Text>
-            ))}
-          </View>
-        </View>
-        <View style={styles.glucoseMetrics}>
-          <View style={styles.glucoseMetric}>
-            <Text style={styles.smallLabel}>Peak</Text>
-            <Text style={styles.glucoseMetricValue}>140 mg/dL</Text>
-          </View>
-          <View style={styles.glucoseMetric}>
-            <Text style={styles.smallLabel}>Target minimum</Text>
-            <Text style={styles.glucoseMetricValue}>70 mg/dL</Text>
-          </View>
-          <View style={styles.glucoseMetric}>
-            <Text style={styles.smallLabel}>Target maximum</Text>
-            <Text style={styles.glucoseMetricValue}>140 mg/dL</Text>
-          </View>
-          <View style={styles.glucoseMetric}>
-            <Text style={styles.smallLabel}>Data points</Text>
-            <Text style={styles.glucoseMetricValue}>
-              {Math.max(5, Math.round(quantity * 5))}
+        {loading ? (
+          <View style={styles.sheetLoadingCard} testID="food-glucose-loading">
+            <ActivityIndicator color={palette.green} />
+            <Text style={styles.loadingTitle}>
+              Predicting your glucose response…
+            </Text>
+            <Text style={styles.sheetServing}>
+              This usually takes a few seconds.
             </Text>
           </View>
+        ) : error ? (
+          <SheetError
+            message={error}
+            onRetry={() => predict().catch(() => undefined)}
+            testID="food-glucose-error"
+          />
+        ) : result ? (
+          <>
+            <View style={styles.impactBanner} testID="food-glucose-result">
+              <MaterialIcons color="#F4C63F" name="monitor-heart" size={25} />
+              <Text style={styles.impactTitle}>
+                {impactLabel(result.impact)}
+              </Text>
+              <Text style={styles.impactCaption}>Estimated impact</Text>
+            </View>
+            <View style={styles.glucoseChart}>
+              <View style={styles.chartHeading}>
+                <Text style={styles.label}>PREDICTED RESPONSE</Text>
+                <Text style={styles.chartUnit}>mg/dL</Text>
+              </View>
+              <Text style={styles.peakCaption}>
+                Likely peak {formatNumber(peak?.value ?? 0)} · +
+                {formatNumber(peak?.minutes ?? 0)} min
+              </Text>
+              <Svg height={250} viewBox="0 0 360 205" width="100%">
+                <Rect
+                  fill={palette.targetBand}
+                  height="140"
+                  width="360"
+                  x="0"
+                  y="35"
+                />
+                <Path
+                  d="M 18 140 C 110 75, 170 35, 205 35 C 255 50, 300 105, 360 126 L 360 175 L 18 175 Z"
+                  fill="rgba(168,95,61,0.12)"
+                />
+                <Path
+                  d="M 18 140 C 110 75, 170 35, 205 35 C 255 50, 300 105, 360 126"
+                  fill="none"
+                  stroke="#B7653F"
+                  strokeWidth="4"
+                />
+                <Circle
+                  cx="18"
+                  cy="140"
+                  fill="#F4C63F"
+                  r="9"
+                  stroke={palette.ink}
+                  strokeWidth="3"
+                />
+                <Circle
+                  cx="205"
+                  cy="35"
+                  fill="white"
+                  r="8"
+                  stroke={palette.ink}
+                  strokeWidth="3"
+                />
+              </Svg>
+              <View style={styles.chartAxis}>
+                {[0, 40, 80, 120].map((item) => (
+                  <Text key={item} style={styles.smallLabel}>
+                    {item}
+                  </Text>
+                ))}
+              </View>
+            </View>
+            <View style={styles.glucoseMetrics}>
+              <GlucoseMetric label="Peak" value={peak?.value} />
+              <GlucoseMetric label="Target minimum" value={result.chart.min} />
+              <GlucoseMetric label="Target maximum" value={result.chart.max} />
+              <GlucoseMetric
+                label="Data points"
+                value={result.prediction.length}
+                withUnit={false}
+              />
+            </View>
+          </>
+        ) : null}
+        <View style={styles.card}>
+          <View style={styles.profileHeading}>
+            <MaterialCommunityIcons
+              color={palette.ink}
+              name="account-circle-outline"
+              size={24}
+            />
+            <Text style={styles.loadingTitle}>Demo profile</Text>
+          </View>
+          <Text style={styles.sheetServing}>
+            42 years · Female · 66 in · 150 lb · No reported condition
+          </Text>
         </View>
+        <Text style={styles.disclaimer}>
+          This is an estimate for demonstration purposes, not medical advice.
+        </Text>
       </ScrollView>
     </FullSheet>
   );
@@ -405,22 +542,63 @@ const preferences = [
 ];
 
 function AlternativesSheet({
+  client,
+  fixtures,
   food,
   onClose,
   visible,
 }: {
+  client: JanuaryClient;
+  fixtures: boolean;
   food: FoodSearchItem;
   onClose: () => void;
   visible: boolean;
 }) {
   const [selected, setSelected] = useState<string[]>([]);
-  const [showResults, setShowResults] = useState(false);
+  const [results, setResults] = useState<DetectedFood[]>();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string>();
+  useEffect(() => {
+    if (visible) return;
+    setSelected([]);
+    setResults(undefined);
+    setLoading(false);
+    setError(undefined);
+  }, [visible]);
   function toggle(value: string) {
     setSelected((values) =>
       values.includes(value)
         ? values.filter((item) => item !== value)
         : [...values, value]
     );
+  }
+  async function load() {
+    setLoading(true);
+    setError(undefined);
+    try {
+      const dietRestrictions = selected
+        .filter((item) => restrictions.includes(item))
+        .map(toDietValue) as DietRestriction[];
+      const dietPreferences = selected
+        .filter((item) => preferences.includes(item))
+        .map(toDietValue) as DietPreference[];
+      const response = fixtures
+        ? await suggestFixtureAlternatives(food.id, food.barcode)
+        : await client.foods.suggestAlternatives({
+            foodId: food.id,
+            dietRestrictions,
+            dietPreferences,
+          });
+      setResults(response.alternatives);
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : 'Alternatives request failed.'
+      );
+    } finally {
+      setLoading(false);
+    }
   }
   return (
     <FullSheet onClose={onClose} title="Food alternatives" visible={visible}>
@@ -432,7 +610,9 @@ function AlternativesSheet({
               Personalized suggestions
             </Text>
           </View>
-          <Text style={styles.foodName}>{food.name ?? 'Unnamed food'}</Text>
+          <Text style={styles.alternativeFoodName}>
+            {food.name ?? 'Unnamed food'}
+          </Text>
           <Text style={styles.introCopy}>
             Choose any dietary needs that should shape January’s
             recommendations.
@@ -451,29 +631,144 @@ function AlternativesSheet({
           title="DIETARY PREFERENCES"
         />
         <Pressable
-          onPress={() => setShowResults(true)}
-          style={sharedStyles.primaryButton}
+          disabled={loading}
+          onPress={() => load().catch(() => undefined)}
+          style={[sharedStyles.primaryButton, loading && sharedStyles.disabled]}
           testID="alternatives-refresh"
         >
-          <MaterialIcons color={palette.paper} name="eco" size={22} />
-          <Text style={sharedStyles.primaryText}>
-            {showResults ? 'Refresh alternatives' : 'Find alternatives'}
-          </Text>
-        </Pressable>
-        {showResults ? (
-          <View style={styles.alternativeResults}>
-            <Text style={styles.label}>SUGGESTIONS · 1</Text>
-            <View style={styles.card}>
-              <Text style={styles.cardHeading}>Steel-cut oats</Text>
-              <Text style={styles.brand}>
-                A similar whole-grain option matched to your preferences.
-              </Text>
+          {loading ? (
+            <View style={styles.loadingButton} testID="alternatives-loading">
+              <ActivityIndicator color={palette.paper} />
+              <Text style={sharedStyles.primaryText}>Finding alternatives</Text>
             </View>
+          ) : (
+            <>
+              <MaterialIcons color={palette.paper} name="eco" size={22} />
+              <Text style={sharedStyles.primaryText}>
+                {results ? 'Refresh alternatives' : 'Find alternatives'}
+              </Text>
+            </>
+          )}
+        </Pressable>
+        {error ? (
+          <SheetError
+            message={error}
+            onRetry={() => load().catch(() => undefined)}
+            testID="alternatives-error"
+          />
+        ) : results?.length === 0 ? (
+          <View style={styles.emptyAlternative} testID="alternatives-empty">
+            <MaterialIcons color={palette.green} name="eco" size={25} />
+            <Text style={styles.cardHeading}>No suitable alternatives</Text>
+            <Text style={styles.introCopy}>
+              No foods matched every selected dietary need.
+            </Text>
+          </View>
+        ) : results ? (
+          <View style={styles.alternativeResults} testID="alternatives-results">
+            <Text style={styles.label}>SUGGESTIONS · {results.length}</Text>
+            {results.map((alternative, index) => (
+              <View
+                key={alternative.id ?? `${alternative.name}-${index}`}
+                style={styles.alternativeCard}
+              >
+                <View style={styles.alternativeImage}>
+                  <MaterialCommunityIcons
+                    color={palette.green}
+                    name="silverware-fork-knife"
+                    size={22}
+                  />
+                </View>
+                <View style={styles.alternativeCopy}>
+                  <Text style={styles.alternativeTitle}>
+                    {alternative.name ?? 'Unnamed food'}
+                  </Text>
+                  {alternative.brandName ? (
+                    <Text style={styles.brand}>{alternative.brandName}</Text>
+                  ) : null}
+                  <Text style={styles.alternativeMeta}>
+                    {alternative.nutrients.calories?.value ?? '—'} cal　P{' '}
+                    {alternative.nutrients.protein?.value ?? '—'}g　C{' '}
+                    {alternative.nutrients.carbohydrates?.value ?? '—'}g　F{' '}
+                    {alternative.nutrients.totalFat?.value ?? '—'}g
+                  </Text>
+                </View>
+                <MaterialIcons
+                  color={palette.subdued}
+                  name="chevron-right"
+                  size={22}
+                />
+              </View>
+            ))}
           </View>
         ) : null}
       </ScrollView>
     </FullSheet>
   );
+}
+
+function SheetError({
+  message,
+  onRetry,
+  testID,
+}: {
+  message: string;
+  onRetry: () => void;
+  testID: string;
+}) {
+  return (
+    <View style={styles.sheetError} testID={testID}>
+      <View style={styles.errorHeading}>
+        <MaterialIcons
+          color={palette.rustText}
+          name="error-outline"
+          size={22}
+        />
+        <Text style={styles.errorTitle}>
+          January couldn’t complete the request
+        </Text>
+      </View>
+      <Text style={styles.errorBody}>{message}</Text>
+      <Text style={styles.disclosure}>Technical details　›</Text>
+      <Pressable
+        onPress={onRetry}
+        style={styles.retryButton}
+        testID={`${testID}-retry`}
+      >
+        <Text style={styles.retryText}>Try again</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function GlucoseMetric({
+  label,
+  value,
+  withUnit = true,
+}: {
+  label: string;
+  value?: number;
+  withUnit?: boolean;
+}) {
+  return (
+    <View style={styles.glucoseMetric}>
+      <Text style={styles.smallLabel}>{label}</Text>
+      <Text style={styles.glucoseMetricValue}>
+        {value == null ? '—' : formatNumber(value)}
+        {withUnit ? ' mg/dL' : ''}
+      </Text>
+    </View>
+  );
+}
+
+function impactLabel(impact?: string): string {
+  if (!impact) return 'Unknown impact';
+  const normalized = impact.replace(/_/g, ' ').replace(/ impact$/i, '');
+  return `${normalized.charAt(0).toUpperCase()}${normalized.slice(1)} impact`;
+}
+
+function toDietValue(value: string): string {
+  return value.toLowerCase().replace(/ /g, '_');
 }
 
 function ChoiceSection({
@@ -555,9 +850,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(29,26,20,0.06)',
     borderRadius: 24,
-    gap: 18,
+    gap: 6,
     backgroundColor: palette.surface,
   },
+  servingCard: { gap: 12 },
   smallLabel: {
     color: palette.muted,
     fontSize: 13,
@@ -580,11 +876,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  quantityLabel: { color: palette.ink, fontSize: 17 },
+  quantityLabel: { color: palette.ink, fontSize: 15, lineHeight: 20 },
   stepper: {
-    height: 54,
-    paddingHorizontal: 6,
-    borderRadius: 14,
+    height: 48,
+    borderRadius: 9,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: palette.control,
@@ -731,11 +1026,71 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
   },
+  sheetLoadingCard: {
+    minHeight: 220,
+    padding: 22,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 14,
+    backgroundColor: palette.surface,
+  },
+  loadingTitle: { color: palette.ink, fontSize: 17, fontWeight: '600' },
+  sheetFoodHeading: { gap: 6 },
+  sheetFoodName: {
+    color: palette.ink,
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: '600',
+  },
+  sheetServing: { color: palette.muted, fontSize: 15, lineHeight: 20 },
+  loadingButton: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  profileHeading: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  disclaimer: { color: palette.muted, fontSize: 13, lineHeight: 18 },
+  disclosure: {
+    minHeight: 48,
+    color: palette.body,
+    fontSize: 13,
+    lineHeight: 20,
+    textAlignVertical: 'center',
+  },
+  detailWarning: { color: palette.muted, fontSize: 13, lineHeight: 18 },
+  sheetError: {
+    padding: 20,
+    borderRadius: 18,
+    gap: 12,
+    backgroundColor: palette.rustBackground,
+  },
+  errorHeading: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  errorTitle: {
+    flex: 1,
+    color: palette.rustText,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  errorBody: { color: palette.rustText, fontSize: 14, lineHeight: 20 },
+  retryButton: {
+    minHeight: 38,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(140,74,47,0.35)',
+    borderRadius: 14,
+    alignSelf: 'flex-start',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  retryText: { color: palette.rustText, fontSize: 14, fontWeight: '700' },
   suggestionIntro: {
     padding: 22,
     borderRadius: 24,
     gap: 10,
     backgroundColor: palette.surface,
+  },
+  alternativeFoodName: {
+    color: palette.ink,
+    fontFamily: serifFont,
+    fontSize: 28,
+    lineHeight: 34,
   },
   personalized: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   personalizedText: { color: palette.green, fontSize: 15, fontWeight: '700' },
@@ -762,4 +1117,42 @@ const styles = StyleSheet.create({
   },
   choiceTextSelected: { color: palette.paper },
   alternativeResults: { gap: 12 },
+  emptyAlternative: {
+    minHeight: 164,
+    padding: 22,
+    borderWidth: 1.5,
+    borderColor: palette.border,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: palette.surface,
+  },
+  alternativeCard: {
+    minHeight: 102,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(29,26,20,0.06)',
+    borderRadius: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: palette.surface,
+  },
+  alternativeImage: {
+    width: 58,
+    height: 58,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.control,
+  },
+  alternativeCopy: { flex: 1, gap: 4 },
+  alternativeTitle: { color: palette.ink, fontSize: 17, fontWeight: '600' },
+  alternativeMeta: {
+    color: palette.muted,
+    fontFamily: 'monospace',
+    fontSize: 11,
+    lineHeight: 16,
+  },
 });

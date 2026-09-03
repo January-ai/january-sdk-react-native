@@ -24,11 +24,18 @@ import {
   JanuaryClient,
   getNativeModuleVersion,
   type FoodCategoryValue,
+  type FoodScan,
   type FoodSearchItem,
+  type FoodSuggestion,
   type JanuaryClientToken,
 } from '@januaryai/react-native';
 
-import { searchFixtureFoods } from './e2eFixtures';
+import {
+  analyzeFixtureDescription,
+  autocompleteFixtureFoods,
+  lookupFixtureBarcode,
+  searchFixtureFoods,
+} from './e2eFixtures';
 import { FoodDetailScreen } from './FoodDetailScreen';
 import { FoodLogsScreen } from './FoodLogsScreen';
 import { GlucoseScreen } from './GlucoseScreen';
@@ -76,7 +83,7 @@ function DemoScreen() {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<FoodCategoryValue>();
   const [results, setResults] = useState<FoodSearchItem[]>([]);
-  const [error, setError] = useState<string>();
+  const [error, setError] = useState<SearchError>();
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -88,6 +95,8 @@ function DemoScreen() {
     'name'
   );
   const [selectedFood, setSelectedFood] = useState<FoodSearchItem>();
+  const [suggestions, setSuggestions] = useState<FoodSuggestion[]>([]);
+  const [naturalResult, setNaturalResult] = useState<FoodScan>();
   const nativeVersion = getNativeModuleVersion();
 
   const client = useMemo(
@@ -110,31 +119,87 @@ function DemoScreen() {
 
   useEffect(() => () => client.dispose(), [client]);
 
-  const search = useCallback(async () => {
+  const search = useCallback(
+    async (forcedQuery?: string) => {
+      const value = (forcedQuery ?? query).trim();
+      if (!value) return;
+      Keyboard.dismiss();
+      setIsSearching(true);
+      setHasSearched(true);
+      setError(undefined);
+      setSuggestions([]);
+      setNaturalResult(undefined);
+      try {
+        if (foodMode === 'description') {
+          const response = e2eFixturesEnabled
+            ? await analyzeFixtureDescription(value)
+            : await client.foodAnalysis.analyzeDescription({ query: value });
+          setResults([]);
+          setNaturalResult(response);
+        } else {
+          const response = e2eFixturesEnabled
+            ? foodMode === 'barcode'
+              ? await lookupFixtureBarcode(value)
+              : await searchFixtureFoods(value, category)
+            : foodMode === 'barcode'
+              ? await client.foods.lookupBarcode({ upc: value })
+              : await client.foods.search({
+                  query: value,
+                  category,
+                  limit: 10,
+                });
+          setResults(response.items);
+        }
+      } catch (caught) {
+        setResults([]);
+        setError(searchError(caught));
+      } finally {
+        setIsSearching(false);
+      }
+    },
+    [category, client, foodMode, query]
+  );
+
+  useEffect(() => {
     const value = query.trim();
-    if (!value) return;
-    Keyboard.dismiss();
-    setIsSearching(true);
-    setHasSearched(true);
-    setError(undefined);
-    try {
-      const response = e2eFixturesEnabled
-        ? await searchFixtureFoods(value, category)
-        : await client.foods.search({
-            query: value,
-            category,
-            limit: 10,
-          });
-      setResults(response.items);
-    } catch (caught) {
-      setResults([]);
-      setError(
-        caught instanceof Error ? caught.message : 'Food search failed.'
-      );
-    } finally {
-      setIsSearching(false);
+    const autocompleteCategory =
+      category === FoodCategory.generic
+        ? 'generic'
+        : category === FoodCategory.branded
+          ? 'branded'
+          : undefined;
+    if (
+      foodMode !== 'name' ||
+      category === FoodCategory.recipe ||
+      value.length < 2 ||
+      value.length > 64 ||
+      hasSearched
+    ) {
+      setSuggestions([]);
+      return;
     }
-  }, [category, client, query]);
+    let active = true;
+    const timer = setTimeout(() => {
+      const request = e2eFixturesEnabled
+        ? autocompleteFixtureFoods(value)
+        : client.foods.autocomplete({
+            query: value,
+            category: autocompleteCategory,
+            limit: 8,
+          });
+      request
+        .then((response) => {
+          if (active) setSuggestions(response.items);
+        })
+        .catch(() => {
+          if (active) setSuggestions([]);
+        });
+    }, 300);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [category, client, foodMode, hasSearched, query]);
 
   const configured = Boolean(
     e2eFixturesEnabled || developmentApiKey || tokenEndpoint
@@ -151,7 +216,9 @@ function DemoScreen() {
 
       {activeTab === 'search' && selectedFood ? (
         <FoodDetailScreen
+          client={client}
           food={selectedFood}
+          fixtures={e2eFixturesEnabled}
           onBack={() => setSelectedFood(undefined)}
         />
       ) : activeTab === 'search' && searchScope === 'restaurants' ? (
@@ -203,12 +270,15 @@ function DemoScreen() {
                 setQuery(value);
                 setHasSearched(false);
                 setResults([]);
+                setNaturalResult(undefined);
                 setError(undefined);
               }}
               onClear={() => {
                 setQuery('');
                 setHasSearched(false);
                 setResults([]);
+                setNaturalResult(undefined);
+                setSuggestions([]);
                 setError(undefined);
               }}
               onSubmit={() => {
@@ -226,6 +296,19 @@ function DemoScreen() {
               value={query}
             />
 
+            {suggestions.length ? (
+              <SuggestionList
+                items={suggestions}
+                onSelect={(suggestion) => {
+                  const name = suggestion.name;
+                  if (!name) return;
+                  setQuery(name);
+                  setSuggestions([]);
+                  search(name).catch(() => undefined);
+                }}
+              />
+            ) : null}
+
             <SearchSegmentedControl
               items={[
                 { id: 'foods', label: 'Foods' },
@@ -234,6 +317,7 @@ function DemoScreen() {
               onSelect={(value) => {
                 setSearchScope(value as 'foods' | 'restaurants');
                 setResults([]);
+                setNaturalResult(undefined);
                 setHasSearched(false);
               }}
               selected={searchScope}
@@ -250,6 +334,8 @@ function DemoScreen() {
                 onSelect={(value) => {
                   setFoodMode(value as 'name' | 'description' | 'barcode');
                   setResults([]);
+                  setNaturalResult(undefined);
+                  setSuggestions([]);
                   setHasSearched(false);
                 }}
                 selected={foodMode}
@@ -291,6 +377,25 @@ function DemoScreen() {
                   selected={category === FoodCategory.recipe}
                 />
               </View>
+            ) : null}
+
+            {foodMode === 'barcode' ? (
+              <Pressable
+                onPress={() => undefined}
+                style={styles.barcodeButton}
+                testID="scan-barcode-button"
+              >
+                <MaterialIcons
+                  color={palette.ink}
+                  name="qr-code-scanner"
+                  size={22}
+                />
+                <Text style={styles.barcodeButtonText}>Scan barcode</Text>
+              </Pressable>
+            ) : foodMode === 'description' ? (
+              <Text style={styles.modeHint}>
+                Try “a bowl of oatmeal with honey and a banana.”
+              </Text>
             ) : null}
 
             {!query.trim() ? (
@@ -343,6 +448,8 @@ function DemoScreen() {
 
             {results.length > 0 ? (
               <ResultsList items={results} onSelect={setSelectedFood} />
+            ) : naturalResult ? (
+              <NaturalLanguageResult result={naturalResult} />
             ) : hasSearched && !isSearching && !error ? (
               <EmptyResults />
             ) : null}
@@ -662,36 +769,119 @@ function ErrorNotice({
   message,
   onRetry,
 }: {
-  message: string;
+  message: SearchError;
   onRetry: () => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
   return (
     <View
       accessibilityRole="alert"
       style={styles.errorNotice}
       testID="search-error"
     >
-      <MaterialCommunityIcons
-        color={palette.rustText}
-        name="alert-circle-outline"
-        size={22}
-      />
-      <View style={styles.promptCopy}>
-        <Text style={styles.errorTitle}>
-          January couldn’t complete the request
-        </Text>
-        <Text style={styles.errorText}>{message}</Text>
-        <Pressable
-          accessibilityRole="button"
-          onPress={onRetry}
-          style={styles.errorRetry}
-          testID="search-retry"
-        >
-          <Text style={styles.errorRetryText}>Try again</Text>
-        </Pressable>
+      <View style={styles.errorHeading}>
+        <MaterialCommunityIcons
+          color={palette.rustText}
+          name="alert-circle-outline"
+          size={22}
+        />
+        <Text style={styles.errorTitle}>{message.title}</Text>
       </View>
+      <Text style={styles.errorText}>{message.message}</Text>
+      {message.status ? (
+        <>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setExpanded((value) => !value)}
+            style={styles.errorDisclosure}
+            testID="search-error-details"
+          >
+            <Text style={styles.errorDisclosureText}>Technical details</Text>
+            <MaterialIcons
+              color={palette.muted}
+              name={expanded ? 'expand-more' : 'chevron-right'}
+              size={20}
+            />
+          </Pressable>
+          {expanded ? (
+            <View
+              style={styles.errorDetails}
+              testID="search-error-details-body"
+            >
+              <Text style={styles.errorDetailLabel}>HTTP status</Text>
+              <Text style={styles.errorDetailValue}>{message.status}</Text>
+              <Text style={styles.errorDetailLabel}>Error code</Text>
+              <Text style={styles.errorDetailValue}>{message.code}</Text>
+              {message.requestId ? (
+                <>
+                  <Text style={styles.errorDetailLabel}>Request ID</Text>
+                  <Text style={styles.errorDetailValue}>
+                    {message.requestId}
+                  </Text>
+                </>
+              ) : null}
+            </View>
+          ) : null}
+        </>
+      ) : null}
+      <Pressable
+        accessibilityRole="button"
+        onPress={onRetry}
+        style={styles.errorRetry}
+        testID="search-retry"
+      >
+        <Text style={styles.errorRetryText}>Try again</Text>
+      </Pressable>
     </View>
   );
+}
+
+interface SearchError {
+  code?: string;
+  message: string;
+  requestId?: string;
+  status?: number;
+  title: string;
+}
+
+function searchError(caught: unknown): SearchError {
+  const code =
+    typeof caught === 'object' && caught !== null && 'code' in caught
+      ? String(caught.code).toLowerCase()
+      : '';
+  const message =
+    caught instanceof Error ? caught.message : 'Food search failed.';
+  const statusValue =
+    typeof caught === 'object' && caught !== null && 'status' in caught
+      ? Number(caught.status)
+      : undefined;
+  const requestId =
+    typeof caught === 'object' && caught !== null && 'requestId' in caught
+      ? String(caught.requestId)
+      : undefined;
+  const title =
+    code === 'authentication' || code === 'authorization'
+      ? 'Couldn’t use the configured credentials'
+      : code === 'validation'
+        ? 'Check the information you entered'
+        : code === 'not_found'
+          ? 'No matching result was found'
+          : code === 'rate_limited'
+            ? 'Too many requests'
+            : code === 'timeout'
+              ? 'The request took too long'
+              : code === 'transport'
+                ? 'Check your connection'
+                : code === 'server' || code === 'decoding'
+                  ? 'January couldn’t complete the request'
+                  : 'Couldn’t complete that request';
+  return {
+    code: code || undefined,
+    message,
+    requestId,
+    status: Number.isFinite(statusValue) ? statusValue : undefined,
+    title,
+  };
 }
 
 function EmptyResults() {
@@ -710,6 +900,100 @@ function EmptyResults() {
           Try another name or broaden the selected food category.
         </Text>
       </View>
+    </View>
+  );
+}
+
+function SuggestionList({
+  items,
+  onSelect,
+}: {
+  items: FoodSuggestion[];
+  onSelect: (item: FoodSuggestion) => void;
+}) {
+  return (
+    <View style={styles.resultsCard} testID="autocomplete-suggestions">
+      {items.map((item, index) => (
+        <View key={item.id}>
+          <Pressable
+            onPress={() => onSelect(item)}
+            style={styles.suggestionRow}
+            testID={`autocomplete-result-${index}`}
+          >
+            <MaterialCommunityIcons
+              color={palette.green}
+              name="magnify"
+              size={20}
+            />
+            <View style={styles.foodCopy}>
+              <Text style={styles.foodName}>{item.name ?? 'Unnamed food'}</Text>
+              {item.brandName ? (
+                <Text style={styles.foodBrand}>{item.brandName}</Text>
+              ) : null}
+            </View>
+            <MaterialIcons
+              color={palette.subdued}
+              name="north-west"
+              size={18}
+            />
+          </Pressable>
+          {index < items.length - 1 ? <View style={styles.divider} /> : null}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function NaturalLanguageResult({ result }: { result: FoodScan }) {
+  return (
+    <View style={styles.naturalResults} testID="description-results">
+      <Text style={styles.naturalHeading}>Meal nutrition</Text>
+      <NaturalMacroCard nutrients={result.totalNutrients} />
+      {result.detections.map((detection, index) => (
+        <View
+          key={`${detection.food.id ?? 'food'}-${index}`}
+          style={styles.naturalCard}
+        >
+          <Text style={styles.foodName}>
+            {detection.food.name ?? 'Unnamed food'}
+          </Text>
+          {detection.food.brandName ? (
+            <Text style={styles.foodBrand}>{detection.food.brandName}</Text>
+          ) : null}
+          <NaturalMacroCard compact nutrients={detection.food.nutrients} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function NaturalMacroCard({
+  compact = false,
+  nutrients,
+}: {
+  compact?: boolean;
+  nutrients: FoodScan['totalNutrients'];
+}) {
+  const values = [
+    ['Calories', nutrients.calories?.value, 'cal'],
+    ['Protein', nutrients.protein?.value, 'g'],
+    ['Carbs', nutrients.carbohydrates?.value, 'g'],
+    ['Fat', nutrients.totalFat?.value, 'g'],
+  ] as const;
+  return (
+    <View
+      style={[styles.naturalMacroCard, compact && styles.naturalMacroEmbedded]}
+    >
+      {values.map(([label, value, unit]) => (
+        <View key={label} style={styles.naturalMacroCell}>
+          <Text style={styles.naturalMacroLabel}>{label}</Text>
+          <Text style={styles.naturalMacroValue}>
+            {value == null ? '—' : formatNumber(value)}{' '}
+            <Text style={styles.naturalMacroUnit}>{unit}</Text>
+          </Text>
+        </View>
+      ))}
+      <View style={styles.naturalMacroDivider} />
     </View>
   );
 }
@@ -1165,6 +1449,19 @@ const styles = StyleSheet.create({
   chipSelected: { borderColor: palette.ink, backgroundColor: palette.ink },
   chipText: { color: palette.body, fontSize: 15, fontWeight: '600' },
   chipTextSelected: { color: palette.paper },
+  barcodeButton: {
+    minHeight: 54,
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: palette.surface,
+  },
+  barcodeButtonText: { color: palette.ink, fontSize: 16, fontWeight: '600' },
+  modeHint: { color: palette.muted, fontSize: 15, lineHeight: 21 },
   promptCard: {
     minHeight: 184,
     padding: 22,
@@ -1228,27 +1525,43 @@ const styles = StyleSheet.create({
   },
   configurationBody: { color: palette.goldText, fontSize: 14, lineHeight: 20 },
   errorNotice: {
-    padding: 20,
-    borderRadius: 18,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    backgroundColor: palette.rustBackground,
-  },
-  errorTitle: { color: palette.rustText, fontSize: 17, fontWeight: '600' },
-  errorText: { color: palette.rustText, fontSize: 14, lineHeight: 20 },
-  errorRetry: {
-    minHeight: 38,
-    marginTop: 10,
-    paddingHorizontal: 16,
+    padding: 22,
     borderWidth: 1,
-    borderColor: 'rgba(140,74,47,0.35)',
-    borderRadius: 14,
+    borderColor: 'rgba(29,26,20,0.06)',
+    borderRadius: 24,
+    gap: 10,
+    backgroundColor: palette.surface,
+  },
+  errorHeading: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  errorTitle: { color: palette.rustText, fontSize: 17, fontWeight: '600' },
+  errorText: { color: palette.body, fontSize: 16, lineHeight: 24 },
+  errorDisclosure: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  errorDisclosureText: { flex: 1, color: palette.body, fontSize: 14 },
+  errorDetails: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    rowGap: 8,
+  },
+  errorDetailLabel: { width: '50%', color: palette.muted, fontSize: 13 },
+  errorDetailValue: {
+    width: '50%',
+    color: palette.ink,
+    fontFamily: 'monospace',
+    fontSize: 13,
+    textAlign: 'right',
+  },
+  errorRetry: {
+    minHeight: 48,
+    paddingHorizontal: 12,
     alignSelf: 'flex-start',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  errorRetryText: { color: palette.rustText, fontSize: 14, fontWeight: '700' },
+  errorRetryText: { color: palette.ink, fontSize: 17, fontWeight: '600' },
   resultsSection: { gap: 10 },
   resultsHeading: {
     flexDirection: 'row',
@@ -1269,6 +1582,70 @@ const styles = StyleSheet.create({
     fontFamily: Platform.select({ android: 'monospace', ios: 'Menlo' }),
     fontSize: 14,
     fontWeight: '600',
+  },
+  suggestionRow: {
+    minHeight: 68,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  naturalResults: { gap: 18 },
+  naturalHeading: {
+    color: palette.ink,
+    fontFamily: serifFont,
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: '600',
+  },
+  naturalCard: {
+    padding: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(29, 26, 20, 0.06)',
+    borderRadius: 24,
+    gap: 7,
+    backgroundColor: palette.surface,
+  },
+  naturalMacroCard: {
+    position: 'relative',
+    padding: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(29, 26, 20, 0.06)',
+    borderRadius: 24,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    backgroundColor: palette.surface,
+  },
+  naturalMacroEmbedded: {
+    marginTop: 8,
+    paddingHorizontal: 0,
+    paddingBottom: 0,
+    borderWidth: 0,
+  },
+  naturalMacroCell: { width: '50%', minHeight: 78, gap: 6 },
+  naturalMacroLabel: {
+    color: palette.muted,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  naturalMacroValue: {
+    color: palette.ink,
+    fontFamily: 'monospace',
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: '600',
+  },
+  naturalMacroUnit: { color: palette.muted, fontSize: 15, fontWeight: '400' },
+  naturalMacroDivider: {
+    position: 'absolute',
+    top: '50%',
+    left: 22,
+    right: 22,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: palette.divider,
   },
   resultsCard: {
     paddingHorizontal: 22,

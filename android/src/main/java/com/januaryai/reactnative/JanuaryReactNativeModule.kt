@@ -7,11 +7,23 @@ import ai.january.partner.JanuaryPartnerClient
 import ai.january.partner.JanuaryPartnerUserClient
 import ai.january.partner.JanuaryTokenProvider
 import ai.january.partner.JanuaryTokenProviderException
+import ai.january.partner.FoodId
 import ai.january.partner.PartnerUserId
+import ai.january.partner.foods.AutocompleteFoodCategory
+import ai.january.partner.foods.AutocompleteFoodsRequest
+import ai.january.partner.foods.AutocompleteFoodsResponse
+import ai.january.partner.foods.DietPreference
+import ai.january.partner.foods.DietRestriction
 import ai.january.partner.foods.FoodCategory
+import ai.january.partner.foods.FoodSuggestion
 import ai.january.partner.foods.FoodSearchItem
 import ai.january.partner.foods.FoodSearchResults
+import ai.january.partner.foods.GetFoodRequest
+import ai.january.partner.foods.LookupFoodByBarcodeRequest
 import ai.january.partner.foods.SearchFoodsRequest
+import ai.january.partner.foods.SearchFoodsByNaturalLanguageRequest
+import ai.january.partner.foods.SuggestFoodAlternativesRequest
+import ai.january.partner.foods.SuggestFoodAlternativesResponse
 import ai.january.partner.foodlogs.FoodLog
 import ai.january.partner.foodlogs.ListFoodLogsResponse
 import ai.january.partner.foods.DetectedFood
@@ -164,6 +176,65 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
   override fun foodAnalysisAnalyzePhoto(clientId: String, image: String, promise: Promise) {
     withClient(clientId, promise) { client ->
       client.foodAnalysis.analyzePhoto(ScanFoodPhotoRequest(image)).toJsonObject()
+    }
+  }
+
+  override fun foodsAutocomplete(
+    clientId: String,
+    query: String,
+    category: String?,
+    limit: Double,
+    promise: Promise,
+  ) {
+    withClient(clientId, promise) { client ->
+      val parsedCategory = category?.let { AutocompleteFoodCategory.valueOf(it.uppercase()) }
+      client.foods.autocomplete(
+        AutocompleteFoodsRequest(query, parsedCategory, limit.toInt()),
+      ).toJsonObject()
+    }
+  }
+
+  override fun foodsGet(clientId: String, foodId: String, promise: Promise) {
+    withClient(clientId, promise) { client ->
+      client.foods.get(GetFoodRequest(FoodId(foodId))).toJsonObject()
+    }
+  }
+
+  override fun foodsLookupBarcode(clientId: String, upc: String, promise: Promise) {
+    withClient(clientId, promise) { client ->
+      client.foods.lookupBarcode(LookupFoodByBarcodeRequest(upc)).toJsonObject()
+    }
+  }
+
+  override fun foodsSuggestAlternatives(
+    clientId: String,
+    foodId: String,
+    dietRestrictionsJson: String,
+    dietPreferencesJson: String,
+    promise: Promise,
+  ) {
+    withClient(clientId, promise) { client ->
+      val restrictions = JSONArray(dietRestrictionsJson).strings().map { value ->
+        DietRestriction.entries.first { it.value == value }
+      }
+      val preferences = JSONArray(dietPreferencesJson).strings().map { value ->
+        DietPreference.entries.first { it.value == value }
+      }
+      client.foods.suggestAlternatives(
+        SuggestFoodAlternativesRequest(foodId, restrictions, preferences),
+      ).toJsonObject()
+    }
+  }
+
+  override fun foodAnalysisAnalyzeDescription(
+    clientId: String,
+    query: String,
+    promise: Promise,
+  ) {
+    withClient(clientId, promise) { client ->
+      client.foodAnalysis.analyzeDescription(
+        SearchFoodsByNaturalLanguageRequest(query),
+      ).toJsonObject()
     }
   }
 
@@ -324,6 +395,32 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
   private fun FoodSearchResults.toJsonObject(): JSONObject = JSONObject()
     .put("totalCount", totalCount)
     .put("items", JSONArray(items.map { it.toJsonObject() }))
+
+  private fun AutocompleteFoodsResponse.toJsonObject(): JSONObject = JSONObject()
+    .put("items", JSONArray(items.map { it.toJsonObject() }))
+
+  private fun FoodSuggestion.toJsonObject(): JSONObject = JSONObject()
+    .put("id", id.value)
+    .putNullable("name", name)
+    .putNullable("brandName", brandName)
+    .putNullable("imageURL", imageUrl)
+    .putNullable("nutrients", nutrients?.toJsonObject())
+
+  private fun SuggestFoodAlternativesResponse.toJsonObject(): JSONObject = JSONObject()
+    .put("alternatives", JSONArray(alternatives.map { it.toJsonObject() }))
+
+  private fun DetectedFood.toJsonObject(): JSONObject = JSONObject()
+    .putNullable("id", id)
+    .putNullable("name", name)
+    .putNullable("brandName", brandName)
+    .put("nutrients", nutrients.toJsonObject())
+    .put("servings", JSONArray(servings.orEmpty().map { serving ->
+      JSONObject()
+        .putNullable("id", serving.id)
+        .putNullable("quantity", serving.quantity)
+        .putNullable("unit", serving.unit)
+        .putNullable("selectedQuantity", serving.selectedQuantity)
+    }))
 
   private fun FoodSearchItem.toJsonObject(): JSONObject = JSONObject()
     .put("id", id.value)
@@ -613,6 +710,9 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
 
   private fun JSONObject.putNullable(key: String, value: Any?): JSONObject =
     put(key, value ?: JSONObject.NULL)
+
+  private fun JSONArray.strings(): List<String> =
+    (0 until length()).map(::getString)
 
   companion object {
     const val NAME = NativeJanuaryReactNativeSpec.NAME

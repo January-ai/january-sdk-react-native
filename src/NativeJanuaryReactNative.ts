@@ -40,6 +40,20 @@ export interface Spec extends TurboModule {
     category: string | null,
     limit: number
   ): Promise<string>;
+  foodsAutocomplete(
+    clientId: string,
+    query: string,
+    category: string | null,
+    limit: number
+  ): Promise<string>;
+  foodsGet(clientId: string, foodId: string): Promise<string>;
+  foodsLookupBarcode(clientId: string, upc: string): Promise<string>;
+  foodsSuggestAlternatives(
+    clientId: string,
+    foodId: string,
+    dietRestrictionsJson: string,
+    dietPreferencesJson: string
+  ): Promise<string>;
   restaurantsSearch(
     clientId: string,
     query: string,
@@ -63,6 +77,10 @@ export interface Spec extends TurboModule {
     offset: number
   ): Promise<string>;
   foodAnalysisAnalyzePhoto(clientId: string, image: string): Promise<string>;
+  foodAnalysisAnalyzeDescription(
+    clientId: string,
+    query: string
+  ): Promise<string>;
   foodAnalysisCorrect(
     clientId: string,
     analysisJson: string,

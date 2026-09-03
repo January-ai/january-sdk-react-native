@@ -167,3 +167,21 @@ Adjust meal and Start over actions.
 4. Scan, camera/barcode scanner, result, and correction.
 5. Food Logs list, editor, detail, and deletion.
 6. Setup, settings, app shell, and final cross-screen regression.
+
+## Current React Native evidence
+
+The food-discovery checkpoint is exercised on the Pixel 10a reference viewport
+by the following deterministic flows:
+
+- `18-search-food-parity.yaml`: search, food detail, nutrition, food glucose,
+  and alternatives main states.
+- `22-search-modes-parity.yaml`: name autocomplete, description analysis, and
+  manual barcode lookup.
+- `23-food-detail-recovery.yaml`: glucose and alternatives error/retry paths.
+- `24-alternatives-empty.yaml`: no-suitable-alternatives state.
+- `25-search-http-errors.yaml`: categorized 401, 403, 404, 422, 429, and 504
+  states, including technical-details disclosure.
+
+These flows provide implementation and screenshot evidence; their inventory
+rows remain `Partial` until the final image-diff gate is met. Native camera
+barcode scanning and food-detail serving-menu interaction remain outstanding.
