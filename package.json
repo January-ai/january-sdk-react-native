@@ -168,5 +168,9 @@
       "release-it"
     ],
     "version": "0.63.0"
+  },
+  "resolutions": {
+    "expo-modules-jsi@npm:~57.0.7": "patch:expo-modules-jsi@npm%3A57.0.7#~/.yarn/patches/expo-modules-jsi-npm-57.0.7-2b09fb2c74.patch",
+    "expo-modules-core@npm:~57.0.15": "patch:expo-modules-core@npm%3A57.0.15#~/.yarn/patches/expo-modules-core-npm-57.0.15-8321e0863a.patch"
   }
 }

@@ -19,7 +19,10 @@ export const palette = {
   rustBackground: '#FAEBE1',
 } as const;
 
-export const serifFont = Platform.select({ android: 'serif', ios: 'Georgia' });
+export const serifFont = Platform.select({
+  android: 'serif',
+  ios: 'Georgia',
+});
 
 export const sharedStyles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: palette.paper },
@@ -35,8 +38,8 @@ export const sharedStyles = StyleSheet.create({
   title: {
     color: palette.ink,
     fontFamily: serifFont,
-    fontSize: 34,
-    lineHeight: 41,
+    fontSize: Platform.select({ ios: 32, default: 34 }),
+    lineHeight: Platform.select({ ios: 38, default: 41 }),
   },
   iconButton: {
     width: 44,
@@ -50,28 +53,37 @@ export const sharedStyles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 28,
-    gap: 16,
+    gap: Platform.select({ ios: 20, default: 16 }),
   },
   card: {
-    padding: 20,
+    padding: Platform.select({ ios: 22, default: 20 }),
     borderWidth: 1,
     borderColor: 'rgba(29, 26, 20, 0.06)',
     borderRadius: 24,
     gap: 12,
     backgroundColor: palette.surface,
+    shadowColor: palette.ink,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: Platform.select({ ios: 0.08, default: 0 }),
+    shadowRadius: 20,
   },
   cardTitle: {
     color: palette.ink,
     fontFamily: serifFont,
-    fontSize: 23,
-    lineHeight: 29,
+    fontSize: Platform.select({ ios: 24, default: 23 }),
+    lineHeight: Platform.select({ ios: 30, default: 29 }),
   },
-  body: { color: palette.body, fontSize: 15, lineHeight: 21 },
+  body: {
+    color: palette.body,
+    fontSize: Platform.select({ ios: 17, default: 15 }),
+    lineHeight: Platform.select({ ios: 22, default: 21 }),
+  },
   label: {
     color: palette.muted,
     fontSize: 13,
     lineHeight: 18,
     fontWeight: '700',
+    letterSpacing: Platform.select({ ios: 1.15, default: 0 }),
     textTransform: 'uppercase',
   },
   primaryButton: {
@@ -84,7 +96,11 @@ export const sharedStyles = StyleSheet.create({
     gap: 8,
     backgroundColor: palette.ink,
   },
-  primaryText: { color: palette.paper, fontSize: 16, fontWeight: '700' },
+  primaryText: {
+    color: palette.paper,
+    fontSize: Platform.select({ ios: 17, default: 16 }),
+    fontWeight: Platform.select({ ios: '600', default: '700' }),
+  },
   secondaryButton: {
     minHeight: 52,
     paddingHorizontal: 16,
@@ -129,7 +145,7 @@ export const sharedStyles = StyleSheet.create({
   },
   sheet: {
     maxHeight: '90%',
-    paddingTop: 22,
+    paddingTop: Platform.select({ ios: 28, default: 22 }),
     paddingHorizontal: 16,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,

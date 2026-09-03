@@ -20,6 +20,13 @@ import type {
 } from '@januaryai/react-native';
 
 import { palette, serifFont, sharedStyles } from './demoTheme';
+import {
+  AppCard,
+  EmptyStateCard,
+  MacroGrid,
+  NutritionList,
+  SectionLabel,
+} from './designSystem';
 
 type RestaurantMode = 'restaurants' | 'menu';
 type ResultState = 'idle' | 'loading' | 'success' | 'empty' | 'error';
@@ -274,17 +281,12 @@ export function RestaurantScreens({
         </Pressable>
 
         {!query.trim() ? (
-          <View style={styles.emptyCard} testID="restaurants-initial">
-            <MaterialCommunityIcons
-              color={palette.green}
-              name="silverware-fork-knife"
-              size={25}
-            />
-            <Text style={styles.emptyTitle}>Search nearby</Text>
-            <Text style={styles.emptyBody}>
-              Find restaurants or dishes around a location.
-            </Text>
-          </View>
+          <EmptyStateCard
+            icon="silverware-fork-knife"
+            message="Find restaurants or dishes around a location."
+            testID="restaurants-initial"
+            title="Search nearby"
+          />
         ) : null}
 
         <Pressable
@@ -483,14 +485,14 @@ function RestaurantDetail({
       <ScrollView contentContainerStyle={styles.detailContent}>
         <Text style={styles.detailTitle}>{restaurant.name}</Text>
         <View style={sharedStyles.card}>
-          <Text style={styles.sectionLabel}>Location</Text>
+          <SectionLabel>Location</SectionLabel>
           <View style={styles.betweenRow}>
             <Text style={styles.detailBody}>City</Text>
             <Text style={styles.detailMuted}>{restaurant.city}</Text>
           </View>
           <Text style={styles.detailBody}>{restaurant.address}</Text>
         </View>
-        <Text style={styles.sectionLabel}>Menu items</Text>
+        <SectionLabel>Menu items</SectionLabel>
         {menuState === 'loading' ? (
           <View
             style={[sharedStyles.card, styles.loadingCard]}
@@ -562,18 +564,20 @@ function MenuItemDetail({
         <Text style={styles.detailTitle}>{item.name}</Text>
         <Text style={styles.restaurantName}>{item.restaurantName}</Text>
         <MacroCard item={item} />
-        <View style={sharedStyles.card}>
-          <NutritionRow
-            label="Net carbohydrates"
-            value={`${item.netCarbohydrates} g`}
+        <AppCard>
+          <NutritionList
+            rows={[
+              {
+                label: 'Net carbohydrates',
+                value: `${item.netCarbohydrates} g`,
+              },
+              { label: 'Fiber', value: `${item.fiber} g` },
+              { label: 'Total sugars', value: `${item.totalSugars} g` },
+            ]}
           />
-          <View style={sharedStyles.divider} />
-          <NutritionRow label="Fiber" value={`${item.fiber} g`} />
-          <View style={sharedStyles.divider} />
-          <NutritionRow label="Total sugars" value={`${item.totalSugars} g`} />
-        </View>
+        </AppCard>
         <View style={sharedStyles.card}>
-          <Text style={styles.sectionLabel}>Serving</Text>
+          <SectionLabel>Serving</SectionLabel>
           <Text style={styles.rowTitle}>1 bowl · 100 g</Text>
         </View>
         <Pressable
@@ -589,34 +593,17 @@ function MenuItemDetail({
 }
 
 function MacroCard({ item }: { item: MenuFixture }) {
-  const values = [
-    ['Calories', item.calories, 'cal'],
-    ['Protein', item.protein, 'g'],
-    ['Carbs', item.carbohydrates, 'g'],
-    ['Fat', item.fat, 'g'],
-  ];
   return (
-    <View style={styles.macroCard}>
-      {values.map(([label, value, unit]) => (
-        <View key={String(label)} style={styles.macroCell}>
-          <Text style={styles.macroLabel}>{label}</Text>
-          <View style={styles.macroValueRow}>
-            <Text style={styles.macroValue}>{value}</Text>
-            <Text style={styles.macroUnit}>{unit}</Text>
-          </View>
-        </View>
-      ))}
-      <View style={styles.macroDivider} />
-    </View>
-  );
-}
-
-function NutritionRow({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.nutritionRow}>
-      <Text style={styles.detailBody}>{label}</Text>
-      <Text style={styles.detailMuted}>{value}</Text>
-    </View>
+    <AppCard>
+      <MacroGrid
+        values={[
+          { label: 'Calories', value: item.calories, unit: 'cal' },
+          { label: 'Protein', value: item.protein, unit: 'g' },
+          { label: 'Carbs', value: item.carbohydrates, unit: 'g' },
+          { label: 'Fat', value: item.fat, unit: 'g' },
+        ]}
+      />
+    </AppCard>
   );
 }
 
@@ -630,15 +617,12 @@ function EmptyState({
   title: string;
 }) {
   return (
-    <View style={styles.emptyCard} testID={testID}>
-      <MaterialCommunityIcons
-        color={palette.green}
-        name="silverware-fork-knife"
-        size={25}
-      />
-      <Text style={styles.emptyTitle}>{title}</Text>
-      <Text style={styles.emptyBody}>{body}</Text>
-    </View>
+    <EmptyStateCard
+      icon="silverware-fork-knife"
+      message={body}
+      testID={testID}
+      title={title}
+    />
   );
 }
 
@@ -710,7 +694,7 @@ function RestaurantFilters({
             <View style={styles.headerSpacer} />
           </View>
           <ScrollView contentContainerStyle={styles.filterContent}>
-            <Text style={styles.sectionLabel}>Location</Text>
+            <SectionLabel>Location</SectionLabel>
             <View style={sharedStyles.card}>
               <View style={styles.locationAccessRow}>
                 <MaterialIcons
@@ -742,7 +726,7 @@ function RestaurantFilters({
                 Use my current location
               </Text>
             </Pressable>
-            <Text style={styles.sectionLabel}>Search radius</Text>
+            <SectionLabel>Search radius</SectionLabel>
             <View style={sharedStyles.card}>
               <View style={styles.betweenRow}>
                 <Text style={styles.rowTitle}>Nearby distance</Text>
@@ -756,7 +740,7 @@ function RestaurantFilters({
                 Search within 8,000 meters of the selected location.
               </Text>
             </View>
-            <Text style={styles.sectionLabel}>Results</Text>
+            <SectionLabel>Results</SectionLabel>
             <View style={[sharedStyles.card, styles.limitRow]}>
               <View style={styles.flexCopy}>
                 <Text style={styles.rowTitle}>Maximum results</Text>
@@ -917,29 +901,6 @@ const styles = StyleSheet.create({
   microcopy: { color: palette.muted, fontSize: 12, lineHeight: 17 },
   rowMeta: { color: palette.body, fontSize: 13 },
   greenMeta: { color: palette.green, fontFamily: 'monospace', fontSize: 12 },
-  emptyCard: {
-    minHeight: 164,
-    padding: 22,
-    borderWidth: 1.5,
-    borderColor: palette.border,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: palette.surface,
-  },
-  emptyTitle: {
-    color: palette.ink,
-    fontFamily: serifFont,
-    fontSize: 24,
-    lineHeight: 30,
-  },
-  emptyBody: {
-    color: palette.body,
-    fontSize: 15,
-    lineHeight: 21,
-    textAlign: 'center',
-  },
   loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   results: { gap: 12 },
   resultHeading: {
@@ -989,14 +950,6 @@ const styles = StyleSheet.create({
     lineHeight: 41,
     fontWeight: '700',
   },
-  sectionLabel: {
-    paddingHorizontal: 6,
-    color: palette.muted,
-    fontSize: 12,
-    lineHeight: 17,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
   detailBody: { color: palette.ink, fontSize: 15, lineHeight: 21 },
   detailMuted: { color: palette.muted, fontSize: 14, lineHeight: 20 },
   betweenRow: {
@@ -1034,45 +987,6 @@ const styles = StyleSheet.create({
     backgroundColor: palette.control,
   },
   restaurantName: { marginTop: -12, color: palette.muted, fontSize: 16 },
-  macroCard: {
-    padding: 20,
-    borderRadius: 24,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    backgroundColor: palette.surface,
-  },
-  macroCell: { width: '50%', minHeight: 78, gap: 6 },
-  macroLabel: {
-    color: palette.muted,
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  macroValueRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  macroValue: {
-    color: palette.ink,
-    fontFamily: 'monospace',
-    fontSize: 20,
-    lineHeight: 26,
-    fontWeight: '600',
-  },
-  macroUnit: { color: palette.muted, fontSize: 15, lineHeight: 20 },
-  macroDivider: {
-    position: 'absolute',
-    top: '50%',
-    left: 20,
-    right: 20,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: palette.divider,
-  },
-  nutritionRow: {
-    minHeight: 38,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
   errorCard: {
     padding: 20,
     borderRadius: 18,

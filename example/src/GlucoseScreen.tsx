@@ -1,4 +1,4 @@
-import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -25,7 +25,12 @@ import type {
   Sex,
 } from '@januaryai/react-native';
 
-import { palette, serifFont, sharedStyles } from './demoTheme';
+import { palette, sharedStyles } from './demoTheme';
+import {
+  SectionLabel,
+  SegmentedControl,
+  WorkflowGuideCard,
+} from './designSystem';
 import { predictFixtureGlucose } from './e2eFixtures';
 import { FoodPickerSheet, type SelectedFood } from './FoodPickerSheet';
 
@@ -124,7 +129,7 @@ export function GlucoseScreen({
         <WorkflowGuide />
 
         <View style={styles.sectionCopy}>
-          <Text style={styles.sectionLabel}>PREDICTION PROFILE</Text>
+          <SectionLabel>PREDICTION PROFILE</SectionLabel>
           <Text style={styles.sectionDetail}>
             Age, sex, body measurements, and health conditions influence the
             estimated response.
@@ -153,6 +158,7 @@ export function GlucoseScreen({
               ]}
               onSelect={(value) => setSex(value as Sex)}
               selected={sex}
+              style={styles.measurementSegmented}
               testIDPrefix="glucose-sex"
             />
           </View>
@@ -167,6 +173,7 @@ export function GlucoseScreen({
                 ]}
                 onSelect={(value) => setHeightUnit(value as HeightUnit)}
                 selected={heightUnit}
+                style={styles.measurementSegmented}
                 testIDPrefix="glucose-height-unit"
               />
             </View>
@@ -212,6 +219,7 @@ export function GlucoseScreen({
                 ]}
                 onSelect={(value) => setWeightUnit(value as WeightUnit)}
                 selected={weightUnit}
+                style={styles.measurementSegmented}
                 testIDPrefix="glucose-weight-unit"
               />
             </View>
@@ -253,7 +261,7 @@ export function GlucoseScreen({
         </View>
 
         <View style={styles.sectionCopy}>
-          <Text style={styles.sectionLabel}>MEAL TO SIMULATE</Text>
+          <SectionLabel>MEAL TO SIMULATE</SectionLabel>
           <Text style={styles.sectionDetail}>
             Add one or more foods here. This meal is used only for the
             prediction and is not saved to Food Logs.
@@ -393,76 +401,17 @@ function LargeNavigationHeader({
 }
 
 function WorkflowGuide() {
-  const steps = [
-    'Review the prediction profile',
-    'Add every food in the meal to simulate',
-    'Estimate the glucose response curve',
-  ];
   return (
-    <View style={styles.guideCard}>
-      <View style={styles.guideHeading}>
-        <View style={styles.guideIcon}>
-          <MaterialIcons color={palette.green} name="monitor-heart" size={21} />
-        </View>
-        <View style={styles.flex}>
-          <Text style={styles.guideTitle}>Estimate this meal’s response</Text>
-          <Text style={styles.guideBody}>
-            Glucose prediction is a simulation. Your profile shapes the
-            estimate, and the foods and servings define the meal. It does not
-            create a food log.
-          </Text>
-        </View>
-      </View>
-      <View style={styles.steps}>
-        {steps.map((step, index) => (
-          <View key={step} style={styles.stepRow}>
-            <View style={styles.stepNumber}>
-              <Text style={styles.stepNumberText}>{index + 1}</Text>
-            </View>
-            <Text style={styles.stepText}>{step}</Text>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-function SegmentedControl({
-  items,
-  onSelect,
-  selected,
-  testIDPrefix,
-}: {
-  items: { id: string; label: string }[];
-  onSelect: (id: string) => void;
-  selected: string;
-  testIDPrefix: string;
-}) {
-  return (
-    <View style={styles.segmented}>
-      {items.map((item) => {
-        const isSelected = item.id === selected;
-        return (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ selected: isSelected }}
-            key={item.id}
-            onPress={() => onSelect(item.id)}
-            style={[styles.segment, isSelected && styles.segmentSelected]}
-            testID={`${testIDPrefix}-${item.id}`}
-          >
-            <Text
-              style={[
-                styles.segmentText,
-                isSelected && styles.segmentSelectedText,
-              ]}
-            >
-              {item.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
+    <WorkflowGuideCard
+      icon="pulse"
+      message="Glucose prediction is a simulation. Your profile shapes the estimate, and the foods and servings define the meal. It does not create a food log."
+      steps={[
+        'Review the prediction profile',
+        'Add every food in the meal to simulate',
+        'Estimate the glucose response curve',
+      ]}
+      title={'Estimate this\nmeal’s response'}
+    />
   );
 }
 
@@ -731,7 +680,7 @@ function PredictionResult({
           })}
         </View>
         <View style={styles.worthKnowing}>
-          <Text style={styles.sectionLabel}>WORTH KNOWING</Text>
+          <SectionLabel>WORTH KNOWING</SectionLabel>
           <Text style={styles.worthKnowingText}>
             This estimate reflects the foods, servings, and profile entered
             above. Adjusting the meal will generate a new prediction. It does
@@ -811,7 +760,7 @@ function PredictionChart({
   return (
     <View style={styles.predictionCard} testID="glucose-chart">
       <View style={styles.peakCopy}>
-        <Text style={styles.sectionLabel}>LIKELY PEAK</Text>
+        <SectionLabel>LIKELY PEAK</SectionLabel>
         <View style={styles.peakRow}>
           <Text style={styles.peakValue}>{peak}</Text>
           <Text style={styles.peakDetail}>
@@ -1000,66 +949,7 @@ const styles = StyleSheet.create({
     lineHeight: 41,
     fontWeight: '700',
   },
-  guideCard: {
-    padding: 22,
-    borderWidth: 1,
-    borderColor: 'rgba(29,26,20,0.06)',
-    borderRadius: 24,
-    gap: 18,
-    backgroundColor: palette.surface,
-    elevation: 2,
-    shadowColor: palette.ink,
-    shadowOpacity: 0.08,
-    shadowRadius: 20,
-  },
-  guideHeading: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
-  guideIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: palette.targetBand,
-  },
-  guideTitle: {
-    color: palette.ink,
-    fontFamily: serifFont,
-    fontSize: 24,
-    lineHeight: 30,
-  },
-  guideBody: {
-    marginTop: 5,
-    color: palette.body,
-    fontSize: 15,
-    lineHeight: 20,
-  },
-  steps: { gap: 12 },
-  stepRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  stepNumber: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: palette.targetBand,
-  },
-  stepNumberText: { color: '#3E5A3A', fontSize: 13, fontWeight: '700' },
-  stepText: {
-    flex: 1,
-    color: palette.ink,
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: '600',
-  },
   sectionCopy: { gap: 10 },
-  sectionLabel: {
-    paddingHorizontal: 6,
-    color: palette.muted,
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '700',
-    letterSpacing: 1.15,
-  },
   sectionDetail: { color: palette.body, fontSize: 15, lineHeight: 20 },
   formCard: {
     marginTop: -14,
@@ -1091,28 +981,10 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: palette.divider,
   },
-  segmented: {
+  measurementSegmented: {
     width: 170,
     marginLeft: 'auto',
-    padding: 2,
-    borderRadius: 20,
-    flexDirection: 'row',
-    backgroundColor: '#EAE8E5',
   },
-  segment: {
-    minHeight: 36,
-    flex: 1,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  segmentSelected: {
-    borderWidth: 1,
-    borderColor: '#E7E4DF',
-    backgroundColor: palette.surface,
-  },
-  segmentText: { color: palette.ink, fontSize: 14, fontWeight: '600' },
-  segmentSelectedText: { fontWeight: '700' },
   expandedMeasurement: { paddingVertical: 12, gap: 12 },
   measurementHeading: { flexDirection: 'row', alignItems: 'center' },
   inputPair: { flexDirection: 'row', gap: 12 },

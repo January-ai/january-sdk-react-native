@@ -16,6 +16,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { FoodLog, JanuaryClient } from '@januaryai/react-native';
 
 import { palette, sharedStyles } from './demoTheme';
+import {
+  EmptyStateCard,
+  MacroGrid,
+  NutritionList,
+  SectionLabel,
+  WorkflowGuideCard,
+} from './designSystem';
 import { fixtureDelay, fixtureFoodLogs } from './e2eFixtures';
 import { FoodPickerSheet, type SelectedFood } from './FoodPickerSheet';
 
@@ -143,37 +150,18 @@ export function FoodLogsScreen({
       </View>
 
       <ScrollView contentContainerStyle={styles.logsContent}>
-        <View style={styles.workflowCard}>
-          <View style={styles.guideRow}>
-            <View style={styles.mealIcon}>
-              <MaterialCommunityIcons
-                color={palette.green}
-                name="clipboard-text-outline"
-                size={23}
-              />
-            </View>
-            <View style={styles.flex}>
-              <Text style={[sharedStyles.cardTitle, styles.workflowTitle]}>
-                Build one complete meal
-              </Text>
-              <Text style={sharedStyles.body}>
-                One food log represents one meal or eating event. It can contain
-                multiple foods, each with its own serving and quantity.
-              </Text>
-            </View>
-          </View>
-          <WorkflowStep number="1" text="Identify the user who owns the log" />
-          <WorkflowStep
-            number="2"
-            text="Create a log and add every food in the meal"
-          />
-          <WorkflowStep
-            number="3"
-            text="Save it, then browse that user’s history"
-          />
-        </View>
+        <WorkflowGuideCard
+          icon="clipboard-text-outline"
+          message="One food log represents one meal or eating event. It can contain multiple foods, each with its own serving and quantity."
+          steps={[
+            'Identify the user who owns the log',
+            'Create a log and add every food in the meal',
+            'Save it, then browse that user’s history',
+          ]}
+          title="Build one complete meal"
+        />
 
-        <Text style={sharedStyles.label}>User identity</Text>
+        <SectionLabel>User identity</SectionLabel>
         <View style={styles.userCard} testID="food-log-user-card">
           <View style={styles.userHeading}>
             <MaterialCommunityIcons
@@ -210,7 +198,7 @@ export function FoodLogsScreen({
           <Text style={sharedStyles.primaryText}>Create a food log</Text>
         </Pressable>
 
-        <Text style={sharedStyles.label}>Browse saved logs</Text>
+        <SectionLabel>Browse saved logs</SectionLabel>
         <Text style={styles.browseCopy}>
           Food logs are fetched for the selected user ID and date range.
         </Text>
@@ -307,23 +295,12 @@ export function FoodLogsScreen({
         ) : null}
 
         {!loading && logs.length === 0 ? (
-          <View
-            style={[sharedStyles.card, styles.empty]}
+          <EmptyStateCard
+            icon="food-outline"
+            message="Create a log, add one or more foods to the meal, then save it for this user."
             testID="food-logs-empty"
-          >
-            <MaterialCommunityIcons
-              color={palette.green}
-              name="food-outline"
-              size={30}
-            />
-            <Text style={sharedStyles.cardTitle}>
-              No food logs in this range
-            </Text>
-            <Text style={[sharedStyles.body, styles.centerText]}>
-              Create a log, add one or more foods to the meal, then save it for
-              this user.
-            </Text>
-          </View>
+            title="No food logs in this range"
+          />
         ) : null}
 
         <View style={styles.logList} testID="food-log-list">
@@ -515,7 +492,7 @@ function FoodLogEditor({
             keyboardShouldPersistTaps="handled"
           >
             <EditorGuide editing={Boolean(existing)} />
-            <Text style={sharedStyles.label}>Meal details</Text>
+            <SectionLabel>Meal details</SectionLabel>
             <View style={styles.editorFieldGroup}>
               <Text style={styles.editorFieldLabel}>Meal name</Text>
               <TextInput
@@ -539,10 +516,9 @@ function FoodLogEditor({
                 </Text>
               </View>
             </View>
-            <Text style={sharedStyles.label}>
-              Foods in this meal ·{' '}
-              {existing ? existing.foods.length : selected.length}
-            </Text>
+            <SectionLabel>
+              {`Foods in this meal · ${existing ? existing.foods.length : selected.length}`}
+            </SectionLabel>
             {!existing && selected.length === 0 ? (
               <View style={styles.editorEmpty} testID="food-log-editor-empty">
                 <MaterialCommunityIcons
@@ -647,29 +623,16 @@ function FoodLogEditor({
 
 function EditorGuide({ editing }: { editing: boolean }) {
   return (
-    <View style={styles.editorGuide}>
-      <View style={styles.guideRow}>
-        <View style={styles.editorGuideIcon}>
-          <MaterialCommunityIcons
-            color={palette.green}
-            name="silverware-fork-knife"
-            size={22}
-          />
-        </View>
-        <View style={styles.flex}>
-          <Text style={styles.editorGuideTitle}>
-            {editing ? 'Update this meal' : 'Build this meal'}
-          </Text>
-          <Text style={styles.editorGuideBody}>
-            A log is one meal. Add every food that belongs to it, then choose
-            each serving and quantity before saving.
-          </Text>
-        </View>
-      </View>
-      <WorkflowStep number="1" text="Set the meal time" />
-      <WorkflowStep number="2" text="Add one or more foods" />
-      <WorkflowStep number="3" text="Review servings and save" />
-    </View>
+    <WorkflowGuideCard
+      icon="silverware-fork-knife"
+      message="A log is one meal. Add every food that belongs to it, then choose each serving and quantity before saving."
+      steps={[
+        'Set the meal time',
+        'Add one or more foods',
+        'Review servings and save',
+      ]}
+      title={editing ? 'Update this meal' : 'Build this meal'}
+    />
   );
 }
 
@@ -841,56 +804,38 @@ function FoodLogDetail({
               {food.servingDetails.quantity ?? 1}{' '}
               {food.servingDetails.unit ?? 'serving'}
             </Text>
-            <View style={styles.detailMacros}>
-              <View style={styles.macroRow}>
-                <Nutrient
-                  label="Calories"
-                  value={food.nutrients.calories?.value}
-                  unit={food.nutrients.calories?.unit ?? 'cal'}
-                />
-                <Nutrient
-                  label="Protein"
-                  value={food.nutrients.protein?.value}
-                  unit={food.nutrients.protein?.unit ?? 'g'}
-                />
-              </View>
-              <View style={styles.macroDivider} />
-              <View style={[styles.macroRow, styles.secondMacroRow]}>
-                <Nutrient
-                  label="Carbs"
-                  value={food.nutrients.carbohydrates?.value}
-                  unit={food.nutrients.carbohydrates?.unit ?? 'g'}
-                />
-                <Nutrient
-                  label="Fat"
-                  value={food.nutrients.totalFat?.value}
-                  unit={food.nutrients.totalFat?.unit ?? 'g'}
-                />
-              </View>
-            </View>
-            <View>
-              {supplementalNutrition(food.nutrients)
-                .filter(([, amount]) => amount != null)
-                .map(([label, amount], rowIndex) => (
-                  <View
-                    key={label}
-                    style={[
-                      styles.detailNutritionRow,
-                      rowIndex > 0 && styles.detailNutritionDivider,
-                    ]}
-                  >
-                    <Text style={styles.detailNutritionText}>{label}</Text>
-                    <Text
-                      style={[
-                        styles.detailNutritionText,
-                        styles.detailNutritionValue,
-                      ]}
-                    >
-                      {amount!.value} {amount!.unit}
-                    </Text>
-                  </View>
-                ))}
-            </View>
+            <MacroGrid
+              values={[
+                {
+                  label: 'Calories',
+                  value: food.nutrients.calories?.value,
+                  unit: food.nutrients.calories?.unit ?? 'cal',
+                },
+                {
+                  label: 'Protein',
+                  value: food.nutrients.protein?.value,
+                  unit: food.nutrients.protein?.unit ?? 'g',
+                },
+                {
+                  label: 'Carbs',
+                  value: food.nutrients.carbohydrates?.value,
+                  unit: food.nutrients.carbohydrates?.unit ?? 'g',
+                },
+                {
+                  label: 'Fat',
+                  value: food.nutrients.totalFat?.value,
+                  unit: food.nutrients.totalFat?.unit ?? 'g',
+                },
+              ]}
+            />
+            <NutritionList
+              rows={supplementalNutrition(food.nutrients)
+                .filter((entry) => entry[1] != null)
+                .map(([label, amount]) => ({
+                  label,
+                  value: `${amount!.value} ${amount!.unit}`,
+                }))}
+            />
           </View>
         ))}
         <View style={styles.technicalRow}>
@@ -938,37 +883,6 @@ function RangeButton({
         {label}
       </Text>
     </Pressable>
-  );
-}
-
-function WorkflowStep({ number, text }: { number: string; text: string }) {
-  return (
-    <View style={styles.workflowStep}>
-      <View style={styles.workflowNumber}>
-        <Text style={styles.workflowNumberText}>{number}</Text>
-      </View>
-      <Text style={styles.workflowText}>{text}</Text>
-    </View>
-  );
-}
-
-function Nutrient({
-  label,
-  value,
-  unit = 'cal',
-}: {
-  label: string;
-  value?: number;
-  unit?: string;
-}) {
-  return (
-    <View style={styles.nutrient}>
-      <Text style={styles.nutrientLabel}>{label}</Text>
-      <Text style={styles.nutrientValue}>
-        {value == null ? '—' : Math.round(value)}{' '}
-        <Text style={styles.nutrientUnit}>{unit}</Text>
-      </Text>
-    </View>
   );
 }
 
@@ -1109,17 +1023,6 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
     gap: 16,
   },
-  workflowCard: {
-    minHeight: 263,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(29,26,20,0.06)',
-    borderRadius: 24,
-    gap: 13,
-    backgroundColor: palette.surface,
-  },
-  workflowTitle: { fontSize: 24, lineHeight: 30 },
-  guideRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
   mealIcon: {
     width: 46,
     height: 46,
@@ -1127,23 +1030,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: palette.targetBand,
-  },
-  workflowStep: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  workflowNumber: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: palette.targetBand,
-  },
-  workflowNumberText: { color: palette.green, fontSize: 12, fontWeight: '800' },
-  workflowText: {
-    flex: 1,
-    color: palette.body,
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '600',
   },
   userCard: {
     minHeight: 210,
@@ -1209,8 +1095,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   loadingLogsText: { color: palette.muted, fontSize: 16, fontWeight: '600' },
-  empty: { alignItems: 'center', paddingVertical: 30 },
-  centerText: { textAlign: 'center' },
   logList: { gap: 12 },
   logRow: { flexDirection: 'row', alignItems: 'center', gap: 13 },
   logName: { color: palette.ink, fontSize: 17, fontWeight: '700' },
@@ -1251,33 +1135,6 @@ const styles = StyleSheet.create({
     paddingTop: 28,
     paddingBottom: 8,
     gap: 20,
-  },
-  editorGuide: {
-    minHeight: 260,
-    padding: 20,
-    borderRadius: 24,
-    gap: 13,
-    backgroundColor: palette.surface,
-  },
-  editorGuideIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: palette.targetBand,
-  },
-  editorGuideTitle: {
-    color: palette.ink,
-    fontFamily: 'serif',
-    fontSize: 24,
-    lineHeight: 30,
-  },
-  editorGuideBody: {
-    marginTop: 4,
-    color: palette.body,
-    fontSize: 14,
-    lineHeight: 20,
   },
   editorFieldGroup: { gap: 8 },
   editorFieldLabel: { color: palette.ink, fontSize: 16, fontWeight: '600' },
@@ -1410,49 +1267,6 @@ const styles = StyleSheet.create({
   },
   detailBrand: { color: palette.muted, fontSize: 14 },
   loggedFoodCard: { marginTop: 4, gap: 10 },
-  detailMacros: { position: 'relative' },
-  macroRow: { minHeight: 64, flexDirection: 'row', gap: 20 },
-  secondMacroRow: { marginTop: 28 },
-  macroDivider: {
-    position: 'absolute',
-    top: 78,
-    left: 0,
-    right: 0,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: palette.divider,
-  },
-  nutrient: { flex: 1, minHeight: 64, gap: 6 },
-  nutrientValue: {
-    color: palette.ink,
-    fontFamily: 'monospace',
-    fontSize: 20,
-    lineHeight: 26,
-    fontWeight: '600',
-  },
-  nutrientUnit: {
-    color: palette.muted,
-    fontFamily: 'sans-serif',
-    fontSize: 15,
-    fontWeight: '400',
-  },
-  nutrientLabel: {
-    color: palette.muted,
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  detailNutritionRow: {
-    minHeight: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  detailNutritionDivider: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: palette.divider,
-  },
-  detailNutritionText: { color: palette.body, fontSize: 17 },
-  detailNutritionValue: { fontFamily: 'monospace' },
   technicalRow: {
     minHeight: 46,
     flexDirection: 'row',

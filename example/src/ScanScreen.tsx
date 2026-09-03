@@ -23,6 +23,7 @@ import type {
 } from '@januaryai/react-native';
 
 import { palette, serifFont, sharedStyles } from './demoTheme';
+import { SectionLabel } from './designSystem';
 import { analyzeFixturePhoto, correctFixtureScan } from './e2eFixtures';
 
 const sampleMealURL =
@@ -143,7 +144,7 @@ export function ScanScreen({
               onPress={() => chooseImage('library').catch(() => undefined)}
               testID="scan-library"
             />
-            <Text style={styles.sectionLabel}>Other ways</Text>
+            <SectionLabel>Other ways</SectionLabel>
             <View style={styles.otherWays}>
               <SourceButton
                 compact
@@ -408,7 +409,7 @@ function ImageUrlSheet({
                 Paste a direct HTTPS link to a meal photo.
               </Text>
             </View>
-            <Text style={styles.sectionLabel}>Image address</Text>
+            <SectionLabel>Image address</SectionLabel>
             <TextInput
               autoCapitalize="none"
               onChangeText={setValue}
@@ -585,14 +586,14 @@ function CorrectionSheet({
             keyboardShouldPersistTaps="handled"
             style={styles.sheetScroll}
           >
-            <Text style={styles.sectionLabel}>Meal</Text>
+            <SectionLabel>Meal</SectionLabel>
             <TextInput
               onChangeText={setMealName}
               style={styles.filledInput}
               testID="correction-meal-name"
               value={mealName}
             />
-            <Text style={styles.sectionLabel}>Current detections</Text>
+            <SectionLabel>Current detections</SectionLabel>
             <View style={styles.detectionsCard}>
               {initial.detections.map((detection, index) => (
                 <Text
@@ -603,7 +604,7 @@ function CorrectionSheet({
                 </Text>
               ))}
             </View>
-            <Text style={styles.sectionLabel}>What should change?</Text>
+            <SectionLabel>What should change?</SectionLabel>
             <TextInput
               multiline
               onChangeText={setInstruction}
@@ -813,13 +814,6 @@ const styles = StyleSheet.create({
   },
   sourceText: { color: palette.ink, fontSize: 15, fontWeight: '700' },
   sourceTextPrimary: { color: palette.paper },
-  sectionLabel: {
-    color: palette.muted,
-    fontSize: 12,
-    lineHeight: 17,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
   otherWays: { flexDirection: 'row', gap: 10 },
   preview: { width: '100%', height: 240, borderRadius: 28 },
   photoActions: { flexDirection: 'row', gap: 10 },

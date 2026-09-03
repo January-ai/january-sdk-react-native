@@ -6288,7 +6288,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"expo-modules-core@npm:~57.0.15":
+"expo-modules-core@npm:57.0.15":
   version: 57.0.15
   resolution: "expo-modules-core@npm:57.0.15"
   dependencies:
@@ -6306,12 +6306,39 @@ __metadata:
   languageName: node
   linkType: hard
 
-"expo-modules-jsi@npm:~57.0.7":
+"expo-modules-core@patch:expo-modules-core@npm%3A57.0.15#~/.yarn/patches/expo-modules-core-npm-57.0.15-8321e0863a.patch":
+  version: 57.0.15
+  resolution: "expo-modules-core@patch:expo-modules-core@npm%3A57.0.15#~/.yarn/patches/expo-modules-core-npm-57.0.15-8321e0863a.patch::version=57.0.15&hash=4083ac"
+  dependencies:
+    "@expo/expo-modules-macros-plugin": "npm:0.6.1"
+    expo-modules-jsi: "npm:~57.0.7"
+    invariant: "npm:^2.2.4"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+    react-native-worklets: ^0.7.4 || ^0.8.0 || ^0.9.0 || ^0.10.0
+  peerDependenciesMeta:
+    react-native-worklets:
+      optional: true
+  checksum: 10c0/3b736588858c2736da575ea7ca9d8254dd3a75e6727ef9d638c2892e56acd51c8e0ca3fd6e23b100d33f68ffe4d5dcfbca74cff2041370e6badc77b153c99629
+  languageName: node
+  linkType: hard
+
+"expo-modules-jsi@npm:57.0.7":
   version: 57.0.7
   resolution: "expo-modules-jsi@npm:57.0.7"
   peerDependencies:
     react-native: "*"
   checksum: 10c0/72619eef3d4343298170206aebfa0e77af59fa176b7cd76f4c31c8f8f2e36ed7abf1dbd77b344d3f2754ee4de374600425fbdf6638759dc740f6fb60bcd3394e
+  languageName: node
+  linkType: hard
+
+"expo-modules-jsi@patch:expo-modules-jsi@npm%3A57.0.7#~/.yarn/patches/expo-modules-jsi-npm-57.0.7-2b09fb2c74.patch":
+  version: 57.0.7
+  resolution: "expo-modules-jsi@patch:expo-modules-jsi@npm%3A57.0.7#~/.yarn/patches/expo-modules-jsi-npm-57.0.7-2b09fb2c74.patch::version=57.0.7&hash=835149"
+  peerDependencies:
+    react-native: "*"
+  checksum: 10c0/a915b4d9f5aea9c3138adb98a9cd7fd9d56514e2fc0f3542d65665269a1841c29d46d7d7c17df4804cc33ef3cd7e3dca8f353bf1e9a4825b83071e6e6b96cb2b
   languageName: node
   linkType: hard
 
