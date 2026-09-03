@@ -30,7 +30,7 @@ marked complete.
 
 | Surface                  | Android evidence                 | RN status | Required parity                                                                |
 | ------------------------ | -------------------------------- | --------- | ------------------------------------------------------------------------------ |
-| Setup                    | Source: `DemoSetupScreen.kt`     | Missing   | Setup copy, credential guidance, fields, actions, and disabled states          |
+| Setup                    | Source: `DemoSetupScreen.kt`     | Partial   | Setup copy, credential guidance, fields, actions, and disabled states          |
 | Development-auth warning | Source: `JanuaryDemoApp.kt`      | Partial   | Gold status-bar-safe warning banner and exact copy                             |
 | Bottom navigation        | Present in every root screenshot | Partial   | Four destinations, icons, labels, selected state, dimensions, and insets       |
 | Settings                 | `android-settings.png`           | Partial   | Full modal sheet, handle/header, fields, diagnostics, actions, keyboard/insets |

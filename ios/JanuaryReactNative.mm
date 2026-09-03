@@ -92,6 +92,49 @@
   }];
 }
 
+- (void)restaurantsSearch:(NSString *)clientId
+                    query:(NSString *)query
+                 latitude:(double)latitude
+                longitude:(double)longitude
+                   radius:(double)radius
+                    limit:(double)limit
+                  resolve:(RCTPromiseResolveBlock)resolve
+                   reject:(RCTPromiseRejectBlock)reject
+{
+  [_bridge restaurantsSearch:clientId query:query latitude:latitude longitude:longitude radius:radius limit:(NSInteger)limit completion:^(NSString *json, NSError *error) {
+    if (error) { reject(error.userInfo[@"code"] ?: @"january_error", error.localizedDescription, error); return; }
+    resolve(json);
+  }];
+}
+
+- (void)restaurantMenuItemsSearch:(NSString *)clientId
+                            query:(NSString *)query
+                         latitude:(double)latitude
+                        longitude:(double)longitude
+                           radius:(double)radius
+                            limit:(double)limit
+                          resolve:(RCTPromiseResolveBlock)resolve
+                           reject:(RCTPromiseRejectBlock)reject
+{
+  [_bridge restaurantMenuItemsSearch:clientId query:query latitude:latitude longitude:longitude radius:radius limit:(NSInteger)limit completion:^(NSString *json, NSError *error) {
+    if (error) { reject(error.userInfo[@"code"] ?: @"january_error", error.localizedDescription, error); return; }
+    resolve(json);
+  }];
+}
+
+- (void)restaurantMenuItems:(NSString *)clientId
+                restaurantId:(NSString *)restaurantId
+                       limit:(double)limit
+                      offset:(double)offset
+                     resolve:(RCTPromiseResolveBlock)resolve
+                      reject:(RCTPromiseRejectBlock)reject
+{
+  [_bridge restaurantMenuItems:clientId restaurantId:restaurantId limit:(NSInteger)limit offset:(NSInteger)offset completion:^(NSString *json, NSError *error) {
+    if (error) { reject(error.userInfo[@"code"] ?: @"january_error", error.localizedDescription, error); return; }
+    resolve(json);
+  }];
+}
+
 - (void)foodAnalysisCorrect:(NSString *)clientId
                 analysisJson:(NSString *)analysisJson
                  instruction:(NSString *)instruction

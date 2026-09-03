@@ -35,6 +35,14 @@ import ai.january.partner.photos.CorrectPhotoScanRequest
 import ai.january.partner.photos.FoodDetection
 import ai.january.partner.photos.FoodScan
 import ai.january.partner.photos.ScanFoodPhotoRequest
+import ai.january.partner.restaurants.GetRestaurantMenuItemsRequest
+import ai.january.partner.restaurants.GetRestaurantMenuItemsResponse
+import ai.january.partner.restaurants.Restaurant
+import ai.january.partner.restaurants.RestaurantMenuEntry
+import ai.january.partner.restaurants.RestaurantMenuItem
+import ai.january.partner.restaurants.SearchRestaurantMenuItemsResponse
+import ai.january.partner.restaurants.SearchRestaurantsRequest
+import ai.january.partner.restaurants.SearchRestaurantsResponse
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
@@ -156,6 +164,52 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
   override fun foodAnalysisAnalyzePhoto(clientId: String, image: String, promise: Promise) {
     withClient(clientId, promise) { client ->
       client.foodAnalysis.analyzePhoto(ScanFoodPhotoRequest(image)).toJsonObject()
+    }
+  }
+
+  override fun restaurantsSearch(
+    clientId: String,
+    query: String,
+    latitude: Double,
+    longitude: Double,
+    radius: Double,
+    limit: Double,
+    promise: Promise,
+  ) {
+    withClient(clientId, promise) { client ->
+      client.restaurants.search(
+        SearchRestaurantsRequest(query, latitude, longitude, radius, limit.toInt()),
+      ).toJsonObject()
+    }
+  }
+
+  override fun restaurantMenuItemsSearch(
+    clientId: String,
+    query: String,
+    latitude: Double,
+    longitude: Double,
+    radius: Double,
+    limit: Double,
+    promise: Promise,
+  ) {
+    withClient(clientId, promise) { client ->
+      client.restaurants.searchMenuItems(
+        SearchRestaurantsRequest(query, latitude, longitude, radius, limit.toInt()),
+      ).toJsonObject()
+    }
+  }
+
+  override fun restaurantMenuItems(
+    clientId: String,
+    restaurantId: String,
+    limit: Double,
+    offset: Double,
+    promise: Promise,
+  ) {
+    withClient(clientId, promise) { client ->
+      client.restaurants.getMenuItems(
+        GetRestaurantMenuItemsRequest(restaurantId, limit.toInt(), offset.toInt()),
+      ).toJsonObject()
     }
   }
 
@@ -302,6 +356,73 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
         .putNullable("weightGrams", serving.weightGrams)
         .putNullable("isPrimary", serving.isPrimary)
     }))
+
+  private fun SearchRestaurantsResponse.toJsonObject(): JSONObject = JSONObject()
+    .put("totalCount", totalCount)
+    .put("items", JSONArray(items.map { it.toJsonObject() }))
+
+  private fun Restaurant.toJsonObject(): JSONObject = JSONObject()
+    .put("type", type.name.lowercase())
+    .put("id", id)
+    .putNullable("name", name)
+    .putNullable("isChain", isChain)
+    .putNullable("distance", distance)
+    .putNullable("city", city)
+    .putNullable("address1", address1)
+    .putNullable("address2", address2)
+
+  private fun SearchRestaurantMenuItemsResponse.toJsonObject(): JSONObject = JSONObject()
+    .put("totalCount", totalCount)
+    .put("items", JSONArray(items.map { it.toJsonObject() }))
+
+  private fun RestaurantMenuItem.toJsonObject(): JSONObject = JSONObject()
+    .put("type", type)
+    .put("id", id)
+    .putNullable("name", name)
+    .putNullable("restaurantName", restaurantName)
+    .putNullable("isChain", isChain)
+    .putNullable("calories", calories)
+    .putNullable("protein", protein)
+    .putNullable("carbohydrates", carbohydrates)
+    .putNullable("netCarbohydrates", netCarbohydrates)
+    .putNullable("totalFat", totalFat)
+    .putNullable("fiber", fiber)
+    .putNullable("totalSugars", totalSugars)
+    .putNullable("addedSugars", addedSugars)
+    .putNullable("glycemicIndex", glycemicIndex)
+    .putNullable("glycemicLoad", glycemicLoad)
+    .putNullable("photoURL", photoUrl)
+    .putNullable("distance", distance)
+    .put("servings", servings.toJsonArray())
+
+  private fun GetRestaurantMenuItemsResponse.toJsonObject(): JSONObject = JSONObject()
+    .put("items", JSONArray(items.map { it.toJsonObject() }))
+
+  private fun RestaurantMenuEntry.toJsonObject(): JSONObject = JSONObject()
+    .putNullable("id", id)
+    .putNullable("name", name)
+    .putNullable("calories", calories)
+    .putNullable("protein", protein)
+    .putNullable("carbohydrates", carbohydrates)
+    .putNullable("netCarbohydrates", netCarbohydrates)
+    .putNullable("totalFat", totalFat)
+    .putNullable("fiber", fiber)
+    .putNullable("totalSugars", totalSugars)
+    .putNullable("addedSugars", addedSugars)
+    .putNullable("glycemicIndex", glycemicIndex)
+    .putNullable("glycemicLoad", glycemicLoad)
+    .put("servings", servings.toJsonArray())
+
+  private fun List<ai.january.partner.foods.ServingOption>.toJsonArray(): JSONArray =
+    JSONArray(map { serving ->
+      JSONObject()
+        .putNullable("id", serving.id?.value)
+        .putNullable("quantity", serving.quantity)
+        .putNullable("unit", serving.unit)
+        .put("scalingFactor", serving.scalingFactor)
+        .putNullable("weightGrams", serving.weightGrams)
+        .putNullable("isPrimary", serving.isPrimary)
+    })
 
   private fun NutritionFacts.toJsonObject(): JSONObject = JSONObject()
     .putNullable("calories", calories?.toJsonObject())

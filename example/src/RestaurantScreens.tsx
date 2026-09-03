@@ -12,6 +12,12 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type {
+  JanuaryClient,
+  Restaurant,
+  RestaurantMenuEntry,
+  RestaurantMenuItem,
+} from '@januaryai/react-native';
 
 import { palette, serifFont, sharedStyles } from './demoTheme';
 
@@ -34,6 +40,9 @@ interface MenuFixture {
   protein: number;
   carbohydrates: number;
   fat: number;
+  fiber: number;
+  netCarbohydrates: number;
+  totalSugars: number;
 }
 
 const fixtureRestaurant: RestaurantFixture = {
@@ -52,14 +61,21 @@ const fixtureMenuItem: MenuFixture = {
   protein: 4,
   carbohydrates: 20,
   fat: 2,
+  fiber: 3,
+  netCarbohydrates: 17,
+  totalSugars: 4,
 };
 
 export function RestaurantScreens({
+  client,
   configured,
+  fixturesEnabled,
   onSettings,
   onSwitchFoods,
 }: {
+  client: JanuaryClient;
   configured: boolean;
+  fixturesEnabled: boolean;
   onSettings: () => void;
   onSwitchFoods: () => void;
 }) {
@@ -71,6 +87,11 @@ export function RestaurantScreens({
     useState<RestaurantFixture>();
   const [selectedMenuItem, setSelectedMenuItem] = useState<MenuFixture>();
   const [menuState, setMenuState] = useState<ResultState>('success');
+  const [restaurantResults, setRestaurantResults] = useState<
+    RestaurantFixture[]
+  >([]);
+  const [menuResults, setMenuResults] = useState<MenuFixture[]>([]);
+  const [restaurantMenu, setRestaurantMenu] = useState<MenuFixture[]>([]);
 
   if (selectedMenuItem) {
     return (
@@ -87,34 +108,83 @@ export function RestaurantScreens({
         menuState={menuState}
         onBack={() => setSelectedRestaurant(undefined)}
         onMenuItem={setSelectedMenuItem}
-        onRetry={() => setMenuState('success')}
+        onRetry={() => loadRestaurantMenu(selectedRestaurant)}
         restaurant={selectedRestaurant}
+        items={restaurantMenu}
       />
     );
   }
 
-  const submit = () => {
+  const submit = async () => {
     if (!query.trim() || !configured) return;
     Keyboard.dismiss();
     setResultState('loading');
     const normalized = query.toLowerCase();
-    setTimeout(() => {
-      if (normalized.includes('error')) setResultState('error');
-      else if (normalized.includes('empty')) setResultState('empty');
-      else setResultState('success');
-    }, 4000);
+    if (fixturesEnabled) {
+      setTimeout(() => {
+        if (normalized.includes('error')) setResultState('error');
+        else if (normalized.includes('empty')) setResultState('empty');
+        else {
+          setRestaurantResults([fixtureRestaurant]);
+          setMenuResults([fixtureMenuItem]);
+          setResultState('success');
+        }
+      }, 4000);
+      return;
+    }
+    try {
+      const request = {
+        query: query.trim(),
+        latitude: 37.775,
+        longitude: -122.419,
+        radius: 8_000,
+        limit: 10,
+      };
+      if (mode === 'restaurants') {
+        const response = await client.restaurants.search(request);
+        setRestaurantResults(response.items.map(toRestaurantView));
+        setResultState(response.items.length ? 'success' : 'empty');
+      } else {
+        const response = await client.restaurants.searchMenuItems(request);
+        setMenuResults(response.items.map(toMenuItemView));
+        setResultState(response.items.length ? 'success' : 'empty');
+      }
+    } catch {
+      setResultState('error');
+    }
   };
 
-  const openRestaurant = () => {
+  const openRestaurant = (restaurant: RestaurantFixture) => {
     const normalized = query.toLowerCase();
-    if (normalized.includes('menu error')) setMenuState('error');
-    else if (normalized.includes('menu empty')) setMenuState('empty');
-    else if (normalized.includes('menu loading')) {
-      setMenuState('loading');
-      setTimeout(() => setMenuState('success'), 1800);
-    } else setMenuState('success');
-    setSelectedRestaurant(fixtureRestaurant);
+    setSelectedRestaurant(restaurant);
+    if (fixturesEnabled) {
+      setRestaurantMenu([fixtureMenuItem]);
+      if (normalized.includes('menu error')) setMenuState('error');
+      else if (normalized.includes('menu empty')) setMenuState('empty');
+      else if (normalized.includes('menu loading')) {
+        setMenuState('loading');
+        setTimeout(() => setMenuState('success'), 1800);
+      } else setMenuState('success');
+      return;
+    }
+    loadRestaurantMenu(restaurant).catch(() => setMenuState('error'));
   };
+
+  async function loadRestaurantMenu(restaurant: RestaurantFixture) {
+    setMenuState('loading');
+    try {
+      const response = await client.restaurants.getMenuItems({
+        restaurantId: restaurant.id,
+      });
+      const items = response.items.map((item) =>
+        toRestaurantMenuView(item, restaurant.name)
+      );
+      setRestaurantMenu(items);
+      setMenuState(items.length ? 'success' : 'empty');
+    } catch {
+      setMenuState('error');
+    }
+  }
 
   return (
     <View style={sharedStyles.screen} testID="restaurant-search-screen">
@@ -247,54 +317,65 @@ export function RestaurantScreens({
         ) : resultState === 'success' && mode === 'restaurants' ? (
           <View style={styles.results} testID="restaurant-results">
             <Text style={styles.resultHeading}>Nearby restaurants</Text>
-            <Pressable
-              onPress={openRestaurant}
-              style={styles.resultCard}
-              testID="restaurant-result-0"
-            >
-              <View style={styles.resultIcon}>
+            {restaurantResults.map((restaurant, index) => (
+              <Pressable
+                key={restaurant.id}
+                onPress={() => openRestaurant(restaurant)}
+                style={styles.resultCard}
+                testID={`restaurant-result-${index}`}
+              >
+                <View style={styles.resultIcon}>
+                  <MaterialIcons
+                    color={palette.green}
+                    name="restaurant"
+                    size={24}
+                  />
+                </View>
+                <View style={styles.flexCopy}>
+                  <Text style={styles.resultTitle}>{restaurant.name}</Text>
+                  <Text style={styles.resultMeta}>
+                    {restaurant.address} · {restaurant.distanceMiles.toFixed(1)}{' '}
+                    mi
+                  </Text>
+                </View>
                 <MaterialIcons
-                  color={palette.green}
-                  name="restaurant"
-                  size={24}
+                  color={palette.subdued}
+                  name="chevron-right"
+                  size={22}
                 />
-              </View>
-              <View style={styles.flexCopy}>
-                <Text style={styles.resultTitle}>Fixture Cafe</Text>
-                <Text style={styles.resultMeta}>123 Test Street · 0.7 mi</Text>
-              </View>
-              <MaterialIcons
-                color={palette.subdued}
-                name="chevron-right"
-                size={22}
-              />
-            </Pressable>
+              </Pressable>
+            ))}
           </View>
         ) : resultState === 'success' ? (
           <View style={styles.results} testID="menu-results">
             <Text style={styles.resultHeading}>Nearby menu items</Text>
-            <Pressable
-              onPress={() => setSelectedMenuItem(fixtureMenuItem)}
-              style={styles.resultCard}
-              testID="menu-result-0"
-            >
-              <View style={styles.resultIcon}>
-                <MaterialCommunityIcons
-                  color={palette.green}
-                  name="silverware-fork-knife"
+            {menuResults.map((item, index) => (
+              <Pressable
+                key={item.id}
+                onPress={() => setSelectedMenuItem(item)}
+                style={styles.resultCard}
+                testID={`menu-result-${index}`}
+              >
+                <View style={styles.resultIcon}>
+                  <MaterialCommunityIcons
+                    color={palette.green}
+                    name="silverware-fork-knife"
+                    size={22}
+                  />
+                </View>
+                <View style={styles.flexCopy}>
+                  <Text style={styles.resultTitle}>{item.name}</Text>
+                  <Text style={styles.resultMeta}>
+                    {item.restaurantName} · {item.calories} cal
+                  </Text>
+                </View>
+                <MaterialIcons
+                  color={palette.subdued}
+                  name="chevron-right"
                   size={22}
                 />
-              </View>
-              <View style={styles.flexCopy}>
-                <Text style={styles.resultTitle}>Fixture bowl</Text>
-                <Text style={styles.resultMeta}>Fixture Cafe · 100 cal</Text>
-              </View>
-              <MaterialIcons
-                color={palette.subdued}
-                name="chevron-right"
-                size={22}
-              />
-            </Pressable>
+              </Pressable>
+            ))}
           </View>
         ) : null}
       </ScrollView>
@@ -382,12 +463,14 @@ function CompactHeader({
 }
 
 function RestaurantDetail({
+  items,
   menuState,
   onBack,
   onMenuItem,
   onRetry,
   restaurant,
 }: {
+  items: MenuFixture[];
   menuState: ResultState;
   onBack: () => void;
   onMenuItem: (item: MenuFixture) => void;
@@ -425,29 +508,32 @@ function RestaurantDetail({
             title="No menu items found"
           />
         ) : (
-          <Pressable
-            onPress={() => onMenuItem(fixtureMenuItem)}
-            style={styles.menuCard}
-            testID="restaurant-menu-item-0"
-          >
-            <View style={styles.resultIcon}>
-              <MaterialCommunityIcons
-                color={palette.green}
-                name="silverware-fork-knife"
+          items.map((item, index) => (
+            <Pressable
+              key={item.id}
+              onPress={() => onMenuItem(item)}
+              style={styles.menuCard}
+              testID={`restaurant-menu-item-${index}`}
+            >
+              <View style={styles.resultIcon}>
+                <MaterialCommunityIcons
+                  color={palette.green}
+                  name="silverware-fork-knife"
+                  size={22}
+                />
+              </View>
+              <View style={styles.flexCopy}>
+                <Text style={styles.rowTitle}>{item.name}</Text>
+                <Text style={styles.detailMuted}>{item.restaurantName}</Text>
+                <Text style={styles.detailMuted}>{item.calories} cal</Text>
+              </View>
+              <MaterialIcons
+                color={palette.subdued}
+                name="chevron-right"
                 size={22}
               />
-            </View>
-            <View style={styles.flexCopy}>
-              <Text style={styles.rowTitle}>Fixture bowl</Text>
-              <Text style={styles.detailMuted}>Fixture Cafe</Text>
-              <Text style={styles.detailMuted}>100 cal</Text>
-            </View>
-            <MaterialIcons
-              color={palette.subdued}
-              name="chevron-right"
-              size={22}
-            />
-          </Pressable>
+            </Pressable>
+          ))
         )}
         <Text style={styles.disclosure}>Technical details　›</Text>
       </ScrollView>
@@ -477,11 +563,14 @@ function MenuItemDetail({
         <Text style={styles.restaurantName}>{item.restaurantName}</Text>
         <MacroCard item={item} />
         <View style={sharedStyles.card}>
-          <NutritionRow label="Net carbohydrates" value="17 g" />
+          <NutritionRow
+            label="Net carbohydrates"
+            value={`${item.netCarbohydrates} g`}
+          />
           <View style={sharedStyles.divider} />
-          <NutritionRow label="Fiber" value="3 g" />
+          <NutritionRow label="Fiber" value={`${item.fiber} g`} />
           <View style={sharedStyles.divider} />
-          <NutritionRow label="Total sugars" value="4 g" />
+          <NutritionRow label="Total sugars" value={`${item.totalSugars} g`} />
         </View>
         <View style={sharedStyles.card}>
           <Text style={styles.sectionLabel}>Serving</Text>
@@ -501,19 +590,23 @@ function MenuItemDetail({
 
 function MacroCard({ item }: { item: MenuFixture }) {
   const values = [
-    ['Calories', `${item.calories} cal`],
-    ['Protein', `${item.protein} g`],
-    ['Carbs', `${item.carbohydrates} g`],
-    ['Fat', `${item.fat} g`],
+    ['Calories', item.calories, 'cal'],
+    ['Protein', item.protein, 'g'],
+    ['Carbs', item.carbohydrates, 'g'],
+    ['Fat', item.fat, 'g'],
   ];
   return (
     <View style={styles.macroCard}>
-      {values.map(([label, value]) => (
-        <View key={label} style={styles.macroCell}>
+      {values.map(([label, value, unit]) => (
+        <View key={String(label)} style={styles.macroCell}>
           <Text style={styles.macroLabel}>{label}</Text>
-          <Text style={styles.macroValue}>{value}</Text>
+          <View style={styles.macroValueRow}>
+            <Text style={styles.macroValue}>{value}</Text>
+            <Text style={styles.macroUnit}>{unit}</Text>
+          </View>
         </View>
       ))}
+      <View style={styles.macroDivider} />
     </View>
   );
 }
@@ -700,6 +793,52 @@ function RestaurantFilters({
   );
 }
 
+function toRestaurantView(restaurant: Restaurant): RestaurantFixture {
+  const address = [restaurant.address1, restaurant.address2]
+    .filter(Boolean)
+    .join(', ');
+  return {
+    id: restaurant.id,
+    name: restaurant.name ?? 'Restaurant',
+    city: restaurant.city ?? '—',
+    address: address || restaurant.city || 'Location unavailable',
+    distanceMiles: (restaurant.distance ?? 0) / 1609.344,
+  };
+}
+
+function toMenuItemView(item: RestaurantMenuItem): MenuFixture {
+  return {
+    id: item.id,
+    name: item.name ?? 'Menu item',
+    restaurantName: item.restaurantName ?? 'Restaurant',
+    calories: item.calories ?? 0,
+    protein: item.protein ?? 0,
+    carbohydrates: item.carbohydrates ?? 0,
+    fat: item.totalFat ?? 0,
+    fiber: item.fiber ?? 0,
+    netCarbohydrates: item.netCarbohydrates ?? item.carbohydrates ?? 0,
+    totalSugars: item.totalSugars ?? 0,
+  };
+}
+
+function toRestaurantMenuView(
+  item: RestaurantMenuEntry,
+  restaurantName: string
+): MenuFixture {
+  return {
+    id: item.id ?? `${restaurantName}-${item.name ?? 'menu-item'}`,
+    name: item.name ?? 'Menu item',
+    restaurantName,
+    calories: item.calories ?? 0,
+    protein: item.protein ?? 0,
+    carbohydrates: item.carbohydrates ?? 0,
+    fat: item.totalFat ?? 0,
+    fiber: item.fiber ?? 0,
+    netCarbohydrates: item.netCarbohydrates ?? item.carbohydrates ?? 0,
+    totalSugars: item.totalSugars ?? 0,
+  };
+}
+
 const styles = StyleSheet.create({
   searchHeader: { height: 112 },
   searchActions: {
@@ -851,6 +990,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   sectionLabel: {
+    paddingHorizontal: 6,
     color: palette.muted,
     fontSize: 12,
     lineHeight: 17,
@@ -868,15 +1008,23 @@ const styles = StyleSheet.create({
   },
   loadingCard: { flexDirection: 'row', alignItems: 'center' },
   menuCard: {
-    minHeight: 102,
+    minHeight: 128,
     padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(29,26,20,0.06)',
     borderRadius: 24,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
     backgroundColor: palette.surface,
   },
-  disclosure: { color: palette.body, fontSize: 13, lineHeight: 20 },
+  disclosure: {
+    minHeight: 48,
+    color: palette.body,
+    fontSize: 13,
+    lineHeight: 20,
+    textAlignVertical: 'center',
+  },
   menuHero: {
     width: '100%',
     aspectRatio: 1,
@@ -893,14 +1041,32 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     backgroundColor: palette.surface,
   },
-  macroCell: { width: '50%', minHeight: 78, gap: 4 },
+  macroCell: { width: '50%', minHeight: 78, gap: 6 },
   macroLabel: {
     color: palette.muted,
-    fontSize: 11,
+    fontSize: 13,
+    lineHeight: 18,
     fontWeight: '700',
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
-  macroValue: { color: palette.ink, fontSize: 18, fontWeight: '600' },
+  macroValueRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  macroValue: {
+    color: palette.ink,
+    fontFamily: 'monospace',
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: '600',
+  },
+  macroUnit: { color: palette.muted, fontSize: 15, lineHeight: 20 },
+  macroDivider: {
+    position: 'absolute',
+    top: '50%',
+    left: 20,
+    right: 20,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: palette.divider,
+  },
   nutritionRow: {
     minHeight: 38,
     flexDirection: 'row',

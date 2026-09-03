@@ -156,7 +156,9 @@ function DemoScreen() {
         />
       ) : activeTab === 'search' && searchScope === 'restaurants' ? (
         <RestaurantScreens
+          client={client}
           configured={configured}
+          fixturesEnabled={e2eFixturesEnabled}
           onSettings={() => setShowSettings(true)}
           onSwitchFoods={() => setSearchScope('foods')}
         />

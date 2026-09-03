@@ -28,6 +28,15 @@ jest.mock('../NativeJanuaryReactNative', () => ({
     ),
     onTokenRequested: jest.fn(() => ({ remove: jest.fn() })),
     rejectTokenRequest: jest.fn(),
+    restaurantMenuItems: jest.fn(async () =>
+      JSON.stringify({ items: [{ id: 'menu-1', name: 'Bowl', servings: [] }] })
+    ),
+    restaurantMenuItemsSearch: jest.fn(async () =>
+      JSON.stringify({ items: [], total_count: 0 })
+    ),
+    restaurantsSearch: jest.fn(async () =>
+      JSON.stringify({ items: [], total_count: 0 })
+    ),
     resolveTokenRequest: jest.fn(),
   },
 }));
@@ -96,5 +105,58 @@ describe('January React Native SDK', () => {
     expect(mockNativeModule.foodLogsUpdate).toHaveBeenCalled();
     expect(mockNativeModule.foodLogsDelete).toHaveBeenCalled();
     expect(mockNativeModule.glucosePredict).toHaveBeenCalled();
+  });
+
+  it('exposes restaurant and menu operations through the native SDKs', async () => {
+    const client = new JanuaryClient({
+      clientTokenProvider: async () => ({ token: 'ct-test', expiresIn: 1_800 }),
+      endUserId: 'demo-user',
+    });
+    const search = {
+      latitude: 37.775,
+      longitude: -122.419,
+      query: 'cafe',
+    };
+
+    await expect(client.restaurants.search(search)).resolves.toEqual({
+      items: [],
+      totalCount: 0,
+    });
+    await client.restaurants.searchMenuItems(search);
+    await expect(
+      client.restaurants.getMenuItems({ restaurantId: 'restaurant-1' })
+    ).resolves.toEqual({
+      items: [{ id: 'menu-1', name: 'Bowl', servings: [] }],
+    });
+
+    expect(mockNativeModule.restaurantsSearch).toHaveBeenCalledWith(
+      expect.any(String),
+      'cafe',
+      37.775,
+      -122.419,
+      8_000,
+      10
+    );
+    expect(mockNativeModule.restaurantMenuItemsSearch).toHaveBeenCalled();
+    expect(mockNativeModule.restaurantMenuItems).toHaveBeenCalledWith(
+      expect.any(String),
+      'restaurant-1',
+      100,
+      0
+    );
+  });
+
+  it('validates restaurant requests before crossing the native bridge', async () => {
+    const client = new JanuaryClient({
+      clientTokenProvider: async () => ({ token: 'ct-test', expiresIn: 1_800 }),
+      endUserId: 'demo-user',
+    });
+
+    await expect(
+      client.restaurants.search({ latitude: 91, longitude: 0, query: 'cafe' })
+    ).rejects.toThrow('latitude or longitude is outside the valid range.');
+    await expect(
+      client.restaurants.getMenuItems({ restaurantId: '', offset: 0 })
+    ).rejects.toThrow('restaurantId is required.');
   });
 });

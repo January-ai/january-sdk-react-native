@@ -146,6 +146,67 @@ public final class JanuaryNativeBridge: NSObject, @unchecked Sendable {
         }
     }
 
+    @objc(restaurantsSearch:query:latitude:longitude:radius:limit:completion:)
+    public func restaurantsSearch(
+        _ clientID: String,
+        query: String,
+        latitude: Double,
+        longitude: Double,
+        radius: Double,
+        limit: Int,
+        completion: @escaping (NSString?, NSError?) -> Void
+    ) {
+        perform(clientID, completion: completion) { client in
+            try await client.restaurants.search(
+                .init(
+                    query: query,
+                    latitude: latitude,
+                    longitude: longitude,
+                    radius: radius,
+                    limit: limit
+                )
+            )
+        }
+    }
+
+    @objc(restaurantMenuItemsSearch:query:latitude:longitude:radius:limit:completion:)
+    public func restaurantMenuItemsSearch(
+        _ clientID: String,
+        query: String,
+        latitude: Double,
+        longitude: Double,
+        radius: Double,
+        limit: Int,
+        completion: @escaping (NSString?, NSError?) -> Void
+    ) {
+        perform(clientID, completion: completion) { client in
+            try await client.restaurants.searchMenuItems(
+                .init(
+                    query: query,
+                    latitude: latitude,
+                    longitude: longitude,
+                    radius: radius,
+                    limit: limit
+                )
+            )
+        }
+    }
+
+    @objc(restaurantMenuItems:restaurantId:limit:offset:completion:)
+    public func restaurantMenuItems(
+        _ clientID: String,
+        restaurantID: String,
+        limit: Int,
+        offset: Int,
+        completion: @escaping (NSString?, NSError?) -> Void
+    ) {
+        perform(clientID, completion: completion) { client in
+            try await client.restaurants.getMenuItems(
+                .init(restaurantID: restaurantID, limit: limit, offset: offset)
+            )
+        }
+    }
+
     @objc(foodAnalysisAnalyzePhoto:image:completion:)
     public func foodAnalysisAnalyzePhoto(
         _ clientID: String,

@@ -7,12 +7,17 @@ import type {
   CreateFoodLogRequest,
   FoodLog,
   FoodLogList,
+  GetRestaurantMenuItemsRequest,
+  GetRestaurantMenuItemsResponse,
   FoodScan,
   FoodSearchResults,
   JanuaryClientOptions,
   ListFoodLogsRequest,
   GlucosePrediction,
   PredictGlucoseRequest,
+  SearchRestaurantMenuItemsResponse,
+  SearchRestaurantsRequest,
+  SearchRestaurantsResponse,
   SearchFoodsRequest,
   UpdateFoodLogRequest,
 } from './types';
@@ -44,6 +49,17 @@ export class JanuaryClient {
   };
   readonly glucose: {
     predict: (request: PredictGlucoseRequest) => Promise<GlucosePrediction>;
+  };
+  readonly restaurants: {
+    search: (
+      request: SearchRestaurantsRequest
+    ) => Promise<SearchRestaurantsResponse>;
+    searchMenuItems: (
+      request: SearchRestaurantsRequest
+    ) => Promise<SearchRestaurantMenuItemsResponse>;
+    getMenuItems: (
+      request: GetRestaurantMenuItemsRequest
+    ) => Promise<GetRestaurantMenuItemsResponse>;
   };
 
   private readonly clientId: string;
@@ -182,6 +198,44 @@ export class JanuaryClient {
         );
       },
     };
+
+    this.restaurants = {
+      search: async (request) => {
+        this.assertActive();
+        const values = validateRestaurantSearch(request);
+        return parseNativeJson<SearchRestaurantsResponse>(
+          await native.restaurantsSearch(this.clientId, ...values)
+        );
+      },
+      searchMenuItems: async (request) => {
+        this.assertActive();
+        const values = validateRestaurantSearch(request);
+        return parseNativeJson<SearchRestaurantMenuItemsResponse>(
+          await native.restaurantMenuItemsSearch(this.clientId, ...values)
+        );
+      },
+      getMenuItems: async (request) => {
+        this.assertActive();
+        const restaurantId = request.restaurantId.trim();
+        if (!restaurantId) throw new Error('restaurantId is required.');
+        const limit = request.limit ?? 100;
+        const offset = request.offset ?? 0;
+        if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+          throw new Error('limit must be an integer between 1 and 100.');
+        }
+        if (!Number.isInteger(offset) || offset < 0) {
+          throw new Error('offset must be a non-negative integer.');
+        }
+        return parseNativeJson<GetRestaurantMenuItemsResponse>(
+          await native.restaurantMenuItems(
+            this.clientId,
+            restaurantId,
+            limit,
+            offset
+          )
+        );
+      },
+    };
   }
 
   dispose(): void {
@@ -218,6 +272,32 @@ export class JanuaryClient {
       );
     }
   }
+}
+
+function validateRestaurantSearch(
+  request: SearchRestaurantsRequest
+): [string, number, number, number, number] {
+  const query = request.query.trim();
+  if (!query) throw new Error('query is required.');
+  if (
+    !Number.isFinite(request.latitude) ||
+    request.latitude < -90 ||
+    request.latitude > 90 ||
+    !Number.isFinite(request.longitude) ||
+    request.longitude < -180 ||
+    request.longitude > 180
+  ) {
+    throw new Error('latitude or longitude is outside the valid range.');
+  }
+  const radius = request.radius ?? 8_000;
+  if (!Number.isFinite(radius) || radius < 1 || radius > 50_000) {
+    throw new Error('radius must be between 1 and 50000 meters.');
+  }
+  const limit = request.limit ?? 10;
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    throw new Error('limit must be an integer between 1 and 100.');
+  }
+  return [query, request.latitude, request.longitude, radius, limit];
 }
 
 function assertSelections(

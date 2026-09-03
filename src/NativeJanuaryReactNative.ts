@@ -40,6 +40,28 @@ export interface Spec extends TurboModule {
     category: string | null,
     limit: number
   ): Promise<string>;
+  restaurantsSearch(
+    clientId: string,
+    query: string,
+    latitude: number,
+    longitude: number,
+    radius: number,
+    limit: number
+  ): Promise<string>;
+  restaurantMenuItemsSearch(
+    clientId: string,
+    query: string,
+    latitude: number,
+    longitude: number,
+    radius: number,
+    limit: number
+  ): Promise<string>;
+  restaurantMenuItems(
+    clientId: string,
+    restaurantId: string,
+    limit: number,
+    offset: number
+  ): Promise<string>;
   foodAnalysisAnalyzePhoto(clientId: string, image: string): Promise<string>;
   foodAnalysisCorrect(
     clientId: string,

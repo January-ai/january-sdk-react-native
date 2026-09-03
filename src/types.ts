@@ -104,6 +104,85 @@ export interface FoodSearchResults {
   totalCount: number;
 }
 
+export interface SearchRestaurantsRequest {
+  limit?: number;
+  latitude: number;
+  longitude: number;
+  query: string;
+  /** Search radius in meters. Defaults to 8,000. */
+  radius?: number;
+}
+
+export type RestaurantResultType = 'restaurant' | 'menu_item';
+
+export interface Restaurant {
+  address1?: string;
+  address2?: string;
+  city?: string;
+  distance?: number;
+  id: string;
+  isChain?: boolean;
+  name?: string;
+  type: RestaurantResultType;
+}
+
+export interface SearchRestaurantsResponse {
+  items: Restaurant[];
+  totalCount: number;
+}
+
+export interface RestaurantMenuItem {
+  addedSugars?: number;
+  calories?: number;
+  carbohydrates?: number;
+  distance?: number;
+  fiber?: number;
+  glycemicIndex?: number;
+  glycemicLoad?: number;
+  id: string;
+  isChain?: boolean;
+  name?: string;
+  netCarbohydrates?: number;
+  photoURL?: string;
+  protein?: number;
+  restaurantName?: string;
+  servings: ServingOption[];
+  totalFat?: number;
+  totalSugars?: number;
+  type: string;
+}
+
+export interface SearchRestaurantMenuItemsResponse {
+  items: RestaurantMenuItem[];
+  totalCount: number;
+}
+
+export interface GetRestaurantMenuItemsRequest {
+  limit?: number;
+  offset?: number;
+  restaurantId: string;
+}
+
+export interface RestaurantMenuEntry {
+  addedSugars?: number;
+  calories?: number;
+  carbohydrates?: number;
+  fiber?: number;
+  glycemicIndex?: number;
+  glycemicLoad?: number;
+  id?: string;
+  name?: string;
+  netCarbohydrates?: number;
+  protein?: number;
+  servings: ServingOption[];
+  totalFat?: number;
+  totalSugars?: number;
+}
+
+export interface GetRestaurantMenuItemsResponse {
+  items: RestaurantMenuEntry[];
+}
+
 export interface ServingSelection {
   id: string;
   quantity: number;
