@@ -32,7 +32,6 @@ apply plugin: "kotlin-android"
 apply plugin: "com.facebook.react"
 
 repositories {
-  mavenLocal()
   google()
   mavenCentral()
 }
@@ -54,6 +53,6 @@ android {
 
 dependencies {
   implementation "com.facebook.react:react-android"
-  implementation "ai.january:january-sdk-android:0.1.0"
+  implementation "ai.january:january-sdk-android:0.1.1"
   implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2"
 }

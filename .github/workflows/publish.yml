@@ -1,0 +1,83 @@
+name: Publish React Native SDK to npm
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: Publish release to npm
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.0.0
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.0.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Install npm with trusted-publishing support
+        run: npm install --global npm@12.0.2
+
+      - name: Install pinned dependencies
+        run: |
+          corepack enable
+          corepack yarn install --immutable
+
+      - name: Verify package identity and release tag
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          package_name="$(node -p "require('./package.json').name")"
+          package_version="$(node -p "require('./package.json').version")"
+          test "$package_name" = "@januaryai/react-native"
+          test "$RELEASE_TAG" = "v$package_version"
+
+      - name: Verify native releases are public
+        shell: bash
+        run: |
+          ios_version="$(node -e 'const fs=require("fs"); const value=fs.readFileSync("JanuaryReactNative.podspec","utf8").match(/s\.dependency "January", "([^"]+)"/); if (!value) process.exit(1); process.stdout.write(value[1])')"
+          android_version="$(node -e 'const fs=require("fs"); const value=fs.readFileSync("android/build.gradle","utf8").match(/ai\.january:january-sdk-android:([^"$]+)/); if (!value) process.exit(1); process.stdout.write(value[1])')"
+          curl --fail --silent --show-error \
+            "https://trunk.cocoapods.org/api/v1/pods/January" \
+            --output "$RUNNER_TEMP/january-pod.json"
+          node -e 'const fs=require("fs"); const wanted=process.argv[1]; const data=JSON.parse(fs.readFileSync(process.argv[2],"utf8")); if (!data.versions?.some(version => version.name === wanted)) process.exit(1)' \
+            "$ios_version" "$RUNNER_TEMP/january-pod.json"
+          curl --fail --silent --show-error --head \
+            "https://repo1.maven.org/maven2/ai/january/january-sdk-android/$android_version/january-sdk-android-$android_version.pom" \
+            >/dev/null
+
+      - name: Build and test
+        run: |
+          corepack yarn lint
+          corepack yarn typecheck
+          corepack yarn test --maxWorkers=2
+          corepack yarn prepare
+
+      - name: Verify package contents
+        run: npm pack --dry-run
+
+      - name: Publish public package
+        shell: bash
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if npm view "@januaryai/react-native@$version" version >/dev/null 2>&1; then
+            echo "@januaryai/react-native@$version is already published"
+            exit 0
+          fi
+          if [[ "$version" == *-* ]]; then
+            npm publish --access public --tag beta
+          else
+            npm publish --access public
+          fi

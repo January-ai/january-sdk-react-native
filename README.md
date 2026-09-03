@@ -1,113 +1,66 @@
 # January SDK for React Native
 
-Official React Native SDK for January food discovery, restaurants, food analysis,
-food logs, and glucose prediction.
+The official React Native SDK for January food discovery, restaurants, food
+analysis, food logs, and glucose prediction.
 
-> **Controlled preview:** the package is private and is not published to npm.
+The package exposes one TypeScript API and delegates platform work to January's
+native Swift SDK on iOS and Kotlin SDK on Android through a React Native
+TurboModule.
 
-## Status
+> **Controlled preview:** APIs and minimum platform versions may change before
+> the first stable release.
 
-The SDK is a native-first wrapper. Its TypeScript API calls January's existing
-Swift SDK on iOS and Kotlin SDK on Android through a React Native TurboModule.
-The current preview includes production-shaped client-token authentication,
-food search, photo analysis and correction, Food Logs CRUD, and glucose
-prediction. The demo exposes those capabilities through four functional tabs.
+## Install
 
-## Repository layout
-
-```text
-src/       React Native package and public TypeScript API
-ios/       iOS Turbo Native Module implementation
-android/   Android Turbo Native Module implementation
-example/   Expo development-build demo application
-```
-
-The example app does not require January credentials to launch. Configure a
-partner token endpoint to run a live food search; the app never contains a
-January server API key.
-
-## Native dependencies
-
-- iOS: `January` `0.1.0-beta.2` through CocoaPods. The iOS SDK repository now
-  contains podspecs for `January` and `JanuaryPartnerTransport`.
-- Android: `ai.january:january-sdk-android:0.1.0` through Maven.
-
-Until those artifacts are published, local development can use the sibling
-native repositories. Publish the Android SDK to Maven Local and add the local
-iOS pods to the generated example Podfile before building the example.
-
-## Development
-
-Requirements:
-
-- Node.js 22
-- Yarn 4 through Corepack
-- Xcode for iOS builds
-- Android Studio and JDK 17 for Android builds
-
-Install dependencies and run the checks:
+### React Native
 
 ```sh
-corepack yarn install
-corepack yarn lint
-corepack yarn typecheck
-corepack yarn test
-corepack yarn prepare
+npm install @januaryai/react-native
 ```
 
-Run the native example:
+Or:
 
 ```sh
-corepack yarn example ios
-corepack yarn example android
+yarn add @januaryai/react-native
 ```
 
-Configure live authentication for the demo:
+Install the iOS pods after adding the package:
 
 ```sh
-export EXPO_PUBLIC_JANUARY_TOKEN_ENDPOINT="https://your-backend.example/client-token"
-export EXPO_PUBLIC_DEMO_SESSION_TOKEN="your-existing-app-session"
-export EXPO_PUBLIC_DEMO_END_USER_ID="your-test-user-id"
+npx pod-install
 ```
 
-## Authentication
+React Native autolinking discovers the January native module. CocoaPods then
+installs the pinned January iOS SDK, and Gradle downloads the pinned January
+Android SDK from Maven Central. Applications should not install either native
+SDK separately.
 
-Production applications must obtain short-lived client tokens from their own
-authenticated backend. Never bundle a January server API key in a mobile app.
-
-For an uncommitted local debug build only, the demo can use the development
-initializer already provided by the native SDKs:
+### Expo
 
 ```sh
-EXPO_PUBLIC_JANUARY_API_KEY="sk-..." corepack yarn example android
+npx expo install @januaryai/react-native
+npx expo run:ios
+# or
+npx expo run:android
 ```
 
-The native bridges reject development API-key authentication in non-debug
-applications. Never publish or distribute a build containing this value.
+The SDK contains custom native code and therefore requires an Expo development
+build. It does not run inside the standard Expo Go application. After installing
+or upgrading the SDK, rebuild the native development client.
 
-## Device UI tests
+## Requirements
 
-The demo has a cross-platform Maestro suite for launch, navigation, settings,
-food search, category selection, meal scanning and correction, Food Logs,
-glucose prediction, empty states, and errors. Install an Android or iOS
-development build and start the deterministic fixture bundle:
+- React Native 0.86 or later
+- React 19.2 or later
+- iOS 15 or later
+- Android API 26 or later
+- New Architecture enabled
 
-```sh
-corepack yarn ui:start
-```
+## Quick start
 
-In a second terminal, run:
-
-```sh
-corepack yarn ui:test
-```
-
-The optional live flow calls the native January SDK. Start Metro with
-`EXPO_PUBLIC_JANUARY_API_KEY` instead of fixture mode, then run:
-
-```sh
-corepack yarn ui:test:live
-```
+Production applications obtain short-lived January client tokens from their own
+authenticated backend. Never include a January server API key in a mobile
+application.
 
 ```ts
 import { JanuaryClient } from '@januaryai/react-native';
@@ -118,17 +71,128 @@ const january = new JanuaryClient({
   clientTokenProvider: async (endUserId) => {
     const response = await fetch('/api/january/client-token', {
       method: 'POST',
-      headers: { 'x-end-user-id': endUserId },
+      headers: {
+        Authorization: `Bearer ${session.token}`,
+        'x-end-user-id': endUserId,
+      },
     });
+    if (!response.ok) {
+      throw new Error(`Token endpoint returned ${response.status}`);
+    }
     return response.json();
   },
 });
 
-const result = await january.foods.search({ query: 'greek yogurt' });
+const results = await january.foods.search({ query: 'greek yogurt' });
 ```
 
 Create one client for the signed-in user, reuse it, and call `dispose()` when
 that user signs out. Token caching and refresh remain inside the native SDK.
+
+For an uncommitted local Debug build only, the SDK also supports development
+API-key authentication. Never publish or distribute an application containing a
+January server API key.
+
+## Repository layout
+
+```text
+src/                         Public TypeScript API and TurboModule specification
+ios/                         Swift and Objective-C++ React Native bridge
+android/                     Kotlin React Native bridge
+JanuaryReactNative.podspec   iOS package and native SDK dependency metadata
+example/                     Expo development-build demo application
+qa/                          Cross-platform UI parity evidence
+example/.maestro/            Device UI test flows
+```
+
+The npm package contains `src`, compiled `lib`, both native bridges, and the
+podspec. The demo and QA files remain development-only and are not shipped in
+consumer applications.
+
+## Develop this SDK
+
+Requirements:
+
+- Node.js 22
+- Yarn 4 through Corepack
+- Xcode and CocoaPods for iOS
+- Android Studio and JDK 17 for Android
+
+Install dependencies and build the package:
+
+```sh
+corepack yarn install
+corepack yarn prepare
+```
+
+Run the checks:
+
+```sh
+corepack yarn lint
+corepack yarn typecheck
+corepack yarn test
+```
+
+Run the demo on an iOS simulator or Android emulator:
+
+```sh
+corepack yarn example ios
+corepack yarn example android
+```
+
+For deterministic demo data, start Metro in fixture mode:
+
+```sh
+corepack yarn ui:start
+```
+
+Then run the Maestro device suite in another terminal:
+
+```sh
+corepack yarn ui:test
+```
+
+For live local testing, configure either a partner token endpoint or a Debug-only
+API key. See [`example/.env.example`](example/.env.example) for the supported
+environment variables.
+
+The example uses the released native SDKs by default. To test unreleased native
+changes from sibling repositories, publish Android to Maven Local and opt into
+the local dependencies explicitly:
+
+```sh
+JANUARY_USE_MAVEN_LOCAL=1 corepack yarn example android
+JANUARY_IOS_SDK_PATH=/absolute/path/to/january-sdk-ios corepack yarn example ios
+```
+
+## IDE workflow
+
+Use VS Code or Cursor for TypeScript and React Native development. Use Xcode to
+build, sign, and run iOS, and Android Studio to build and run Android.
+
+Open the generated iOS workspace, not the Xcode project:
+
+```sh
+open example/ios/JanuarySDKDemo.xcworkspace
+```
+
+Keep Metro running while editing TypeScript to use Fast Refresh.
+
+## Native SDK versions
+
+Every React Native release pins native SDK versions that passed the complete
+bridge, build, and demo test suite. The current native dependencies are:
+
+- iOS: `January` `0.1.0-beta.2`
+- Android: `ai.january:january-sdk-android:0.1.1`
+
+Native releases are updated through a tested React Native release rather than a
+dynamic `latest` or repository branch dependency.
+
+## Release
+
+Maintainer instructions, registry ordering, and npm trusted-publishing setup are
+documented in [`.github/RELEASING.md`](.github/RELEASING.md).
 
 ## License
 

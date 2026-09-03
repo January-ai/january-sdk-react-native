@@ -1,8 +1,7 @@
 {
   "name": "@januaryai/react-native",
-  "version": "0.1.0",
+  "version": "0.1.0-beta.1",
   "description": "The official January SDK for React Native",
-  "private": true,
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
   "exports": {
@@ -14,6 +13,7 @@
     "./package.json": "./package.json"
   },
   "files": [
+    "CHANGELOG.md",
     "src",
     "lib",
     "android",
@@ -41,7 +41,7 @@
     "ui:start": "EXPO_PUBLIC_E2E_FIXTURES=1 yarn example start --port 8081",
     "ui:test": "maestro test example/.maestro/flows --include-tags fixture",
     "ui:test:live": "maestro test example/.maestro/flows --include-tags live",
-    "release": "release-it --only-version"
+    "release": "release-it"
   },
   "keywords": [
     "react-native",
@@ -52,13 +52,14 @@
     "type": "git",
     "url": "git+https://github.com/January-ai/january-sdk-react-native.git"
   },
-  "author": "January AI <sdk@january.ai> (https://january.ai)",
+  "author": "January AI <oren@january.ai> (https://january.ai)",
   "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/January-ai/january-sdk-react-native/issues"
   },
   "homepage": "https://github.com/January-ai/january-sdk-react-native#readme",
   "publishConfig": {
+    "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
