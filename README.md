@@ -7,9 +7,6 @@ The package exposes one TypeScript API and delegates platform work to January's
 native Swift SDK on iOS and Kotlin SDK on Android through a React Native
 TurboModule.
 
-> **Controlled preview:** APIs and minimum platform versions may change before
-> the first stable release.
-
 ## Install
 
 ### React Native
@@ -86,6 +83,13 @@ const january = new JanuaryClient({
 const results = await january.foods.search({ query: 'greek yogurt' });
 ```
 
+## Documentation
+
+The complete integration guide is in
+[`Documentation/GitBook`](Documentation/GitBook/README.md), including native
+installation, production authentication, feature guides, API reference,
+testing, and troubleshooting.
+
 Create one client for the signed-in user, reuse it, and call `dispose()` when
 that user signs out. Token caching and refresh remain inside the native SDK.
 
@@ -101,6 +105,7 @@ ios/                         Swift and Objective-C++ React Native bridge
 android/                     Kotlin React Native bridge
 JanuaryReactNative.podspec   iOS package and native SDK dependency metadata
 example/                     Expo development-build demo application
+Documentation/GitBook/       GitBook integration and API documentation
 qa/                          Cross-platform UI parity evidence
 example/.maestro/            Device UI test flows
 ```

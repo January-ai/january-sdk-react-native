@@ -31,6 +31,9 @@ jobs:
       - name: Typecheck files
         run: yarn typecheck
 
+      - name: Validate GitBook documentation
+        run: yarn docs:check
+
   test:
     runs-on: ubuntu-latest
 

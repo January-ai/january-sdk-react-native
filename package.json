@@ -35,6 +35,7 @@
     "example": "yarn workspace @januaryai/react-native-example",
     "clean": "del-cli lib",
     "prepare": "bob build",
+    "docs:check": "node scripts/check-documentation.mjs",
     "typecheck": "tsc",
     "lint": "eslint \"**/*.{js,ts,tsx}\"",
     "test": "jest",
