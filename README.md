@@ -97,7 +97,7 @@ settings:
 
 - React Native 0.86 or later
 - React 19.2 or later
-- iOS 15 or later
+- iOS 15.1 or later
 - Android API 26 or later
 - JDK 17 for Android builds
 - New Architecture enabled

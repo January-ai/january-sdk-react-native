@@ -11,20 +11,13 @@ Before releasing, verify that the versions declared by
 Never release the React Native wrapper against an unpublished native version or
 against a native repository branch.
 
-## First npm release
+## npm authentication
 
-The npm trusted publisher can only be configured after the package exists.
-For the first release, a maintainer of the `januaryai` npm organization must:
+The `@januaryai/react-native` package uses npm trusted publishing for this
+repository and `.github/workflows/publish.yml`. Do not add a long-lived npm
+token to the repository or workflow.
 
-1. Authenticate locally with npm and publish the package from a clean release
-   commit using `npm publish --access public --tag beta`.
-2. Configure the package's npm trusted publisher with:
-   - Organization: `January-ai`
-   - Repository: `january-sdk-react-native`
-   - Workflow: `publish.yml`
-   - Allowed action: `npm publish`
-
-## Subsequent releases
+## Release process
 
 1. Update the wrapper version and both pinned native SDK versions.
 2. Update `CHANGELOG.md`.
