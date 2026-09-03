@@ -29,8 +29,18 @@ corepack yarn ui:test
 ```
 
 The complete suite covers functional fixture flows and parity with the native
-iOS and Android demo applications. CI builds the app and runs the same Maestro
-flows on both platforms.
+iOS and Android demo applications. The local `ui:test` command targets the
+currently selected device. Run it once for iOS and once for Android, or select
+each device explicitly:
+
+```sh
+maestro test --device <device-id> example/.maestro/flows \
+  --include-tags fixture,parity \
+  --shard-split 1
+```
+
+CI builds the app and runs these same Maestro flows independently on both
+platforms.
 
 For application tests, mock the module at your integration boundary or wrap the
 `JanuaryClient` instance in a small service that can be replaced in unit tests.

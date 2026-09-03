@@ -7,6 +7,11 @@ The package exposes one TypeScript API and delegates platform work to January's
 native Swift SDK on iOS and Kotlin SDK on Android through a React Native
 TurboModule.
 
+This package supports native iOS and Android applications. It does not support
+React Native Web because browsers cannot load the native TurboModule. Use
+`@januaryai/web-sdk` for browser applications. The example's web export is a
+compile-time check for shared UI code, not a supported SDK web runtime.
+
 ## Install
 
 ### React Native
@@ -196,7 +201,17 @@ Then run the Maestro device suite in another terminal:
 corepack yarn ui:test
 ```
 
-The default suite runs every deterministic fixture and native-demo parity flow.
+The default command runs every deterministic fixture and native-demo parity
+flow on the currently selected device. Run it once with an iOS simulator active
+and once with an Android emulator or device active to certify both platforms.
+To select a device explicitly, use the same command as CI:
+
+```sh
+maestro test --device <device-id> example/.maestro/flows \
+  --include-tags fixture,parity \
+  --shard-split 1
+```
+
 Use `corepack yarn ui:test:fixtures` when you only need the shorter functional
 fixture suite during development.
 

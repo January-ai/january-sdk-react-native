@@ -7,10 +7,15 @@ calls are executed by the pinned January native SDK on each platform.
 | --- | --- |
 | iOS | `January` through CocoaPods |
 | Android | `ai.january:january-sdk-android` through Maven Central |
+| React Native Web | Not supported; use `@januaryai/web-sdk` |
 
 Native versions are pinned per React Native release so one tested combination
 is installed for consumers. Do not add separate native SDK dependencies unless
 you are developing the bridge itself.
+
+The example workspace can export shared UI code for the web as a compile-time
+check. Browser API calls are not supported through this package because the
+native TurboModule is unavailable.
 
 ## Security rules
 
