@@ -185,3 +185,16 @@ by the following deterministic flows:
 These flows provide implementation and screenshot evidence; their inventory
 rows remain `Partial` until the final image-diff gate is met. Native camera
 barcode scanning and food-detail serving-menu interaction remain outstanding.
+
+The Food Logs and Settings checkpoint is exercised by:
+
+- `02-settings.yaml`: the Android-height Settings sheet over the Glucose tab.
+- `13-food-log-load-states.yaml`: loading, empty, error, and retry states.
+- `14-food-log-crud-recovery.yaml`: new/edit, save loading/error/retry, and
+  delete confirmation/error/result while preserving entered state.
+- `21-food-logs-parity.yaml`: initial, results, detail, and edit surfaces.
+
+All thirteen named Food Logs reference states now have deterministic React
+Native screenshots. Their inventory rows remain `Partial` until automated
+image-diff thresholds are defined and passed; the Android-native alert styling
+is also still visibly different from the Compose delete dialog.

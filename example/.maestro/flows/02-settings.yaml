@@ -17,14 +17,16 @@ tags:
       id: settings-button
     timeout: 15000
 - tapOn:
-    id: settings-button
+    id: tab-glucose
+- tapOn: Open settings
 - assertVisible:
     id: settings-sheet
 - assertVisible: January SDK
-- assertVisible: UI test fixtures
+- assertVisible: Development API key
 - assertVisible: Connected
 - assertVisible: End user ID
-- assertVisible: react-native-demo-user
+- assertVisible: parity-user
+- takeScreenshot: example/.maestro/artifacts/react-native-settings
 - tapOn:
     id: settings-close
 - assertNotVisible:

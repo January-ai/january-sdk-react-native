@@ -191,7 +191,7 @@ function fixtureFood(
 export const fixtureScan: FoodScan = {
   mealName: 'Fixture breakfast',
   totalNutrients: {
-    calories: { value: 100, unit: 'cal' },
+    calories: { value: 100, unit: 'kcal' },
     protein: { value: 4, unit: 'g' },
     carbohydrates: { value: 20, unit: 'g' },
     totalFat: { value: 2, unit: 'g' },
@@ -206,7 +206,7 @@ export const fixtureScan: FoodScan = {
         name: 'Fixture oatmeal',
         brandName: 'January fixture',
         nutrients: {
-          calories: { value: 100, unit: 'cal' },
+          calories: { value: 100, unit: 'kcal' },
           protein: { value: 4, unit: 'g' },
           carbohydrates: { value: 20, unit: 'g' },
           totalFat: { value: 2, unit: 'g' },
@@ -218,7 +218,7 @@ export const fixtureScan: FoodScan = {
             id: 'fixture-oatmeal-serving',
             quantity: 1,
             selectedQuantity: 1,
-            unit: 'bowl',
+            unit: 'cup',
           },
         ],
       },
@@ -262,7 +262,7 @@ export const fixtureFoodLogs: FoodLog[] = [
         servingDetails: {
           id: 'fixture-oatmeal-serving',
           quantity: 1,
-          unit: 'bowl',
+          unit: 'cup',
         },
       },
     ],

@@ -153,7 +153,7 @@ export function FoodLogsScreen({
               />
             </View>
             <View style={styles.flex}>
-              <Text style={sharedStyles.cardTitle}>
+              <Text style={[sharedStyles.cardTitle, styles.workflowTitle]}>
                 Build one complete meal
               </Text>
               <Text style={sharedStyles.body}>
@@ -192,7 +192,7 @@ export function FoodLogsScreen({
             <Text style={styles.userId}>parity-user</Text>
             <Text style={styles.userTimezone}>America/New_York</Text>
           </View>
-          <Pressable onPress={onSettings}>
+          <Pressable onPress={onSettings} style={styles.userActionButton}>
             <Text style={styles.userAction}>Change user or timezone</Text>
           </Pressable>
         </View>
@@ -486,13 +486,13 @@ function FoodLogEditor({
           style={[
             styles.editorSheet,
             {
-              paddingTop: insets.top + 42,
+              paddingTop: insets.top + 47,
               paddingBottom: insets.bottom,
             },
           ]}
           testID="food-log-editor"
         >
-          <View style={[styles.editorHandle, { top: insets.top + 16 }]} />
+          <View style={[styles.editorHandle, { top: insets.top + 21 }]} />
           <View style={styles.editorHeader}>
             <Pressable
               accessibilityLabel="Close food log editor"
@@ -797,116 +797,121 @@ function FoodLogDetail({
   onDelete: (log: FoodLog) => void;
   onEdit: (log: FoodLog) => void;
 }) {
-  const insets = useSafeAreaInsets();
+  if (!log) return null;
   return (
-    <Modal
-      animationType="none"
-      onRequestClose={onClose}
-      statusBarTranslucent
-      visible={log != null}
+    <View
+      style={[sharedStyles.screen, styles.detailScreen]}
+      testID="food-log-detail"
     >
-      {log ? (
-        <View
-          style={[sharedStyles.screen, { paddingTop: insets.top }]}
-          testID="food-log-detail"
+      <View style={styles.detailHeader}>
+        <Pressable
+          accessibilityLabel="Back from food log"
+          onPress={onClose}
+          style={sharedStyles.iconButton}
         >
-          <View style={styles.detailHeader}>
-            <Pressable
-              accessibilityLabel="Back from food log"
-              onPress={onClose}
-              style={sharedStyles.iconButton}
-            >
-              <MaterialCommunityIcons
-                color={palette.ink}
-                name="arrow-left"
-                size={22}
-              />
-            </Pressable>
-            <Text style={styles.detailHeaderTitle}>Food log</Text>
-            <Pressable
-              accessibilityLabel="Edit food log"
-              onPress={() => onEdit(log)}
-              testID="food-log-edit"
-            >
-              <Text style={styles.editText}>Edit</Text>
-            </Pressable>
-          </View>
-          <ScrollView contentContainerStyle={sharedStyles.content}>
-            <Text style={styles.detailTitle}>{log.name || 'Meal'}</Text>
-            <Text style={styles.logMeta}>{formatDate(log.timestampUTC)}</Text>
-            {log.foods.map((food, index) => (
-              <View key={`${food.id ?? index}`} style={sharedStyles.card}>
-                <Text style={styles.logName}>
-                  {food.name ?? 'Unnamed food'}
-                </Text>
-                {food.brandName ? (
-                  <Text style={styles.detailBrand}>{food.brandName}</Text>
-                ) : null}
-                <Text style={sharedStyles.body}>
-                  {food.consumedServing.quantity ?? 1} ×{' '}
-                  {food.servingDetails.quantity ?? 1}{' '}
-                  {food.servingDetails.unit ?? 'serving'}
-                </Text>
-                <View style={styles.detailMacros}>
-                  <Nutrient
-                    label="Calories"
-                    value={food.nutrients.calories?.value}
-                  />
-                  <Nutrient
-                    label="Protein"
-                    value={food.nutrients.protein?.value}
-                    unit="g"
-                  />
-                  <Nutrient
-                    label="Carbs"
-                    value={food.nutrients.carbohydrates?.value}
-                    unit="g"
-                  />
-                  <Nutrient
-                    label="Fat"
-                    value={food.nutrients.totalFat?.value}
-                    unit="g"
-                  />
-                </View>
-                {food.nutrients.fiber?.value != null ? (
-                  <View style={styles.detailNutritionRow}>
-                    <Text style={styles.detailNutritionText}>Fiber</Text>
-                    <Text style={styles.detailNutritionText}>
-                      {food.nutrients.fiber.value} g
-                    </Text>
-                  </View>
-                ) : null}
-                {food.nutrients.sodium?.value != null ? (
-                  <View style={styles.detailNutritionRow}>
-                    <Text style={styles.detailNutritionText}>Sodium</Text>
-                    <Text style={styles.detailNutritionText}>
-                      {food.nutrients.sodium.value} mg
-                    </Text>
-                  </View>
-                ) : null}
+          <MaterialCommunityIcons
+            color={palette.ink}
+            name="arrow-left"
+            size={22}
+          />
+        </Pressable>
+        <Text style={styles.detailHeaderTitle}>Food log</Text>
+        <Pressable
+          accessibilityLabel="Edit food log"
+          onPress={() => onEdit(log)}
+          testID="food-log-edit"
+        >
+          <Text style={styles.editText}>Edit</Text>
+        </Pressable>
+      </View>
+      <ScrollView contentContainerStyle={sharedStyles.content}>
+        <Text style={styles.detailTitle}>{log.name || 'Meal'}</Text>
+        <Text style={styles.logMeta}>{formatDate(log.timestampUTC)}</Text>
+        {log.foods.map((food, index) => (
+          <View
+            key={`${food.id ?? index}`}
+            style={[sharedStyles.card, styles.loggedFoodCard]}
+          >
+            <Text style={styles.logName}>{food.name ?? 'Unnamed food'}</Text>
+            {food.brandName ? (
+              <Text style={styles.detailBrand}>{food.brandName}</Text>
+            ) : null}
+            <Text style={sharedStyles.body}>
+              {food.consumedServing.quantity ?? 1} ×{' '}
+              {food.servingDetails.quantity ?? 1}{' '}
+              {food.servingDetails.unit ?? 'serving'}
+            </Text>
+            <View style={styles.detailMacros}>
+              <View style={styles.macroRow}>
+                <Nutrient
+                  label="Calories"
+                  value={food.nutrients.calories?.value}
+                  unit={food.nutrients.calories?.unit ?? 'cal'}
+                />
+                <Nutrient
+                  label="Protein"
+                  value={food.nutrients.protein?.value}
+                  unit={food.nutrients.protein?.unit ?? 'g'}
+                />
               </View>
-            ))}
-            <View style={styles.technicalRow}>
-              <Text style={styles.technicalText}>Technical details</Text>
-              <MaterialCommunityIcons
-                color={palette.ink}
-                name="chevron-right"
-                size={20}
-              />
+              <View style={styles.macroDivider} />
+              <View style={[styles.macroRow, styles.secondMacroRow]}>
+                <Nutrient
+                  label="Carbs"
+                  value={food.nutrients.carbohydrates?.value}
+                  unit={food.nutrients.carbohydrates?.unit ?? 'g'}
+                />
+                <Nutrient
+                  label="Fat"
+                  value={food.nutrients.totalFat?.value}
+                  unit={food.nutrients.totalFat?.unit ?? 'g'}
+                />
+              </View>
             </View>
-            <Pressable
-              accessibilityRole="button"
-              disabled={loading}
-              onPress={() => onDelete(log)}
-              style={styles.deleteButton}
-              testID="food-log-delete"
-            >
-              <Text style={styles.deleteText}>Delete food log</Text>
-            </Pressable>
-          </ScrollView>
+            <View>
+              {supplementalNutrition(food.nutrients)
+                .filter(([, amount]) => amount != null)
+                .map(([label, amount], rowIndex) => (
+                  <View
+                    key={label}
+                    style={[
+                      styles.detailNutritionRow,
+                      rowIndex > 0 && styles.detailNutritionDivider,
+                    ]}
+                  >
+                    <Text style={styles.detailNutritionText}>{label}</Text>
+                    <Text
+                      style={[
+                        styles.detailNutritionText,
+                        styles.detailNutritionValue,
+                      ]}
+                    >
+                      {amount!.value} {amount!.unit}
+                    </Text>
+                  </View>
+                ))}
+            </View>
+          </View>
+        ))}
+        <View style={styles.technicalRow}>
+          <Text style={styles.technicalText}>Technical details</Text>
+          <MaterialCommunityIcons
+            color={palette.ink}
+            name="chevron-right"
+            size={20}
+          />
         </View>
-      ) : null}
-    </Modal>
+        <Pressable
+          accessibilityRole="button"
+          disabled={loading}
+          onPress={() => onDelete(log)}
+          style={styles.deleteButton}
+          testID="food-log-delete"
+        >
+          <Text style={styles.deleteText}>Delete food log</Text>
+        </Pressable>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -1003,8 +1008,27 @@ function formatDate(value: string): string {
     ? value
     : date.toLocaleString(undefined, {
         dateStyle: 'medium',
-        timeStyle: 'short',
+        timeStyle: 'medium',
       });
+}
+
+function supplementalNutrition(
+  nutrients: FoodLog['foods'][number]['nutrients']
+) {
+  return [
+    ['Net carbohydrates', nutrients.netCarbohydrates],
+    ['Trans fat', nutrients.transFat],
+    ['Saturated fat', nutrients.saturatedFat],
+    ['Fiber', nutrients.fiber],
+    ['Total sugars', nutrients.totalSugars],
+    ['Added sugars', nutrients.addedSugars],
+    ['Cholesterol', nutrients.cholesterol],
+    ['Calcium', nutrients.calcium],
+    ['Iron', nutrients.iron],
+    ['Potassium', nutrients.potassium],
+    ['Sodium', nutrients.sodium],
+    ['Vitamin D', nutrients.vitaminD],
+  ] as const;
 }
 
 function copyFoodLog(log: FoodLog): FoodLog {
@@ -1094,7 +1118,8 @@ const styles = StyleSheet.create({
     gap: 13,
     backgroundColor: palette.surface,
   },
-  guideRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  workflowTitle: { fontSize: 24, lineHeight: 30 },
+  guideRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
   mealIcon: {
     width: 46,
     height: 46,
@@ -1140,6 +1165,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   userTimezone: { color: palette.muted, fontSize: 12 },
+  userActionButton: { minHeight: 48, justifyContent: 'center' },
   userAction: { color: palette.goldText, fontSize: 15, fontWeight: '700' },
   browseCopy: { color: palette.body, fontSize: 15, lineHeight: 20 },
   rangeCard: {
@@ -1244,8 +1270,8 @@ const styles = StyleSheet.create({
   editorGuideTitle: {
     color: palette.ink,
     fontFamily: 'serif',
-    fontSize: 23,
-    lineHeight: 28,
+    fontSize: 24,
+    lineHeight: 30,
   },
   editorGuideBody: {
     marginTop: 4,
@@ -1364,6 +1390,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  detailScreen: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 10,
+    backgroundColor: palette.paper,
+  },
   detailHeaderTitle: { color: palette.ink, fontSize: 17, fontWeight: '800' },
   editText: { color: palette.goldText, fontSize: 15, fontWeight: '600' },
   detailTitle: {
@@ -1374,10 +1409,32 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   detailBrand: { color: palette.muted, fontSize: 14 },
-  detailMacros: { paddingTop: 8, flexDirection: 'row', flexWrap: 'wrap' },
-  nutrient: { width: '50%', minHeight: 62, gap: 4 },
-  nutrientValue: { color: palette.ink, fontSize: 18, fontWeight: '700' },
-  nutrientUnit: { color: palette.body, fontSize: 12, fontWeight: '400' },
+  loggedFoodCard: { marginTop: 4, gap: 10 },
+  detailMacros: { position: 'relative' },
+  macroRow: { minHeight: 64, flexDirection: 'row', gap: 20 },
+  secondMacroRow: { marginTop: 28 },
+  macroDivider: {
+    position: 'absolute',
+    top: 78,
+    left: 0,
+    right: 0,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: palette.divider,
+  },
+  nutrient: { flex: 1, minHeight: 64, gap: 6 },
+  nutrientValue: {
+    color: palette.ink,
+    fontFamily: 'monospace',
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: '600',
+  },
+  nutrientUnit: {
+    color: palette.muted,
+    fontFamily: 'sans-serif',
+    fontSize: 15,
+    fontWeight: '400',
+  },
   nutrientLabel: {
     color: palette.muted,
     fontSize: 11,
@@ -1386,13 +1443,16 @@ const styles = StyleSheet.create({
   },
   detailNutritionRow: {
     minHeight: 44,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: palette.divider,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  detailNutritionText: { color: palette.body, fontSize: 15 },
+  detailNutritionDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: palette.divider,
+  },
+  detailNutritionText: { color: palette.body, fontSize: 17 },
+  detailNutritionValue: { fontFamily: 'monospace' },
   technicalRow: {
     minHeight: 46,
     flexDirection: 'row',

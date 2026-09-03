@@ -47,7 +47,8 @@ const developmentApiKey = process.env.EXPO_PUBLIC_JANUARY_API_KEY;
 const e2eFixturesEnabled = process.env.EXPO_PUBLIC_E2E_FIXTURES === '1';
 const sessionToken = process.env.EXPO_PUBLIC_DEMO_SESSION_TOKEN;
 const endUserId =
-  process.env.EXPO_PUBLIC_DEMO_END_USER_ID ?? 'react-native-demo-user';
+  process.env.EXPO_PUBLIC_DEMO_END_USER_ID ??
+  (e2eFixturesEnabled ? 'parity-user' : 'react-native-demo-user');
 
 const palette = {
   paper: '#FAF8F2',
@@ -487,7 +488,7 @@ function DemoScreen() {
       <SettingsSheet
         authentication={
           e2eFixturesEnabled
-            ? 'UI test fixtures'
+            ? 'Development API key'
             : developmentApiKey
               ? 'Development API key'
               : 'Client token provider'
@@ -1728,7 +1729,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(29, 26, 20, 0.3)',
   },
   settingsSheet: {
-    height: '60%',
+    height: '50%',
     paddingTop: 42,
     overflow: 'hidden',
     borderTopLeftRadius: 28,

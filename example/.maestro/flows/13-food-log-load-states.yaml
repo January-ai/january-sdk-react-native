@@ -30,6 +30,7 @@ tags:
     id: food-logs-refresh
 - assertVisible:
     id: food-logs-loading
+- takeScreenshot: example/.maestro/artifacts/react-native-logs-loading
 - extendedWaitUntil:
     visible:
       id: food-log-0
@@ -43,6 +44,7 @@ tags:
       id: food-logs-empty
     timeout: 15000
 - assertVisible: No food logs in this range
+- takeScreenshot: example/.maestro/artifacts/react-native-logs-empty
 - tapOn:
     id: logs-range-week
 - extendedWaitUntil:
@@ -58,6 +60,7 @@ tags:
       id: food-logs-error
     timeout: 15000
 - assertVisible: Temporary fixture food logs failure.
+- takeScreenshot: example/.maestro/artifacts/react-native-logs-error
 - tapOn:
     id: food-logs-retry
 - extendedWaitUntil:

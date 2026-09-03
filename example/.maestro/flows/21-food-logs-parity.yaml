@@ -25,6 +25,9 @@ tags:
     element:
       id: food-logs-refresh
     direction: DOWN
+- extendedWaitUntil:
+    visible: Refresh food logs
+    timeout: 15000
 - tapOn:
     id: food-logs-refresh
 - assertVisible:

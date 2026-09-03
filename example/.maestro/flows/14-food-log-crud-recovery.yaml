@@ -24,6 +24,7 @@ tags:
     direction: DOWN
 - tapOn:
     id: food-log-add
+- takeScreenshot: example/.maestro/artifacts/react-native-log-new
 - tapOn:
     id: food-log-name
 - inputText: Retry meal
@@ -54,17 +55,25 @@ tags:
     id: food-log-save
 - assertVisible:
     id: food-log-save-loading
+- takeScreenshot: example/.maestro/artifacts/react-native-log-save-loading
 - extendedWaitUntil:
     visible:
       id: food-log-save-error
     timeout: 15000
 - assertVisible: Temporary fixture food log save failure.
 - assertVisible: Retry meal
+- takeScreenshot: example/.maestro/artifacts/react-native-log-save-error
 - tapOn:
     id: food-log-save-retry
 - extendedWaitUntil:
-    visible: Retry meal
+    notVisible:
+      id: food-log-save
     timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: food-log-0
+    direction: DOWN
+- assertVisible: Retry meal
 - tapOn:
     id: food-log-0
 - assertVisible:
@@ -85,18 +94,26 @@ tags:
 - tapOn:
     id: food-log-save
 - extendedWaitUntil:
-    visible: Updated meal
+    notVisible:
+      id: food-log-save
     timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: food-log-0
+    direction: DOWN
+- assertVisible: Updated meal
 - tapOn:
     id: food-log-0
 - tapOn:
     id: food-log-delete
+- takeScreenshot: example/.maestro/artifacts/react-native-log-delete-confirmation
 - tapOn: Delete food log
 - extendedWaitUntil:
     visible:
       id: food-logs-error
     timeout: 15000
 - assertVisible: Temporary fixture deletion failure.
+- takeScreenshot: example/.maestro/artifacts/react-native-log-delete-error
 - tapOn:
     id: food-logs-retry
 - extendedWaitUntil:
@@ -106,3 +123,4 @@ tags:
 - assertNotVisible: Updated meal
 - assertNotVisible:
     id: food-logs-error
+- takeScreenshot: example/.maestro/artifacts/react-native-log-delete-result
