@@ -21,6 +21,7 @@ Native TurboModule.
 | React | 19.2 or later |
 | iOS | 15 or later |
 | Android | API 26 or later |
+| Android toolchain | JDK 17 |
 | Expo | A development build; Expo Go is not supported |
 | Production integration | A partner backend that issues short-lived January client tokens |
 

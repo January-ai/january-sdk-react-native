@@ -32,10 +32,29 @@ installs the pinned January iOS SDK, and Gradle downloads the pinned January
 Android SDK from Maven Central. Applications should not install either native
 SDK separately.
 
+Before building Android, set the consuming application's minimum SDK to 26:
+
+```groovy
+// android/build.gradle
+buildscript {
+    ext {
+        minSdkVersion = 26
+    }
+}
+```
+
+Then run the generated application normally:
+
+```sh
+npm run ios
+npm run android
+```
+
 ### Expo
 
 ```sh
 npx expo install @januaryai/react-native
+npx expo install expo-build-properties
 npx expo run:ios
 # or
 npx expo run:android
@@ -45,12 +64,32 @@ The SDK contains custom native code and therefore requires an Expo development
 build. It does not run inside the standard Expo Go application. After installing
 or upgrading the SDK, rebuild the native development client.
 
+Set Android's minimum SDK in the Expo application configuration:
+
+```json
+{
+  "expo": {
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
+        }
+      ]
+    ]
+  }
+}
+```
+
 ## Requirements
 
 - React Native 0.86 or later
 - React 19.2 or later
 - iOS 15 or later
 - Android API 26 or later
+- JDK 17 for Android builds
 - New Architecture enabled
 
 ## Quick start
