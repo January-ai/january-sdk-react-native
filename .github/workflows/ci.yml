@@ -214,6 +214,15 @@ jobs:
       - name: Prebuild example for Android
         run: yarn example expo prebuild --platform android
 
+      - name: Build Android UI APK
+        run: yarn example build:android
+
+      - name: Enable KVM group permissions
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
       - name: Run Android device suite
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
         with:
@@ -221,7 +230,6 @@ jobs:
           arch: x86_64
           profile: pixel_6
           script: |
-            yarn example build:android
             adb install -r example/android/app/build/outputs/apk/debug/app-debug.apk
             adb reverse tcp:8081 tcp:8081
             CI=1 yarn ui:start > "$RUNNER_TEMP/metro-android.log" 2>&1 &
@@ -232,6 +240,7 @@ jobs:
               sleep 2
             done
             curl --fail --silent http://127.0.0.1:8081/status
+            mkdir -p example/.maestro/artifacts
             maestro test --device emulator-5554 example/.maestro/flows \
               --include-tags fixture,parity \
               --shard-split 1 \
@@ -295,6 +304,7 @@ jobs:
             sleep 2
           done
           curl --fail --silent http://127.0.0.1:8081/status
+          mkdir -p example/.maestro/artifacts
           maestro test --device "$device_id" example/.maestro/flows \
             --include-tags fixture,parity \
             --shard-split 1 \

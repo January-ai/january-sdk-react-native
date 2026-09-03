@@ -31,4 +31,4 @@ appId: ai.january.sdk.demo
 - extendedWaitUntil:
     visible:
       id: search-screen
-    timeout: 15000
+    timeout: 30000
