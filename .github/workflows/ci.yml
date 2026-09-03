@@ -165,6 +165,12 @@ jobs:
         run: |
           yarn example expo prebuild --platform ios
 
+      - name: Install iOS pods
+        if: env.turbo_cache_hit != 1
+        run: |
+          cd example/ios
+          pod install --repo-update
+
       - name: Build example for iOS
         run: |
           yarn turbo run build:ios --cache-dir="${{ env.TURBO_CACHE_DIR }}"
