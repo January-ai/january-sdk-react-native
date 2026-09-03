@@ -308,7 +308,6 @@ function FullSheet({
             },
           ]}
         >
-          <View style={[styles.sheetHandle, { top: insets.top + 25 }]} />
           <View style={styles.sheetHeader}>
             <Pressable
               accessibilityLabel={`Close ${title}`}

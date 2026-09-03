@@ -1176,7 +1176,6 @@ function SettingsSheet({
           ]}
           testID="settings-sheet"
         >
-          <View style={styles.settingsHandle} />
           <View style={styles.sheetHeader}>
             <Pressable
               accessibilityLabel="Close settings"

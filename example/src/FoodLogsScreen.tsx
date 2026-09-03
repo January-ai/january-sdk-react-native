@@ -473,7 +473,6 @@ function FoodLogEditor({
           ]}
           testID="food-log-editor"
         >
-          <View style={[styles.editorHandle, { top: insets.top + 21 }]} />
           <View style={styles.editorHeader}>
             <Pressable
               accessibilityLabel="Close food log editor"

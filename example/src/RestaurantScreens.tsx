@@ -700,7 +700,6 @@ function RestaurantFilters({
           style={[styles.filterSheet, { paddingTop: insets.top + 42 }]}
           testID="restaurant-filters"
         >
-          <View style={[styles.handle, { top: insets.top + 16 }]} />
           <View style={styles.filterHeader}>
             <Pressable
               onPress={onClose}

@@ -107,7 +107,6 @@ export function FoodPickerSheet({
           ]}
           testID="food-picker"
         >
-          <View style={[styles.handle, { top: insets.top + 22 }]} />
           <SheetHeader onClose={onClose} title="Add food" />
           <View style={styles.searchField}>
             <MaterialCommunityIcons
@@ -261,7 +260,6 @@ export function FoodPickerSheet({
                   { paddingBottom: Math.max(insets.bottom, 12) },
                 ]}
               >
-                <View style={styles.nestedHandle} />
                 <ServingSelection
                   food={chosenFood}
                   onBack={() => setChosenFood(undefined)}

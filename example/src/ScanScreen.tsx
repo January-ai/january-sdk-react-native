@@ -356,7 +356,6 @@ function SheetFrame({
   const insets = useSafeAreaInsets();
   return (
     <View style={[styles.sheet, { paddingTop: insets.top + 42 }]}>
-      <View style={[styles.handle, { top: insets.top + 16 }]} />
       <View style={styles.sheetHeader}>
         <Pressable
           accessibilityLabel={`Close ${title}`}
