@@ -50,7 +50,7 @@ const e2eFixturesEnabled = process.env.EXPO_PUBLIC_E2E_FIXTURES === '1';
 const sessionToken = process.env.EXPO_PUBLIC_DEMO_SESSION_TOKEN;
 const endUserId =
   process.env.EXPO_PUBLIC_DEMO_END_USER_ID ??
-  (e2eFixturesEnabled ? 'parity-user' : 'react-native-demo-user');
+  (e2eFixturesEnabled ? 'parity-user' : 'january-sdk-demo-user');
 
 const palette = {
   paper: '#FAF8F2',
@@ -498,7 +498,7 @@ function DemoScreen() {
       <SettingsSheet
         authentication={
           e2eFixturesEnabled
-            ? 'Development API key'
+            ? 'Test fixture'
             : developmentApiKey
               ? 'Development API key'
               : 'Client token provider'
@@ -532,22 +532,22 @@ function SetupScreen() {
       </View>
       <Text style={styles.setupTitle}>Welcome to January</Text>
       <Text style={styles.setupBody}>
-        To use this demo app, initialize the SDK in code with your token
-        provider or a local development API key.
+        Start the local token server, then point this demo at it. Your January
+        API key stays on the server.
       </Text>
       <View style={styles.setupCard}>
         <SetupOption
-          badge="Recommended"
-          message="Set EXPO_PUBLIC_JANUARY_TOKEN_ENDPOINT and EXPO_PUBLIC_DEMO_SESSION_TOKEN in the local .env file."
+          badge="Local"
+          message="In january-server-sdk-node, run npm run demo:token-server."
           number="1"
-          title="Use your token provider"
+          title="Start the token server"
         />
         <View style={styles.divider} />
         <SetupOption
-          badge="Debug only"
-          message="Set EXPO_PUBLIC_JANUARY_API_KEY in the local .env file. Never commit or ship it."
+          badge="Client token"
+          message="Copy example/.env.example to example/.env, then rebuild."
           number="2"
-          title="Use a development API key"
+          title="Connect this app"
         />
       </View>
       <View style={styles.setupCard}>
@@ -767,9 +767,9 @@ function ConfigurationCard() {
         size={22}
       />
       <View style={styles.promptCopy}>
-        <Text style={styles.configurationTitle}>Add your API key</Text>
+        <Text style={styles.configurationTitle}>Connect the token server</Text>
         <Text style={styles.configurationBody}>
-          Set EXPO_PUBLIC_JANUARY_API_KEY for a local debug build.
+          Copy example/.env.example to example/.env, then rebuild.
         </Text>
       </View>
     </View>
@@ -1273,7 +1273,7 @@ function SettingsRow({ label, value }: { label: string; value: string }) {
 }
 
 async function fetchClientToken(
-  requestedEndUserId: string
+  _requestedEndUserId: string
 ): Promise<JanuaryClientToken> {
   if (!tokenEndpoint) {
     throw new Error('EXPO_PUBLIC_JANUARY_TOKEN_ENDPOINT is not configured.');
@@ -1281,11 +1281,8 @@ async function fetchClientToken(
   const response = await fetch(tokenEndpoint, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
       ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
-      'x-end-user-id': requestedEndUserId,
     },
-    body: JSON.stringify({ endUserId: requestedEndUserId }),
   });
   if (!response.ok) {
     throw new Error(`Token endpoint returned ${response.status}.`);
