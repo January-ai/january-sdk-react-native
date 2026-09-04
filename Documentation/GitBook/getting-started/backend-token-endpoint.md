@@ -26,7 +26,7 @@ Your endpoint should:
 Example mobile-side request:
 
 ```ts
-async function getJanuaryClientToken() {
+async function getJanuaryClientToken(_endUserId: string) {
   const response = await fetch('https://api.example.com/january/client-token', {
     method: 'POST',
     headers: {
@@ -40,4 +40,5 @@ async function getJanuaryClientToken() {
 ```
 
 Derive the stable end-user ID from the authenticated account on your backend;
-do not accept an arbitrary user ID from the app.
+do not accept an arbitrary user ID from the app. The SDK passes its configured
+ID to `clientTokenProvider`, but the provider should not forward or trust it.

@@ -1272,7 +1272,9 @@ function SettingsRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-async function fetchClientToken(): Promise<JanuaryClientToken> {
+async function fetchClientToken(
+  _requestedEndUserId: string
+): Promise<JanuaryClientToken> {
   if (!tokenEndpoint) {
     throw new Error('EXPO_PUBLIC_JANUARY_TOKEN_ENDPOINT is not configured.');
   }

@@ -109,7 +109,7 @@ import { JanuaryClient } from '@januaryai/react-native';
 const january = new JanuaryClient({
   endUserId: session.user.id,
   timezone: 'America/New_York',
-  clientTokenProvider: async () => {
+  clientTokenProvider: async (_endUserId) => {
     const response = await fetch('https://api.example.com/january/client-token', {
       method: 'POST',
       headers: {
