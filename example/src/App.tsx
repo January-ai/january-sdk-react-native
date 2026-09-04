@@ -1272,20 +1272,15 @@ function SettingsRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-async function fetchClientToken(
-  requestedEndUserId: string
-): Promise<JanuaryClientToken> {
+async function fetchClientToken(): Promise<JanuaryClientToken> {
   if (!tokenEndpoint) {
     throw new Error('EXPO_PUBLIC_JANUARY_TOKEN_ENDPOINT is not configured.');
   }
   const response = await fetch(tokenEndpoint, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
       ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
-      'x-end-user-id': requestedEndUserId,
     },
-    body: JSON.stringify({ endUserId: requestedEndUserId }),
   });
   if (!response.ok) {
     throw new Error(`Token endpoint returned ${response.status}.`);
