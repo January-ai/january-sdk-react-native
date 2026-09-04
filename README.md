@@ -110,12 +110,13 @@ const january = new JanuaryClient({
   endUserId: session.user.id,
   timezone: 'America/New_York',
   clientTokenProvider: async (endUserId) => {
-    const response = await fetch('/api/january/token', {
+    const response = await fetch('https://api.example.com/january/client-token', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${session.token}`,
-        'x-end-user-id': endUserId,
+        Authorization: `Bearer ${session.accessToken}`,
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({ endUserId }),
     });
     if (!response.ok) {
       throw new Error(`Token endpoint returned ${response.status}`);
