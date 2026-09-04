@@ -109,14 +109,12 @@ import { JanuaryClient } from '@januaryai/react-native';
 const january = new JanuaryClient({
   endUserId: session.user.id,
   timezone: 'America/New_York',
-  clientTokenProvider: async (endUserId) => {
+  clientTokenProvider: async () => {
     const response = await fetch('https://api.example.com/january/client-token', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${session.accessToken}`,
-        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ endUserId }),
     });
     if (!response.ok) {
       throw new Error(`Token endpoint returned ${response.status}`);
@@ -142,9 +140,9 @@ npm run ios
 npm run android
 ```
 
-Your production endpoint returns `{ "token": "ct-…", "expiresIn": 1800 }`,
-derives the stable end-user ID from the verified app session, and chooses scopes
-on the server. See the
+Your production endpoint authenticates the app session, derives its stable
+end-user ID without trusting a client-supplied ID, chooses scopes on the server,
+and returns `{ "token": "ct-…", "expiresIn": 1800 }`. See the
 [backend token endpoint guide](Documentation/GitBook/getting-started/backend-token-endpoint.md)
 for the complete contract.
 

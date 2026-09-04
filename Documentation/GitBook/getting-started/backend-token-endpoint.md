@@ -26,14 +26,12 @@ Your endpoint should:
 Example mobile-side request:
 
 ```ts
-async function getJanuaryClientToken(endUserId: string) {
+async function getJanuaryClientToken() {
   const response = await fetch('https://api.example.com/january/client-token', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${session.accessToken}`,
-      'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ endUserId }),
   });
 
   if (!response.ok) throw new Error(`Token endpoint returned ${response.status}`);
@@ -41,5 +39,5 @@ async function getJanuaryClientToken(endUserId: string) {
 }
 ```
 
-Do not trust an arbitrary user ID from an unauthenticated request. Bind the
-requested ID to the authenticated account on your backend.
+Derive the stable end-user ID from the authenticated account on your backend;
+do not accept an arbitrary user ID from the app.
