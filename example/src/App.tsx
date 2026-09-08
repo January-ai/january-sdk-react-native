@@ -1282,7 +1282,7 @@ async function fetchClientToken(
     method: 'POST',
     headers: {
       ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
-      'x-end-user-id': requestedEndUserId,
+      'January-End-User-ID': requestedEndUserId,
     },
   });
   if (!response.ok) {

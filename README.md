@@ -69,6 +69,22 @@ corepack yarn example ios
 Open the app and search for `banana`. This SDK uses native code, so the demo
 runs as a development build rather than in Expo Go.
 
+### 4. Optional: deploy the relay to Vercel
+
+If localhost is inconvenient, follow the relay's
+[Vercel deployment guide](https://github.com/January-ai/january-token-relay#optional-deploy-to-vercel).
+Set `JANUARY_API_KEY` and a long random `RELAY_TOKEN` in Vercel, then put these
+values in `example/.env`:
+
+```dotenv
+EXPO_PUBLIC_JANUARY_TOKEN_ENDPOINT=https://YOUR-PROJECT.vercel.app/api/january/client-token
+EXPO_PUBLIC_DEMO_SESSION_TOKEN=YOUR_RELAY_TOKEN
+EXPO_PUBLIC_DEMO_END_USER_ID=january-sdk-demo-user
+```
+
+The hosted relay is also for development and testing only. Its relay token is
+not a substitute for authenticating your users.
+
 This relay is only for development. In production, keep the SDK token provider
 but point it to your authenticated backend, which verifies the app session and
 derives the end-user ID server-side.
