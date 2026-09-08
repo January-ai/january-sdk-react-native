@@ -27,7 +27,7 @@ bridge code or SDK dependencies.
 ## Optional hosted development relay
 
 Follow the relay's
-[Vercel guide](https://github.com/January-ai/january-token-relay#optional-deploy-to-vercel),
+[Vercel guide](https://github.com/January-ai/january-token-relay#deploy),
 then set `EXPO_PUBLIC_JANUARY_TOKEN_ENDPOINT` to its HTTPS token URL and
 `EXPO_PUBLIC_DEMO_SESSION_TOKEN` to its `RELAY_TOKEN`. This is for development
 and testing only; production must use your authenticated backend.

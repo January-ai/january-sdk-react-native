@@ -35,7 +35,8 @@ app. The private, debug-only shortcut at the end is the sole local exception.
 
 ### 2. Start the local token relay
 
-Install Node.js 20.12 or newer. In a first terminal:
+Install Node.js 22 or newer (the relay itself requires 20.12). In a first
+terminal:
 
 ```bash
 git clone https://github.com/January-ai/january-token-relay.git
@@ -72,7 +73,7 @@ runs as a development build rather than in Expo Go.
 ### 4. Optional: deploy the relay to Vercel
 
 If localhost is inconvenient, follow the relay's
-[Vercel deployment guide](https://github.com/January-ai/january-token-relay#optional-deploy-to-vercel).
+[Vercel deployment guide](https://github.com/January-ai/january-token-relay#deploy).
 Set `JANUARY_API_KEY` and a long random `RELAY_TOKEN` in Vercel, then put these
 values in `example/.env`:
 
