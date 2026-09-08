@@ -532,15 +532,15 @@ function SetupScreen() {
       </View>
       <Text style={styles.setupTitle}>Welcome to January</Text>
       <Text style={styles.setupBody}>
-        Start the local token server, then point this demo at it. Your January
-        API key stays on the server.
+        Start the local token relay, then point this demo at it. Your January
+        API key stays on the relay.
       </Text>
       <View style={styles.setupCard}>
         <SetupOption
           badge="Local"
-          message="In january-server-sdk-node, run npm run demo:token-server."
+          message="In january-token-relay, run ./start.sh."
           number="1"
-          title="Start the token server"
+          title="Start the token relay"
         />
         <View style={styles.divider} />
         <SetupOption
@@ -1273,7 +1273,7 @@ function SettingsRow({ label, value }: { label: string; value: string }) {
 }
 
 async function fetchClientToken(
-  _requestedEndUserId: string
+  requestedEndUserId: string
 ): Promise<JanuaryClientToken> {
   if (!tokenEndpoint) {
     throw new Error('EXPO_PUBLIC_JANUARY_TOKEN_ENDPOINT is not configured.');
@@ -1282,6 +1282,7 @@ async function fetchClientToken(
     method: 'POST',
     headers: {
       ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
+      'January-End-User-ID': requestedEndUserId,
     },
   });
   if (!response.ok) {
