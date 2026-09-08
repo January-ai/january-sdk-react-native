@@ -16,9 +16,9 @@ React Native Web is not supported; use `@januaryai/web-sdk` in browsers.
 
 ## Quick start: run the demo with client tokens
 
-You can try the React Native SDK before your own backend is ready. A small
-local Node server keeps the January API key off the app and issues the same
-short-lived client tokens your production backend will issue.
+You can try the React Native SDK before your own backend is ready. The
+standalone January Token Relay keeps the January API key off the app and
+temporarily stands in for your production token endpoint.
 
 ### 1. Create the credentials
 
@@ -33,21 +33,18 @@ Complete both steps—they are on separate dashboard pages:
 For production or any shared build, never put the `sk-…` key in a React Native
 app. The private, debug-only shortcut at the end is the sole local exception.
 
-### 2. Start the local token server
+### 2. Start the local token relay
 
-Install Node.js 22 or newer. In a first terminal:
+Install Node.js 20.12 or newer. In a first terminal:
 
 ```bash
-git clone https://github.com/January-ai/january-server-sdk-node.git
-cd january-server-sdk-node
-npm ci
-cp .env.example .env
-# Edit .env and set JANUARY_API_KEY to the key you just created.
-npm run demo:token-server
+git clone https://github.com/January-ai/january-token-relay.git
+cd january-token-relay
+./start.sh
 ```
 
-Leave it running. The server binds only to your computer and exchanges the API
-key for short-lived tokens using the January Server SDK.
+Paste the API key when prompted and leave the relay running. It binds to your
+computer, uses port `8787`, and prints its status and token-endpoint URLs.
 
 ### 3. Run the React Native demo
 
@@ -71,6 +68,10 @@ corepack yarn example ios
 
 Open the app and search for `banana`. This SDK uses native code, so the demo
 runs as a development build rather than in Expo Go.
+
+This relay is only for development. In production, keep the SDK token provider
+but point it to your authenticated backend, which verifies the app session and
+derives the end-user ID server-side.
 
 ## Add the SDK to your app
 
@@ -175,7 +176,7 @@ EXPO_PUBLIC_DEMO_END_USER_ID=january-sdk-demo-user
 
 Then run `corepack yarn example ios` or `corepack yarn example android`. Because
 `EXPO_PUBLIC_` values are compiled into the app, never commit the file, share
-the build, or distribute it. Move to the local token server or your
+the build, or distribute it. Move to the local token relay or your
 authenticated backend before testing anything outside your own machine.
 
 ## License
