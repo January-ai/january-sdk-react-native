@@ -9,6 +9,9 @@ This project uses Semantic Versioning.
   on `react-native-screens`). Food detail, restaurant detail and menu items,
   food-log detail, and the glucose conditions and result screens now push and
   pop with the platform transition and support the iOS swipe-back gesture.
+- Pin the January Android SDK `0.1.2`, which reports client token provider
+  failures as SDK errors instead of crashing the app when the token endpoint
+  is unreachable.
 
 ## [0.1.0] - 2026-09-03
 
