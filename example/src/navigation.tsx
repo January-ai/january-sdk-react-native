@@ -61,6 +61,13 @@ export function ScreenStack({
   stackRef: StackRef;
 }) {
   const Stack = useMemo(() => createNativeStackNavigator(), []);
+  // A surface may clear a pushed screen's state as soon as the pop starts.
+  // Keep rendering the last element so the screen stays populated while the
+  // native dismissal animates instead of flashing blank.
+  const lastElements = useRef<Record<string, Screen>>({});
+  for (const [name, element] of Object.entries(screens)) {
+    if (element) lastElements.current[name] = element;
+  }
   return (
     <NavigationIndependentTree>
       <NavigationContainer
@@ -81,7 +88,7 @@ export function ScreenStack({
           <Stack.Screen name="Root">{() => root}</Stack.Screen>
           {Object.entries(screens).map(([name, element]) => (
             <Stack.Screen key={name} name={name}>
-              {() => element}
+              {() => element ?? lastElements.current[name] ?? null}
             </Stack.Screen>
           ))}
         </Stack.Navigator>

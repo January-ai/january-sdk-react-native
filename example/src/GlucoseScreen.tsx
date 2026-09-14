@@ -351,6 +351,9 @@ export function GlucoseScreen({
 
   return (
     <ScreenStack
+      onRouteChange={(route) => {
+        if (route === 'Root') setResult(undefined);
+      }}
       root={root}
       screens={{
         Conditions: (
