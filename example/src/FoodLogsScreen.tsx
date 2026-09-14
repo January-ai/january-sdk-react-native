@@ -30,6 +30,7 @@ import { FoodPickerSheet, type SelectedFood } from './FoodPickerSheet';
 interface FoodLogsScreenProps {
   client: JanuaryClient;
   configured: boolean;
+  endUserId: string;
   fixtures: boolean;
   onSettings: () => void;
 }
@@ -39,6 +40,7 @@ type Range = 'today' | 'week' | 'month';
 export function FoodLogsScreen({
   client,
   configured,
+  endUserId,
   fixtures,
   onSettings,
 }: FoodLogsScreenProps) {
@@ -181,7 +183,7 @@ export function FoodLogsScreen({
             </View>
           </View>
           <View style={styles.userIdentity}>
-            <Text style={styles.userId}>parity-user</Text>
+            <Text style={styles.userId}>{endUserId}</Text>
             <Text style={styles.userTimezone}>America/New_York</Text>
           </View>
           <Pressable onPress={onSettings} style={styles.userActionButton}>
