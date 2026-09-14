@@ -20,57 +20,93 @@ You can try the React Native SDK before your own backend is ready. The
 standalone January Token Relay keeps the January API key off the app and
 temporarily stands in for your production token endpoint.
 
-### 1. Create the credentials
+You need two terminal windows: one for the January Token Relay, which holds
+your API key and hands the app short-lived client tokens, and one for the
+demo. The first run takes about ten minutes.
 
-Complete both steps—they are on separate dashboard pages:
+### Terminal 1: start the token relay
 
-1. [Sign up](https://dashboard.january.ai/sign-up) or
-   [sign in](https://dashboard.january.ai/sign-in), then open
-   **API keys → Create key** and copy the full `sk-…` value.
-2. Open [Client tokens](https://dashboard.january.ai/dashboard/client-tokens)
-   and select **Enable client tokens**.
+1. Open a terminal.
+2. Download the relay and move into its folder. Install Node.js 22 or newer
+   first: this SDK's example needs 22, and the relay itself needs 20.12:
+
+   ```bash
+   git clone https://github.com/January-ai/january-token-relay.git
+   cd january-token-relay
+   ```
+
+3. Start it:
+
+   ```bash
+   ./start.sh
+   ```
+
+   It checks your Node version and then asks
+   `Paste your API key (input is hidden):`. Leave it waiting and create the
+   key in the next two steps.
+
+4. Create the API key. In a browser,
+   [sign up](https://dashboard.january.ai/sign-up) or
+   [sign in](https://dashboard.january.ai/sign-in) to the January Developer
+   Dashboard, open **API keys → Create key**, and copy the full `sk-…` value.
+   It is shown once.
+5. Enable client tokens. Open
+   [Client tokens](https://dashboard.january.ai/dashboard/client-tokens) and
+   switch on **Enable client tokens**. Until this is on, January answers the
+   relay with `403`.
+6. Back in Terminal 1, paste the key and press Enter. Nothing appears while
+   you type. You should see:
+
+   ```text
+   ✓ API key accepted by January (sk-abcd…wxyz)
+   ✓ Saved to .env (readable only by you; git ignores it)
+
+   January Token Relay is running on this machine (development only).
+     Endpoint      http://localhost:8787/api/january/client-token
+   ```
+
+   Leave this window open for the whole session. The key is saved in a
+   git-ignored `.env`, so the next `./start.sh` starts without asking.
+
+### Terminal 2: run the React Native demo
+
+7. Open a second terminal.
+8. Download the SDK repository and move into it:
+
+   ```bash
+   git clone https://github.com/January-ai/january-sdk-react-native.git
+   cd january-sdk-react-native
+   ```
+
+9. Copy the demo's environment template. It already points at the relay for
+   the iOS Simulator:
+
+   ```bash
+   cp example/.env.example example/.env
+   ```
+
+   For the Android Emulator, open `example/.env` and change `127.0.0.1` to
+   `10.0.2.2`; that address is how the emulator reaches your computer.
+
+10. Install dependencies and build the demo for one platform:
+
+    ```bash
+    corepack yarn install --immutable
+    corepack yarn example ios
+    # or: corepack yarn example android
+    ```
+
+    The first build compiles the native SDKs and takes several minutes. The
+    SDK contains native code, so the demo runs as a development build, not in
+    Expo Go.
+
+11. When the app opens, search for `banana`. Terminal 1 prints
+    `minted=true status=200` the first time the app asks for a token.
 
 For production or any shared build, never put the `sk-…` key in a React Native
 app. The private, debug-only shortcut at the end is the sole local exception.
 
-### 2. Start the local token relay
-
-Install Node.js 22 or newer (the relay itself requires 20.12). In a first
-terminal:
-
-```bash
-git clone https://github.com/January-ai/january-token-relay.git
-cd january-token-relay
-./start.sh
-```
-
-Paste the API key when prompted and leave the relay running. It binds to your
-computer, uses port `8787`, and prints its status and token-endpoint URLs.
-
-### 3. Run the React Native demo
-
-In a second terminal, clone the demo repository if needed, then copy its
-environment template:
-
-```bash
-git clone https://github.com/January-ai/january-sdk-react-native.git
-cd january-sdk-react-native
-cp example/.env.example example/.env
-```
-
-The template is ready for the iOS Simulator. For Android Emulator, change the
-endpoint host from `127.0.0.1` to `10.0.2.2`. Then run:
-
-```bash
-corepack yarn install --immutable
-corepack yarn example ios
-# or: corepack yarn example android
-```
-
-Open the app and search for `banana`. This SDK uses native code, so the demo
-runs as a development build rather than in Expo Go.
-
-### 4. Optional: deploy the relay to Vercel
+### Optional: deploy the relay to Vercel
 
 If localhost is inconvenient, follow the relay's
 [Vercel deployment guide](https://github.com/January-ai/january-token-relay#deploy).
