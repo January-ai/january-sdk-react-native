@@ -374,7 +374,7 @@ export function FoodLogsScreen({
           Alert.alert('Delete this food log?', "This action can't be undone.", [
             { text: 'Cancel', style: 'cancel' },
             {
-              text: 'Delete food log',
+              text: 'Delete',
               style: 'destructive',
               onPress: () => deleteLog(log).catch(() => undefined),
             },

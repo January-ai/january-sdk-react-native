@@ -53,6 +53,7 @@ tags:
     element:
       id: food-alternatives
     direction: DOWN
+    centerElement: true
 - tapOn:
     id: food-alternatives
 - assertVisible: Food alternatives

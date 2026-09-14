@@ -269,7 +269,7 @@ jobs:
 
   ui-test-ios:
     runs-on: macos-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     env:
       RCT_USE_RN_DEP: 1

@@ -102,20 +102,16 @@ tags:
 - assertVisible: .*Updated meal.*
 - tapOn:
     id: food-log-0
+- scrollUntilVisible:
+    element:
+      id: food-log-delete
+    direction: DOWN
+    centerElement: true
 - tapOn:
     id: food-log-delete
 - takeScreenshot: example/.maestro/artifacts/react-native-log-delete-confirmation
-- runFlow:
-    when:
-      platform: iOS
-    commands:
-      - tapOn:
-          point: "50%,53%"
-- runFlow:
-    when:
-      platform: Android
-    commands:
-      - tapOn: Delete food log
+- assertVisible: Delete this food log?
+- tapOn: Delete
 - extendedWaitUntil:
     visible:
       id: food-logs-error
