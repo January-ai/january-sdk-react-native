@@ -38,6 +38,7 @@ import {
   resetFixtureAttempts,
   searchFixtureFoods,
 } from './e2eFixtures';
+import { goBack, navigateTo, ScreenStack, useScreenStack } from './navigation';
 import { FoodDetailScreen } from './FoodDetailScreen';
 import { FoodLogsScreen } from './FoodLogsScreen';
 import { GlucoseScreen } from './GlucoseScreen';
@@ -101,6 +102,7 @@ function DemoScreen() {
   const [suggestions, setSuggestions] = useState<FoodSuggestion[]>([]);
   const [naturalResult, setNaturalResult] = useState<FoodScan>();
   const nativeVersion = getNativeModuleVersion();
+  const searchStack = useScreenStack();
 
   useEffect(() => {
     if (!e2eFixturesEnabled) return;
@@ -217,6 +219,241 @@ function DemoScreen() {
 
   if (!configured) return <SetupScreen />;
 
+  const searchTab = (
+    <View style={styles.screenBody} testID="search-screen">
+      <View style={styles.navigationRow}>
+        <View style={styles.navigationActions}>
+          <View />
+          <Pressable
+            accessibilityLabel="Open settings"
+            accessibilityRole="button"
+            hitSlop={8}
+            onPress={() => setShowSettings(true)}
+            style={({ pressed }) => [
+              styles.iconButton,
+              pressed && styles.pressed,
+            ]}
+            testID="settings-button"
+          >
+            <MaterialCommunityIcons
+              color={palette.ink}
+              name="cog-outline"
+              size={25}
+            />
+          </Pressable>
+        </View>
+        <Text
+          accessibilityRole="header"
+          style={styles.screenTitle}
+          testID="search-title"
+        >
+          Search
+        </Text>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        style={styles.scroll}
+      >
+        <SearchField
+          onChangeText={(value) => {
+            setQuery(value);
+            setHasSearched(false);
+            setResults([]);
+            setNaturalResult(undefined);
+            setError(undefined);
+          }}
+          onClear={() => {
+            setQuery('');
+            setHasSearched(false);
+            setResults([]);
+            setNaturalResult(undefined);
+            setSuggestions([]);
+            setError(undefined);
+          }}
+          onSubmit={() => {
+            if (configured) search().catch(() => undefined);
+          }}
+          placeholder={
+            searchScope === 'restaurants'
+              ? 'Restaurant name'
+              : foodMode === 'description'
+                ? 'Describe what was eaten'
+                : foodMode === 'barcode'
+                  ? '6–14 digit barcode'
+                  : 'Food name'
+          }
+          value={query}
+        />
+
+        {suggestions.length ? (
+          <SuggestionList
+            items={suggestions}
+            onSelect={(suggestion) => {
+              const name = suggestion.name;
+              if (!name) return;
+              setQuery(name);
+              setSuggestions([]);
+              search(name).catch(() => undefined);
+            }}
+          />
+        ) : null}
+
+        <SearchSegmentedControl
+          items={[
+            { id: 'foods', label: 'Foods' },
+            { id: 'restaurants', label: 'Restaurants' },
+          ]}
+          onSelect={(value) => {
+            setSearchScope(value as 'foods' | 'restaurants');
+            setResults([]);
+            setNaturalResult(undefined);
+            setHasSearched(false);
+          }}
+          selected={searchScope}
+          testIDPrefix="search-scope"
+        />
+
+        {searchScope === 'foods' ? (
+          <SearchSegmentedControl
+            items={[
+              { id: 'name', label: 'Name' },
+              { id: 'description', label: 'Description' },
+              { id: 'barcode', label: 'Barcode' },
+            ]}
+            onSelect={(value) => {
+              setFoodMode(value as 'name' | 'description' | 'barcode');
+              setResults([]);
+              setNaturalResult(undefined);
+              setSuggestions([]);
+              setHasSearched(false);
+            }}
+            selected={foodMode}
+            testIDPrefix="search-mode"
+          />
+        ) : (
+          <SearchSegmentedControl
+            items={[
+              { id: 'restaurants', label: 'Restaurants' },
+              { id: 'menu', label: 'Menu items' },
+            ]}
+            onSelect={() => undefined}
+            selected="restaurants"
+            testIDPrefix="restaurant-mode"
+          />
+        )}
+
+        {searchScope === 'foods' && foodMode === 'name' ? (
+          <View style={styles.chips}>
+            <CategoryChip
+              label="All"
+              onPress={() => setCategory(undefined)}
+              selected={category == null}
+            />
+            <CategoryChip
+              label="General"
+              onPress={() => setCategory(FoodCategory.generic)}
+              selected={category === FoodCategory.generic}
+            />
+            <CategoryChip
+              label="Branded"
+              onPress={() => setCategory(FoodCategory.branded)}
+              selected={category === FoodCategory.branded}
+            />
+            <View style={styles.chipLineBreak} />
+            <CategoryChip
+              label="Recipe"
+              onPress={() => setCategory(FoodCategory.recipe)}
+              selected={category === FoodCategory.recipe}
+            />
+          </View>
+        ) : null}
+
+        {foodMode === 'barcode' ? (
+          <Pressable
+            onPress={() => undefined}
+            style={styles.barcodeButton}
+            testID="scan-barcode-button"
+          >
+            <MaterialIcons
+              color={palette.ink}
+              name="qr-code-scanner"
+              size={22}
+            />
+            <Text style={styles.barcodeButtonText}>Scan barcode</Text>
+          </Pressable>
+        ) : foodMode === 'description' ? (
+          <Text style={styles.modeHint}>
+            Try “a bowl of oatmeal with honey and a banana.”
+          </Text>
+        ) : null}
+
+        {!query.trim() ? (
+          <SearchPromptCard
+            restaurant={searchScope === 'restaurants'}
+            mode={foodMode}
+          />
+        ) : null}
+
+        <Pressable
+          accessibilityRole="button"
+          disabled={!configured || isSearching}
+          onPress={() => search().catch(() => undefined)}
+          style={({ pressed }) => [
+            styles.primaryButton,
+            pressed && styles.primaryButtonPressed,
+            (!configured || isSearching) && styles.primaryButtonDisabled,
+          ]}
+          testID={isSearching ? 'search-loading' : 'search-submit'}
+        >
+          {isSearching ? (
+            <View collapsable={false}>
+              <ActivityIndicator color={palette.paper} />
+            </View>
+          ) : (
+            <Text
+              style={[
+                styles.primaryButtonText,
+                !configured && styles.disabledButtonText,
+              ]}
+            >
+              {searchScope === 'restaurants'
+                ? 'Search nearby'
+                : foodMode === 'description'
+                  ? 'Parse meal'
+                  : foodMode === 'barcode'
+                    ? 'Look up barcode'
+                    : 'Search foods'}
+            </Text>
+          )}
+        </Pressable>
+
+        {!configured ? <ConfigurationCard /> : null}
+        {error ? (
+          <ErrorNotice
+            message={error}
+            onRetry={() => search().catch(() => undefined)}
+          />
+        ) : null}
+
+        {results.length > 0 ? (
+          <ResultsList
+            items={results}
+            onSelect={(item) => {
+              setSelectedFood(item);
+              navigateTo(searchStack, 'FoodDetail');
+            }}
+          />
+        ) : naturalResult ? (
+          <NaturalLanguageResult result={naturalResult} />
+        ) : hasSearched && !isSearching && !error ? (
+          <EmptyResults />
+        ) : null}
+      </ScrollView>
+    </View>
+  );
+
   return (
     <View style={styles.root} testID="app-root">
       <StatusBar style="dark" />
@@ -224,248 +461,33 @@ function DemoScreen() {
 
       {developmentApiKey ? <DevelopmentBanner /> : null}
 
-      {activeTab === 'search' && selectedFood ? (
-        <FoodDetailScreen
-          client={client}
-          food={selectedFood}
-          fixtures={e2eFixturesEnabled}
-          onBack={() => setSelectedFood(undefined)}
-        />
-      ) : activeTab === 'search' && searchScope === 'restaurants' ? (
-        <RestaurantScreens
-          client={client}
-          configured={configured}
-          fixturesEnabled={e2eFixturesEnabled}
-          onSettings={() => setShowSettings(true)}
-          onSwitchFoods={() => setSearchScope('foods')}
-        />
-      ) : activeTab === 'search' ? (
-        <View style={styles.screenBody} testID="search-screen">
-          <View style={styles.navigationRow}>
-            <View style={styles.navigationActions}>
-              <View />
-              <Pressable
-                accessibilityLabel="Open settings"
-                accessibilityRole="button"
-                hitSlop={8}
-                onPress={() => setShowSettings(true)}
-                style={({ pressed }) => [
-                  styles.iconButton,
-                  pressed && styles.pressed,
-                ]}
-                testID="settings-button"
-              >
-                <MaterialCommunityIcons
-                  color={palette.ink}
-                  name="cog-outline"
-                  size={25}
-                />
-              </Pressable>
-            </View>
-            <Text
-              accessibilityRole="header"
-              style={styles.screenTitle}
-              testID="search-title"
-            >
-              Search
-            </Text>
-          </View>
-
-          <ScrollView
-            contentContainerStyle={styles.content}
-            keyboardShouldPersistTaps="handled"
-            style={styles.scroll}
-          >
-            <SearchField
-              onChangeText={(value) => {
-                setQuery(value);
-                setHasSearched(false);
-                setResults([]);
-                setNaturalResult(undefined);
-                setError(undefined);
-              }}
-              onClear={() => {
-                setQuery('');
-                setHasSearched(false);
-                setResults([]);
-                setNaturalResult(undefined);
-                setSuggestions([]);
-                setError(undefined);
-              }}
-              onSubmit={() => {
-                if (configured) search().catch(() => undefined);
-              }}
-              placeholder={
-                searchScope === 'restaurants'
-                  ? 'Restaurant name'
-                  : foodMode === 'description'
-                    ? 'Describe what was eaten'
-                    : foodMode === 'barcode'
-                      ? '6–14 digit barcode'
-                      : 'Food name'
-              }
-              value={query}
-            />
-
-            {suggestions.length ? (
-              <SuggestionList
-                items={suggestions}
-                onSelect={(suggestion) => {
-                  const name = suggestion.name;
-                  if (!name) return;
-                  setQuery(name);
-                  setSuggestions([]);
-                  search(name).catch(() => undefined);
-                }}
-              />
-            ) : null}
-
-            <SearchSegmentedControl
-              items={[
-                { id: 'foods', label: 'Foods' },
-                { id: 'restaurants', label: 'Restaurants' },
-              ]}
-              onSelect={(value) => {
-                setSearchScope(value as 'foods' | 'restaurants');
-                setResults([]);
-                setNaturalResult(undefined);
-                setHasSearched(false);
-              }}
-              selected={searchScope}
-              testIDPrefix="search-scope"
-            />
-
-            {searchScope === 'foods' ? (
-              <SearchSegmentedControl
-                items={[
-                  { id: 'name', label: 'Name' },
-                  { id: 'description', label: 'Description' },
-                  { id: 'barcode', label: 'Barcode' },
-                ]}
-                onSelect={(value) => {
-                  setFoodMode(value as 'name' | 'description' | 'barcode');
-                  setResults([]);
-                  setNaturalResult(undefined);
-                  setSuggestions([]);
-                  setHasSearched(false);
-                }}
-                selected={foodMode}
-                testIDPrefix="search-mode"
+      {activeTab === 'search' ? (
+        <ScreenStack
+          root={
+            searchScope === 'restaurants' ? (
+              <RestaurantScreens
+                client={client}
+                configured={configured}
+                fixturesEnabled={e2eFixturesEnabled}
+                onSettings={() => setShowSettings(true)}
+                onSwitchFoods={() => setSearchScope('foods')}
               />
             ) : (
-              <SearchSegmentedControl
-                items={[
-                  { id: 'restaurants', label: 'Restaurants' },
-                  { id: 'menu', label: 'Menu items' },
-                ]}
-                onSelect={() => undefined}
-                selected="restaurants"
-                testIDPrefix="restaurant-mode"
+              searchTab
+            )
+          }
+          screens={{
+            FoodDetail: selectedFood ? (
+              <FoodDetailScreen
+                client={client}
+                fixtures={e2eFixturesEnabled}
+                food={selectedFood}
+                onBack={() => goBack(searchStack)}
               />
-            )}
-
-            {searchScope === 'foods' && foodMode === 'name' ? (
-              <View style={styles.chips}>
-                <CategoryChip
-                  label="All"
-                  onPress={() => setCategory(undefined)}
-                  selected={category == null}
-                />
-                <CategoryChip
-                  label="General"
-                  onPress={() => setCategory(FoodCategory.generic)}
-                  selected={category === FoodCategory.generic}
-                />
-                <CategoryChip
-                  label="Branded"
-                  onPress={() => setCategory(FoodCategory.branded)}
-                  selected={category === FoodCategory.branded}
-                />
-                <View style={styles.chipLineBreak} />
-                <CategoryChip
-                  label="Recipe"
-                  onPress={() => setCategory(FoodCategory.recipe)}
-                  selected={category === FoodCategory.recipe}
-                />
-              </View>
-            ) : null}
-
-            {foodMode === 'barcode' ? (
-              <Pressable
-                onPress={() => undefined}
-                style={styles.barcodeButton}
-                testID="scan-barcode-button"
-              >
-                <MaterialIcons
-                  color={palette.ink}
-                  name="qr-code-scanner"
-                  size={22}
-                />
-                <Text style={styles.barcodeButtonText}>Scan barcode</Text>
-              </Pressable>
-            ) : foodMode === 'description' ? (
-              <Text style={styles.modeHint}>
-                Try “a bowl of oatmeal with honey and a banana.”
-              </Text>
-            ) : null}
-
-            {!query.trim() ? (
-              <SearchPromptCard
-                restaurant={searchScope === 'restaurants'}
-                mode={foodMode}
-              />
-            ) : null}
-
-            <Pressable
-              accessibilityRole="button"
-              disabled={!configured || isSearching}
-              onPress={() => search().catch(() => undefined)}
-              style={({ pressed }) => [
-                styles.primaryButton,
-                pressed && styles.primaryButtonPressed,
-                (!configured || isSearching) && styles.primaryButtonDisabled,
-              ]}
-              testID={isSearching ? 'search-loading' : 'search-submit'}
-            >
-              {isSearching ? (
-                <View collapsable={false}>
-                  <ActivityIndicator color={palette.paper} />
-                </View>
-              ) : (
-                <Text
-                  style={[
-                    styles.primaryButtonText,
-                    !configured && styles.disabledButtonText,
-                  ]}
-                >
-                  {searchScope === 'restaurants'
-                    ? 'Search nearby'
-                    : foodMode === 'description'
-                      ? 'Parse meal'
-                      : foodMode === 'barcode'
-                        ? 'Look up barcode'
-                        : 'Search foods'}
-                </Text>
-              )}
-            </Pressable>
-
-            {!configured ? <ConfigurationCard /> : null}
-            {error ? (
-              <ErrorNotice
-                message={error}
-                onRetry={() => search().catch(() => undefined)}
-              />
-            ) : null}
-
-            {results.length > 0 ? (
-              <ResultsList items={results} onSelect={setSelectedFood} />
-            ) : naturalResult ? (
-              <NaturalLanguageResult result={naturalResult} />
-            ) : hasSearched && !isSearching && !error ? (
-              <EmptyResults />
-            ) : null}
-          </ScrollView>
-        </View>
+            ) : null,
+          }}
+          stackRef={searchStack}
+        />
       ) : activeTab === 'scan' ? (
         <ScanScreen
           client={client}

@@ -3,6 +3,13 @@
 All notable changes to the January SDK for React Native are documented here.
 This project uses Semantic Versioning.
 
+## [Unreleased]
+
+- Example app: navigate with a native stack (`@react-navigation/native-stack`
+  on `react-native-screens`). Food detail, restaurant detail and menu items,
+  food-log detail, and the glucose conditions and result screens now push and
+  pop with the platform transition and support the iOS swipe-back gesture.
+
 ## [0.1.0] - 2026-09-03
 
 - Promote the React Native bridge and demo application to a stable release.

@@ -18,6 +18,13 @@ import type { FoodLog, JanuaryClient } from '@januaryai/react-native';
 
 import { palette, sharedStyles } from './demoTheme';
 import {
+  goBack,
+  isOnScreen,
+  navigateTo,
+  ScreenStack,
+  useScreenStack,
+} from './navigation';
+import {
   EmptyStateCard,
   MacroGrid,
   NutritionList,
@@ -49,6 +56,10 @@ export function FoodLogsScreen({
   const [editor, setEditor] = useState<FoodLog | 'new'>();
   const [selectedLog, setSelectedLog] = useState<FoodLog>();
   const [deleteRetryLog, setDeleteRetryLog] = useState<FoodLog>();
+  const stack = useScreenStack();
+  const closeDetail = () => {
+    if (isOnScreen(stack, 'Detail')) goBack(stack);
+  };
   const [fixtureDeleteFailed, setFixtureDeleteFailed] = useState(false);
   const handledRefreshLongPress = useRef(false);
 
@@ -102,20 +113,20 @@ export function FoodLogsScreen({
       setLogs((current) =>
         current.filter((candidate) => candidate.id !== log.id)
       );
-      setSelectedLog(undefined);
+      closeDetail();
       setDeleteRetryLog(undefined);
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : 'Food log deletion failed.'
       );
       setDeleteRetryLog(log);
-      setSelectedLog(undefined);
+      closeDetail();
     } finally {
       setLoading(false);
     }
   }
 
-  return (
+  const root = (
     <View style={sharedStyles.screen} testID="food-logs-screen">
       <View style={styles.logsHeader}>
         <View style={styles.headerActions}>
@@ -312,7 +323,10 @@ export function FoodLogsScreen({
             <Pressable
               accessibilityRole="button"
               key={log.id ?? `${log.timestampUTC}-${index}`}
-              onPress={() => setSelectedLog(log)}
+              onPress={() => {
+                setSelectedLog(log);
+                navigateTo(stack, 'Detail');
+              }}
               style={({ pressed }) => [
                 sharedStyles.card,
                 styles.logRow,
@@ -348,7 +362,39 @@ export function FoodLogsScreen({
           ))}
         </View>
       </ScrollView>
+    </View>
+  );
 
+  return (
+    <View style={sharedStyles.screen}>
+      <ScreenStack
+        root={root}
+        screens={{
+          Detail: selectedLog ? (
+            <FoodLogDetail
+              loading={loading}
+              log={selectedLog}
+              onClose={() => goBack(stack)}
+              onDelete={(log) => {
+                Alert.alert(
+                  'Delete this food log?',
+                  "This action can't be undone.",
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Delete',
+                      style: 'destructive',
+                      onPress: () => deleteLog(log).catch(() => undefined),
+                    },
+                  ]
+                );
+              }}
+              onEdit={(log) => setEditor(log)}
+            />
+          ) : null,
+        }}
+        stackRef={stack}
+      />
       <FoodLogEditor
         client={client}
         existing={editor === 'new' ? undefined : editor}
@@ -360,27 +406,10 @@ export function FoodLogsScreen({
             if (index < 0) return [saved, ...current];
             return current.map((item) => (item.id === saved.id ? saved : item));
           });
-          setSelectedLog(undefined);
+          closeDetail();
           setEditor(undefined);
         }}
         visible={editor != null}
-      />
-
-      <FoodLogDetail
-        loading={loading}
-        log={selectedLog}
-        onClose={() => setSelectedLog(undefined)}
-        onDelete={(log) => {
-          Alert.alert('Delete this food log?', "This action can't be undone.", [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Delete',
-              style: 'destructive',
-              onPress: () => deleteLog(log).catch(() => undefined),
-            },
-          ]);
-        }}
-        onEdit={(log) => setEditor(log)}
       />
     </View>
   );
@@ -1257,12 +1286,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   detailScreen: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    zIndex: 10,
     backgroundColor: palette.paper,
   },
   detailHeaderTitle: { color: palette.ink, fontSize: 17, fontWeight: '800' },

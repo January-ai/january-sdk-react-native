@@ -20,6 +20,7 @@ import type {
 } from '@januaryai/react-native';
 
 import { palette, serifFont, sharedStyles } from './demoTheme';
+import { goBack, navigateTo, ScreenStack, useScreenStack } from './navigation';
 import {
   AppCard,
   EmptyStateCard,
@@ -99,28 +100,11 @@ export function RestaurantScreens({
   >([]);
   const [menuResults, setMenuResults] = useState<MenuFixture[]>([]);
   const [restaurantMenu, setRestaurantMenu] = useState<MenuFixture[]>([]);
-
-  if (selectedMenuItem) {
-    return (
-      <MenuItemDetail
-        item={selectedMenuItem}
-        onBack={() => setSelectedMenuItem(undefined)}
-      />
-    );
-  }
-
-  if (selectedRestaurant) {
-    return (
-      <RestaurantDetail
-        menuState={menuState}
-        onBack={() => setSelectedRestaurant(undefined)}
-        onMenuItem={setSelectedMenuItem}
-        onRetry={() => loadRestaurantMenu(selectedRestaurant)}
-        restaurant={selectedRestaurant}
-        items={restaurantMenu}
-      />
-    );
-  }
+  const stack = useScreenStack();
+  const openMenuItem = (item: MenuFixture) => {
+    setSelectedMenuItem(item);
+    navigateTo(stack, 'MenuItem');
+  };
 
   const submit = async () => {
     if (!query.trim() || !configured) return;
@@ -164,6 +148,7 @@ export function RestaurantScreens({
   const openRestaurant = (restaurant: RestaurantFixture) => {
     const normalized = query.toLowerCase();
     setSelectedRestaurant(restaurant);
+    navigateTo(stack, 'RestaurantDetail');
     if (fixturesEnabled) {
       setRestaurantMenu([fixtureMenuItem]);
       if (normalized.includes('menu error')) setMenuState('error');
@@ -193,7 +178,7 @@ export function RestaurantScreens({
     }
   }
 
-  return (
+  const root = (
     <View style={sharedStyles.screen} testID="restaurant-search-screen">
       <SearchHeader onSettings={onSettings} />
       <ScrollView
@@ -355,7 +340,7 @@ export function RestaurantScreens({
             {menuResults.map((item, index) => (
               <Pressable
                 key={item.id}
-                onPress={() => setSelectedMenuItem(item)}
+                onPress={() => openMenuItem(item)}
                 style={styles.resultCard}
                 testID={`menu-result-${index}`}
               >
@@ -388,6 +373,31 @@ export function RestaurantScreens({
         visible={showFilters}
       />
     </View>
+  );
+
+  return (
+    <ScreenStack
+      root={root}
+      screens={{
+        RestaurantDetail: selectedRestaurant ? (
+          <RestaurantDetail
+            items={restaurantMenu}
+            menuState={menuState}
+            onBack={() => goBack(stack)}
+            onMenuItem={openMenuItem}
+            onRetry={() => loadRestaurantMenu(selectedRestaurant)}
+            restaurant={selectedRestaurant}
+          />
+        ) : null,
+        MenuItem: selectedMenuItem ? (
+          <MenuItemDetail
+            item={selectedMenuItem}
+            onBack={() => goBack(stack)}
+          />
+        ) : null,
+      }}
+      stackRef={stack}
+    />
   );
 }
 
