@@ -14,7 +14,7 @@ tags:
     id: settings-button
 - assertVisible: Settings
 - assertVisible: January SDK
-- assertVisible: Development API key
+- assertVisible: Test fixture
 - assertVisible: Connected
 - assertVisible: End user ID
 - assertVisible: parity-user
