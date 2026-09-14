@@ -499,6 +499,7 @@ function DemoScreen() {
         <FoodLogsScreen
           client={client}
           configured={configured}
+          endUserId={endUserId}
           fixtures={e2eFixturesEnabled}
           onSettings={() => setShowSettings(true)}
         />
