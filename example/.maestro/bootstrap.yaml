@@ -19,9 +19,11 @@ appId: ai.january.sdk.demo
             - launchApp:
                 clearState: false
                 stopApp: true
+            # expo-dev-launcher 57 shows "Development servers" (no "New development
+            # server" card any more); match either wording, any case.
             - extendedWaitUntil:
-                visible: New development server
-                timeout: 15000
+                visible: "(?i).*development server.*"
+                timeout: 30000
             - openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
             - waitForAnimationToEnd
             - openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
