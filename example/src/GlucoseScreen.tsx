@@ -26,6 +26,7 @@ import type {
 } from '@januaryai/react-native';
 
 import { palette, sharedStyles } from './demoTheme';
+import { goBack, navigateTo, ScreenStack, useScreenStack } from './navigation';
 import {
   SectionLabel,
   SegmentedControl,
@@ -57,7 +58,7 @@ export function GlucoseScreen({
   const [weightPounds, setWeightPounds] = useState(150);
   const [weightUnit, setWeightUnit] = useState<WeightUnit>('lb');
   const [conditions, setConditions] = useState<MedicalCondition[]>([]);
-  const [showConditions, setShowConditions] = useState(false);
+  const stack = useScreenStack();
   const [foods, setFoods] = useState<SelectedFood[]>([]);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -84,6 +85,7 @@ export function GlucoseScreen({
             },
           });
       setResult(prediction);
+      navigateTo(stack, 'Result');
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Prediction failed.');
     } finally {
@@ -91,35 +93,12 @@ export function GlucoseScreen({
     }
   }
 
-  if (showConditions) {
-    return (
-      <ConditionsScreen
-        onBack={() => setShowConditions(false)}
-        onChange={setConditions}
-        selected={conditions}
-      />
-    );
-  }
-  if (result) {
-    return (
-      <PredictionResult
-        foods={foods}
-        onAdjust={() => setResult(undefined)}
-        onStartOver={() => {
-          setResult(undefined);
-          setFoods([]);
-        }}
-        result={result}
-      />
-    );
-  }
-
   const feet = Math.floor(Math.round(heightInches) / 12);
   const inches = Math.round(heightInches) % 12;
   const displayedWeight =
     weightUnit === 'lb' ? weightPounds : weightPounds * 0.45359237;
 
-  return (
+  const root = (
     <View style={sharedStyles.screen} testID="glucose-screen">
       <LargeNavigationHeader onSettings={onSettings} title="Glucose" />
       <ScrollView
@@ -243,7 +222,7 @@ export function GlucoseScreen({
           <Divider />
           <Pressable
             accessibilityRole="button"
-            onPress={() => setShowConditions(true)}
+            onPress={() => navigateTo(stack, 'Conditions')}
             style={styles.conditionsRow}
             testID="glucose-health-conditions"
           >
@@ -368,6 +347,33 @@ export function GlucoseScreen({
         visible={pickerVisible}
       />
     </View>
+  );
+
+  return (
+    <ScreenStack
+      root={root}
+      screens={{
+        Conditions: (
+          <ConditionsScreen
+            onBack={() => goBack(stack)}
+            onChange={setConditions}
+            selected={conditions}
+          />
+        ),
+        Result: result ? (
+          <PredictionResult
+            foods={foods}
+            onAdjust={() => goBack(stack)}
+            onStartOver={() => {
+              setFoods([]);
+              goBack(stack);
+            }}
+            result={result}
+          />
+        ) : null,
+      }}
+      stackRef={stack}
+    />
   );
 }
 
