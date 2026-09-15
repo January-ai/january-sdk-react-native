@@ -18,12 +18,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type {
   FoodSearchItem,
   FoodSelection,
+  FoodSuggestion,
   JanuaryClient,
   ServingOption,
 } from '@januaryai/react-native';
 
 import { palette, serifFont, sharedStyles } from './demoTheme';
-import { searchFixtureFoods } from './e2eFixtures';
+import { autocompleteFixtureFoods, searchFixtureFoods } from './e2eFixtures';
 
 export interface SelectedFood {
   item: FoodSearchItem;
@@ -52,6 +53,7 @@ export function FoodPickerSheet({
   const [error, setError] = useState<string>();
   const [hasSearched, setHasSearched] = useState(false);
   const [chosenFood, setChosenFood] = useState<FoodSearchItem>();
+  const [suggestions, setSuggestions] = useState<FoodSuggestion[]>([]);
 
   useEffect(() => {
     if (!visible) {
@@ -60,19 +62,50 @@ export function FoodPickerSheet({
       setError(undefined);
       setHasSearched(false);
       setChosenFood(undefined);
+      setSuggestions([]);
     }
   }, [visible]);
 
-  async function search() {
-    if (!query.trim()) return;
+  // Live suggestions while typing, like the main search screen. A submitted
+  // search replaces them with results.
+  useEffect(() => {
+    const value = query.trim();
+    if (!visible || hasSearched || value.length < 2 || value.length > 64) {
+      setSuggestions([]);
+      return;
+    }
+    let active = true;
+    const timer = setTimeout(() => {
+      const request = fixtures
+        ? autocompleteFixtureFoods(value)
+        : client.foods.autocomplete({ query: value, limit: 8 });
+      request
+        .then((response) => {
+          if (active) setSuggestions(response.items);
+        })
+        .catch(() => {
+          if (active) setSuggestions([]);
+        });
+    }, 300);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [client, fixtures, hasSearched, query, visible]);
+
+  async function search(forcedQuery?: string) {
+    const value = (forcedQuery ?? query).trim();
+    if (!value) return;
+    if (forcedQuery !== undefined) setQuery(forcedQuery);
+    setSuggestions([]);
     Keyboard.dismiss();
     setLoading(true);
     setHasSearched(true);
     setError(undefined);
     try {
       const result = fixtures
-        ? await searchFixtureFoods(query)
-        : await client.foods.search({ query, limit: 10 });
+        ? await searchFixtureFoods(value)
+        : await client.foods.search({ query: value, limit: 10 });
       setItems(result.items);
     } catch (caught) {
       setItems([]);
@@ -180,6 +213,49 @@ export function FoodPickerSheet({
               testID="food-picker-empty"
               title="No foods found"
             />
+          ) : suggestions.length > 0 && !hasSearched ? (
+            <ScrollView
+              keyboardDismissMode="on-drag"
+              keyboardShouldPersistTaps="handled"
+              style={styles.resultsScroller}
+            >
+              <View style={styles.resultsCard} testID="food-picker-suggestions">
+                {suggestions.map((item, index) => (
+                  <View key={item.id}>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() =>
+                        search(item.name ?? '').catch(() => undefined)
+                      }
+                      style={styles.foodRow}
+                      testID={`food-picker-suggestion-${index}`}
+                    >
+                      <MaterialCommunityIcons
+                        color={palette.green}
+                        name="magnify"
+                        size={20}
+                      />
+                      <View style={styles.foodCopy}>
+                        <Text style={styles.foodName}>
+                          {item.name ?? 'Unnamed food'}
+                        </Text>
+                        {item.brandName ? (
+                          <Text style={styles.foodBrand}>{item.brandName}</Text>
+                        ) : null}
+                      </View>
+                      <MaterialIcons
+                        color={palette.subdued}
+                        name="north-west"
+                        size={18}
+                      />
+                    </Pressable>
+                    {index < suggestions.length - 1 ? (
+                      <View style={styles.divider} />
+                    ) : null}
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
           ) : items.length === 0 ? (
             <EmptyState
               description="Start typing for suggestions, or search January’s food database."
