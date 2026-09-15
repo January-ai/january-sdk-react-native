@@ -830,6 +830,38 @@ function FoodLogDetail({
       >
         <Text style={styles.detailTitle}>{log.name || 'Meal'}</Text>
         <Text style={styles.logMeta}>{formatDate(log.timestampUTC)}</Text>
+        {log.foods.length > 0 ? (
+          <View style={sharedStyles.card} testID="food-log-totals">
+            <Text style={styles.logName}>
+              Meal total · {log.foods.length}{' '}
+              {log.foods.length === 1 ? 'food' : 'foods'}
+            </Text>
+            <MacroGrid
+              values={[
+                {
+                  label: 'Calories',
+                  unit: 'kcal',
+                  value: sumNutrient(log, 'calories'),
+                },
+                {
+                  label: 'Protein',
+                  unit: 'g',
+                  value: sumNutrient(log, 'protein'),
+                },
+                {
+                  label: 'Carbs',
+                  unit: 'g',
+                  value: sumNutrient(log, 'carbohydrates'),
+                },
+                {
+                  label: 'Fat',
+                  unit: 'g',
+                  value: sumNutrient(log, 'totalFat'),
+                },
+              ]}
+            />
+          </View>
+        ) : null}
         {log.foods.map((food, index) => (
           <View
             key={`${food.id ?? index}`}
@@ -983,6 +1015,16 @@ function supplementalNutrition(
     ['Sodium', nutrients.sodium],
     ['Vitamin D', nutrients.vitaminD],
   ] as const;
+}
+
+function sumNutrient(
+  log: FoodLog,
+  key: 'calories' | 'protein' | 'carbohydrates' | 'totalFat'
+): number {
+  return log.foods.reduce(
+    (total, food) => total + (food.nutrients[key]?.value ?? 0),
+    0
+  );
 }
 
 function copyFoodLog(log: FoodLog): FoodLog {
