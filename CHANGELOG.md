@@ -30,6 +30,8 @@ response error. Update to restore them.
   same changes; the Android pin also includes the 0.1.2 fix that reports client
   token provider failures as SDK errors instead of crashing the app when the
   token endpoint is unreachable.
+- Support React Native 0.83 and later (peer range was 0.86+). Verified on a
+  bare React Native 0.83.10 app with the New Architecture on Android.
 - `yarn example android` now finds the Android SDK and a JDK 17–21 on its own,
   starts an emulator when no device is connected, and forwards ports 8081 and
   8787 into it, so `example/.env` is the same for iOS and Android.

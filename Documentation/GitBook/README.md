@@ -20,7 +20,7 @@ not supported; browser applications should use `@januaryai/web-sdk`.
 
 | Component | Requirement |
 | --- | --- |
-| React Native | 0.86 or later with the New Architecture enabled |
+| React Native | 0.83 or later with the New Architecture enabled (0.83 and 0.86 verified) |
 | React | 19.2 or later |
 | iOS | 15 or later |
 | Android | API 26 or later |
