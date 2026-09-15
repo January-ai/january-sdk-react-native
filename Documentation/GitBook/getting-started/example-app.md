@@ -17,8 +17,9 @@ corepack yarn example ios
 corepack yarn example android
 ```
 
-The template points the iOS Simulator to the relay on port `8787`. For Android
-Emulator, replace `127.0.0.1` with `10.0.2.2`.
+The template points at the relay on port `8787` and works unchanged on both
+platforms: `yarn example android` starts an emulator if none is running and
+forwards ports `8081` and `8787` into it (or into a USB-connected phone).
 
 Keep Metro running while editing TypeScript to use Fast Refresh. Because the SDK
 contains native code, rebuild the development client after changing native

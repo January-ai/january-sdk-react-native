@@ -8,11 +8,21 @@ React Native Web is not supported; use `@januaryai/web-sdk` in browsers.
 
 ## Requirements
 
+For an app that uses the SDK:
+
 - React Native 0.86+ with the New Architecture
 - React 19.2+
 - iOS 15.1+
-- Android API 26+
-- JDK 17 for Android builds
+- Android 8.0+ (API 26)
+
+To run the demo on your computer:
+
+- Git and Node.js 22 or newer (Yarn comes with Node through `corepack`;
+  nothing extra to install)
+- iOS: a Mac with Xcode
+- Android: Android Studio, with one virtual device created in **Device
+  Manager**, or a phone with USB debugging on (Android Studio brings the SDK
+  and a JDK; the demo command finds both)
 
 ## Quick start: run the demo with client tokens
 
@@ -78,15 +88,12 @@ demo. The first run takes about ten minutes.
    cd january-sdk-react-native
    ```
 
-9. Copy the demo's environment template. It already points at the relay for
-   the iOS Simulator:
+9. Copy the demo's environment template. It already points at the relay and
+   works for both the iOS Simulator and Android:
 
    ```bash
    cp example/.env.example example/.env
    ```
-
-   For the Android Emulator, open `example/.env` and change `127.0.0.1` to
-   `10.0.2.2`; that address is how the emulator reaches your computer.
 
 10. Install dependencies and build the demo for one platform:
 
@@ -96,12 +103,46 @@ demo. The first run takes about ten minutes.
     # or: corepack yarn example android
     ```
 
-    The first build compiles the native SDKs and takes several minutes. The
-    SDK contains native code, so the demo runs as a development build, not in
-    Expo Go.
+    `corepack yarn` runs the Yarn version this repository pins; it ships with
+    Node.js. On iOS the command builds the app and opens it in a simulator. On
+    Android it finds the Android SDK and a JDK, starts an emulator you have
+    created if none is running (or uses a phone plugged in with USB debugging),
+    forwards the relay into it, then builds and opens the app. It works on
+    macOS, Linux, and Windows. The first build compiles the native
+    SDKs and takes several minutes; later builds take seconds. The SDK contains
+    native code, so the demo runs as a development build, not in Expo Go.
 
 11. When the app opens, search for `banana`. Terminal 1 prints
     `minted=true status=200` the first time the app asks for a token.
+
+#### If something goes wrong
+
+| You see | Cause | Fix |
+| --- | --- | --- |
+| Terminal 1: `403` / "Client tokens are switched off" | Step 5 not done | Turn on **Enable client tokens** in the dashboard; no restart needed |
+| Terminal 1: "rejected the API key" | Key copied wrong or rotated | Delete `.env` in the relay folder, run `./start.sh`, paste again |
+| Terminal 2: "No Android connected device found" | Android Studio not installed, or no emulator created yet | Install Android Studio, create a device in Device Manager, run the command again |
+| App shows "Check your connection" or "Couldn't use the configured credentials" | Terminal 1 is not running | Run `./start.sh` again, tap **Try again** |
+| App shows a "Development servers" screen | The app lost Terminal 2 | Tap `http://127.0.0.1:8081` |
+| Red screen "Could not connect to development server" | Terminal 2 stopped | Run `corepack yarn example start`, then press `r` |
+
+#### Prefer Android Studio and no second terminal?
+
+Debug builds load their JavaScript from Terminal 2 (React Native's Metro
+server), which is what makes editing live. A release build bundles the
+JavaScript into the APK instead, so Android Studio alone can run it:
+
+1. In `example/.env`, set the endpoint host to `10.0.2.2` for the emulator
+   (that address is how the emulator reaches your computer) or to your
+   computer's Wi-Fi address for a phone.
+2. Android Studio → **File → Open** → the `example/android` folder. Let Gradle
+   sync finish. Under **Settings → Build Tools → Gradle**, the Gradle JDK must
+   be 17–21.
+3. **Build Variants** (left edge) → set `app` to **release**.
+4. Pick a device and press **Run**.
+
+There is no hot reload in this mode; rebuild after code changes. Terminal 1
+(the relay) is still required.
 
 For production or any shared build, never put the `sk-…` key in a React Native
 app. The private, debug-only shortcut at the end is the sole local exception.
@@ -181,8 +222,9 @@ const foods = await january.foods.search({ query: 'banana' });
 console.log(`Found ${foods.items.length} foods`);
 ```
 
-A successful request prints a result count; an empty result is still a successful
-connection. Create one client for the signed-in user, reuse it, and call
+`session` stands for your app's own login state: the signed-in user's stable ID
+and the credential your backend already accepts. A successful request prints a
+result count; an empty result is still a successful connection. Create one client for the signed-in user, reuse it, and call
 `dispose()` when that user signs out. Token caching and refresh happen inside
 the native SDK.
 
