@@ -5,6 +5,9 @@ This project uses Semantic Versioning.
 
 ## [Unreleased]
 
+- `yarn example android` now finds the Android SDK and a JDK 17–21 on its own,
+  starts an emulator when no device is connected, and forwards ports 8081 and
+  8787 into it, so `example/.env` is the same for iOS and Android.
 - Example app: navigate with a native stack (`@react-navigation/native-stack`
   on `react-native-screens`). Food detail, restaurant detail and menu items,
   food-log detail, and the glucose conditions and result screens now push and

@@ -78,15 +78,12 @@ demo. The first run takes about ten minutes.
    cd january-sdk-react-native
    ```
 
-9. Copy the demo's environment template. It already points at the relay for
-   the iOS Simulator:
+9. Copy the demo's environment template. It already points at the relay and
+   works for both the iOS Simulator and Android:
 
    ```bash
    cp example/.env.example example/.env
    ```
-
-   For the Android Emulator, open `example/.env` and change `127.0.0.1` to
-   `10.0.2.2`; that address is how the emulator reaches your computer.
 
 10. Install dependencies and build the demo for one platform:
 
@@ -96,9 +93,11 @@ demo. The first run takes about ten minutes.
     # or: corepack yarn example android
     ```
 
-    The first build compiles the native SDKs and takes several minutes. The
-    SDK contains native code, so the demo runs as a development build, not in
-    Expo Go.
+    Android needs Android Studio installed; nothing else. The command finds
+    the SDK, starts your emulator if none is running (or uses a phone plugged
+    in with USB debugging), and forwards the relay into it. The first build
+    compiles the native SDKs and takes several minutes. The SDK contains native
+    code, so the demo runs as a development build, not in Expo Go.
 
 11. When the app opens, search for `banana`. Terminal 1 prints
     `minted=true status=200` the first time the app asks for a token.
