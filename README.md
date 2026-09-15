@@ -102,6 +102,24 @@ demo. The first run takes about ten minutes.
 11. When the app opens, search for `banana`. Terminal 1 prints
     `minted=true status=200` the first time the app asks for a token.
 
+#### Prefer Android Studio and no second terminal?
+
+Debug builds load their JavaScript from Terminal 2 (React Native's Metro
+server), which is what makes editing live. A release build bundles the
+JavaScript into the APK instead, so Android Studio alone can run it:
+
+1. In `example/.env`, set the endpoint host to `10.0.2.2` for the emulator
+   (that address is how the emulator reaches your computer) or to your
+   computer's Wi-Fi address for a phone.
+2. Android Studio → **File → Open** → the `example/android` folder. Let Gradle
+   sync finish. Under **Settings → Build Tools → Gradle**, the Gradle JDK must
+   be 17–21.
+3. **Build Variants** (left edge) → set `app` to **release**.
+4. Pick a device and press **Run**.
+
+There is no hot reload in this mode; rebuild after code changes. Terminal 1
+(the relay) is still required.
+
 For production or any shared build, never put the `sk-…` key in a React Native
 app. The private, debug-only shortcut at the end is the sole local exception.
 
