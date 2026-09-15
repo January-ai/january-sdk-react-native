@@ -20,8 +20,9 @@ To run the demo on your computer:
 - Git and Node.js 22 or newer (Yarn comes with Node through `corepack`;
   nothing extra to install)
 - iOS: a Mac with Xcode
-- Android: Android Studio (it brings the Android SDK, an emulator, and a JDK;
-  the demo command finds all three)
+- Android: Android Studio, with one virtual device created in **Device
+  Manager**, or a phone with USB debugging on (Android Studio brings the SDK
+  and a JDK; the demo command finds both)
 
 ## Quick start: run the demo with client tokens
 
@@ -104,9 +105,10 @@ demo. The first run takes about ten minutes.
 
     `corepack yarn` runs the Yarn version this repository pins; it ships with
     Node.js. On iOS the command builds the app and opens it in a simulator. On
-    Android it finds the Android SDK and a JDK, starts your emulator if none is
-    running (or uses a phone plugged in with USB debugging), forwards the relay
-    into it, then builds and opens the app. The first build compiles the native
+    Android it finds the Android SDK and a JDK, starts an emulator you have
+    created if none is running (or uses a phone plugged in with USB debugging),
+    forwards the relay into it, then builds and opens the app. It works on
+    macOS, Linux, and Windows. The first build compiles the native
     SDKs and takes several minutes; later builds take seconds. The SDK contains
     native code, so the demo runs as a development build, not in Expo Go.
 
