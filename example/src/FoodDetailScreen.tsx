@@ -44,6 +44,8 @@ export function FoodDetailScreen({
   const [showGlucose, setShowGlucose] = useState(false);
   const [food, setFood] = useState(initialFood);
   const [detailLoadFailed, setDetailLoadFailed] = useState(false);
+  const [selectedServingId, setSelectedServingId] = useState<string>();
+  const [showServings, setShowServings] = useState(false);
   useEffect(() => {
     if (fixtures) return;
     let active = true;
@@ -63,7 +65,9 @@ export function FoodDetailScreen({
     };
   }, [client, fixtures, initialFood]);
   const serving =
-    food.servings.find((item) => item.isPrimary) ?? food.servings[0];
+    food.servings.find((item) => item.id === selectedServingId) ??
+    food.servings.find((item) => item.isPrimary) ??
+    food.servings[0];
   const servingQuantity = serving?.quantity ?? 1;
   const servingUnit = serving?.unit ?? 'serving';
   const scale = (quantity * (serving?.scalingFactor ?? 1)) / servingQuantity;
@@ -97,7 +101,13 @@ export function FoodDetailScreen({
           style={[styles.card, styles.servingCard]}
           testID="food-serving-controls"
         >
-          <View>
+          <Pressable
+            accessibilityHint="Choose a different serving"
+            accessibilityRole="button"
+            disabled={food.servings.length < 2}
+            onPress={() => setShowServings((value) => !value)}
+            testID="food-serving-unit"
+          >
             <Text style={styles.smallLabel}>Serving unit</Text>
             <View style={styles.servingTitleRow}>
               <Text style={styles.servingTitle}>
@@ -106,13 +116,47 @@ export function FoodDetailScreen({
                   ? ` · ${formatNumber(serving.weightGrams)} g`
                   : ''}
               </Text>
-              <MaterialIcons
-                color={palette.green}
-                name="unfold-more"
-                size={20}
-              />
+              {food.servings.length > 1 ? (
+                <MaterialIcons
+                  color={palette.green}
+                  name={showServings ? 'unfold-less' : 'unfold-more'}
+                  size={20}
+                />
+              ) : null}
             </View>
-          </View>
+          </Pressable>
+          {showServings
+            ? food.servings.map((option, index) => (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: option.id === serving?.id }}
+                  key={option.id || `${option.unit}-${index}`}
+                  onPress={() => {
+                    setSelectedServingId(option.id);
+                    setShowServings(false);
+                  }}
+                  style={[
+                    styles.servingOption,
+                    option.id === serving?.id && styles.servingOptionSelected,
+                  ]}
+                  testID={`food-serving-option-${index}`}
+                >
+                  <Text style={styles.servingOptionText}>
+                    {option.unit}
+                    {option.weightGrams
+                      ? ` · ${formatNumber(option.weightGrams)} g`
+                      : ''}
+                  </Text>
+                  {option.id === serving?.id ? (
+                    <MaterialIcons
+                      color={palette.green}
+                      name="check"
+                      size={20}
+                    />
+                  ) : null}
+                </Pressable>
+              ))
+            : null}
           <View style={styles.quantityRow}>
             <Text style={styles.quantityLabel}>
               Quantity: {formatNumber(quantity)} {servingUnit}
@@ -869,6 +913,22 @@ const styles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 23,
     fontWeight: '700',
+  },
+  servingOption: {
+    minHeight: 48,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: palette.control,
+  },
+  servingOptionSelected: { backgroundColor: palette.targetBand },
+  servingOptionText: {
+    color: palette.ink,
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '600',
   },
   quantityRow: {
     flexDirection: 'row',
