@@ -182,6 +182,25 @@ describe('VoiceCaptureSession', () => {
     session.dispose();
   });
 
+  it('a stop() still in flight when cancel() and a new start() run cannot reset the new capture', async () => {
+    let finishStop: (value: string) => void = () => undefined;
+    native.voiceCaptureStop.mockImplementationOnce(
+      () => new Promise<string>((resolve) => (finishStop = resolve))
+    );
+    const session = new VoiceCaptureSession();
+    await session.start();
+    const stopping = session.stop();
+    expect(session.snapshot.state).toBe('processing');
+    session.cancel();
+    expect(session.snapshot.state).toBe('idle');
+    await session.start();
+    expect(session.snapshot.state).toBe('recording');
+    finishStop(JSON.stringify({ transcript: 'stale', durationMs: 10 }));
+    await expect(stopping).rejects.toMatchObject({ code: 'cancelled' });
+    expect(session.snapshot.state).toBe('recording');
+    session.dispose();
+  });
+
   it('cancel releases the native capture and returns to idle', async () => {
     const session = new VoiceCaptureSession();
     await session.start();

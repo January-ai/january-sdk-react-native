@@ -131,6 +131,8 @@ export class VoiceCaptureSession {
   private subscription?: EventSubscription;
   private disposed = false;
   private active = false;
+  /** Bumped by start() and cancel() so a stale in-flight operation cannot touch a newer capture. */
+  private generation = 0;
 
   constructor(options: VoiceCaptureOptions = {}) {
     this.locale = options.locale ?? null;
@@ -178,6 +180,7 @@ export class VoiceCaptureSession {
     }
     this.ensureSubscription();
     this.active = true;
+    this.generation += 1;
     this.publish({ ...idleSnapshot, state: 'requestingPermission' });
     try {
       if (Platform.OS === 'android') {
@@ -250,9 +253,18 @@ export class VoiceCaptureSession {
       );
     }
     this.active = false;
+    const generation = this.generation;
     this.publish({ ...this.current, state: 'processing' });
     try {
       const raw = await requireNativeModule().voiceCaptureStop(this.sessionId);
+      if (generation !== this.generation) {
+        // cancel() (and possibly a new start()) ran while the native stop was in
+        // flight; the result belongs to a capture the caller discarded.
+        throw new VoiceCaptureError(
+          'cancelled',
+          'Voice capture was cancelled while stopping.'
+        );
+      }
       const parsed = JSON.parse(raw) as {
         transcript?: string;
         durationMs?: number;
@@ -264,13 +276,15 @@ export class VoiceCaptureSession {
     } catch (error) {
       throw toVoiceCaptureError(error);
     } finally {
-      this.publish(idleSnapshot);
+      // Only the operation that still owns the session may reset it.
+      if (generation === this.generation) this.publish(idleSnapshot);
     }
   }
 
   /** Discards the active capture without a result. */
   cancel(): void {
     this.active = false;
+    this.generation += 1;
     if (this.disposed || this.current.state === 'idle') return;
     try {
       requireNativeModule().voiceCaptureCancel(this.sessionId);
