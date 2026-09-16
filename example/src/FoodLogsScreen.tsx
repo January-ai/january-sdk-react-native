@@ -270,11 +270,11 @@ export function FoodLogsScreen({
         </View>
 
         <Pressable
-          disabled={!configured}
+          disabled={!configured || loading}
           onPress={() => setEditor('new')}
           style={[
             sharedStyles.primaryButton,
-            !configured && sharedStyles.disabled,
+            (!configured || loading) && sharedStyles.disabled,
           ]}
           testID="food-log-create"
         >
