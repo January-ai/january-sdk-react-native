@@ -24,6 +24,7 @@ import {
   FoodCategory,
   JanuaryClient,
   getNativeModuleVersion,
+  type DetectedFood,
   type FoodCategoryValue,
   type FoodScan,
   type FoodSearchItem,
@@ -44,6 +45,7 @@ import { FoodLogsScreen } from './FoodLogsScreen';
 import { GlucoseScreen } from './GlucoseScreen';
 import { RestaurantScreens } from './RestaurantScreens';
 import { ScanScreen } from './ScanScreen';
+import { VoiceInputButton } from './VoiceInputButton';
 
 const tokenEndpoint = process.env.EXPO_PUBLIC_JANUARY_TOKEN_ENDPOINT;
 const developmentApiKey = process.env.EXPO_PUBLIC_JANUARY_API_KEY;
@@ -264,6 +266,18 @@ function DemoScreen() {
             setNaturalResult(undefined);
             setError(undefined);
           }}
+          onVoiceError={(message) =>
+            setError({ title: 'Voice input', message })
+          }
+          onVoiceTranscript={
+            foodMode === 'barcode'
+              ? undefined
+              : (transcript) => {
+                  setQuery(transcript);
+                  setError(undefined);
+                  search(transcript).catch(() => undefined);
+                }
+          }
           onClear={() => {
             setQuery('');
             setHasSearched(false);
@@ -631,6 +645,8 @@ interface SearchFieldProps {
   onChangeText: (value: string) => void;
   onClear: () => void;
   onSubmit: () => void;
+  onVoiceError?: (message: string) => void;
+  onVoiceTranscript?: (transcript: string) => void;
   placeholder: string;
   value: string;
 }
@@ -639,6 +655,8 @@ function SearchField({
   onChangeText,
   onClear,
   onSubmit,
+  onVoiceError,
+  onVoiceTranscript,
   placeholder,
   value,
 }: SearchFieldProps) {
@@ -657,6 +675,13 @@ function SearchField({
         testID="search-input"
         value={value}
       />
+      {onVoiceTranscript ? (
+        <VoiceInputButton
+          onError={onVoiceError}
+          onTranscript={onVoiceTranscript}
+          testID="search-voice"
+        />
+      ) : null}
       {value ? (
         <Pressable
           accessibilityLabel="Clear search"
@@ -994,6 +1019,11 @@ function NaturalLanguageResult({ result }: { result: FoodScan }) {
           {detection.food.brandName ? (
             <Text style={styles.foodBrand}>{detection.food.brandName}</Text>
           ) : null}
+          {formatDetectedServing(detection.food) ? (
+            <Text style={styles.foodBrand}>
+              {formatDetectedServing(detection.food)}
+            </Text>
+          ) : null}
           <NaturalMacroCard compact nutrients={detection.food.nutrients} />
         </View>
       ))}
@@ -1069,7 +1099,12 @@ function FoodRow({
   const serving =
     item.servings.find((candidate) => candidate.isPrimary) ?? item.servings[0];
   const servingLabel = serving
-    ? `${formatNumber(serving.quantity ?? 1)} ${serving.unit ?? 'serving'}`
+    ? [
+        serving.quantity != null ? formatNumber(serving.quantity) : undefined,
+        serving.unit ?? 'serving',
+      ]
+        .filter(Boolean)
+        .join(' ')
     : undefined;
 
   return (
@@ -1115,6 +1150,15 @@ function FoodRow({
       />
     </Pressable>
   );
+}
+
+// Shows only what the API returned: no invented "1" when a quantity is absent.
+function formatDetectedServing(food: DetectedFood): string {
+  const size = [food.serving.quantity, food.serving.unit]
+    .filter((part) => part != null && part !== '')
+    .join(' ');
+  if (!size) return '';
+  return food.quantity != null ? `${food.quantity} × ${size}` : size;
 }
 
 function formatNumber(value: number): string {

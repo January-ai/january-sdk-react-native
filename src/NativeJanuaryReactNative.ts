@@ -10,6 +10,20 @@ export type TokenRequest = {
   requestId: string;
 };
 
+export type VoiceCaptureUpdate = {
+  sessionId: string;
+  state: string;
+  audioLevel: number;
+  durationMs: number;
+  partialTranscript: string;
+  /** Identifies the start() this update belongs to, so a stale update cannot touch a newer capture. */
+  captureId: string | null;
+  /** Final transcript when the recognizer ended the capture on its own (Android). */
+  transcript: string | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+};
+
 export interface Spec extends TurboModule {
   getNativeModuleVersion(): string;
   configureClient(
@@ -76,7 +90,11 @@ export interface Spec extends TurboModule {
     limit: number,
     offset: number
   ): Promise<string>;
-  foodAnalysisAnalyzePhoto(clientId: string, image: string): Promise<string>;
+  foodAnalysisAnalyzePhoto(
+    clientId: string,
+    image: string,
+    reasoningEffort: string | null
+  ): Promise<string>;
   foodAnalysisAnalyzeDescription(
     clientId: string,
     query: string
@@ -87,6 +105,13 @@ export interface Spec extends TurboModule {
     instruction: string
   ): Promise<string>;
   foodLogsList(clientId: string, start: string, end: string): Promise<string>;
+  foodLogsGetSummary(
+    clientId: string,
+    start: string,
+    end: string,
+    groupBy: string,
+    weekStart: string
+  ): Promise<string>;
   foodLogsCreate(
     clientId: string,
     foodsJson: string,
@@ -102,7 +127,17 @@ export interface Spec extends TurboModule {
   ): Promise<string>;
   foodLogsDelete(clientId: string, id: string): Promise<string>;
   glucosePredict(clientId: string, requestJson: string): Promise<string>;
+  voiceCaptureIsSupported(locale: string | null): boolean;
+  voiceCaptureStart(
+    sessionId: string,
+    locale: string | null,
+    captureId: string
+  ): Promise<string>;
+  voiceCaptureStop(sessionId: string): Promise<string>;
+  voiceCaptureCancel(sessionId: string): void;
+  voiceCaptureDispose(sessionId: string): void;
   readonly onTokenRequested: CodegenTypes.EventEmitter<TokenRequest>;
+  readonly onVoiceCaptureUpdate: CodegenTypes.EventEmitter<VoiceCaptureUpdate>;
 }
 
 export default TurboModuleRegistry.get<Spec>('JanuaryReactNative');

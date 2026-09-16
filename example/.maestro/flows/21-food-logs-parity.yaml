@@ -22,13 +22,22 @@ tags:
     timeout: 15000
 - tapOn:
     id: food-logs-refresh
-- assertVisible:
-    id: food-logs-loading
+- scrollUntilVisible:
+    element:
+      id: food-logs-loading
+    direction: DOWN
+    timeout: 8000
 - takeScreenshot: example/.maestro/artifacts/react-native-logs-loading
 - extendedWaitUntil:
     visible:
       id: food-log-0
     timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: food-log-summary
+    direction: UP
+    timeout: 10000
+- assertVisible: .*Range total.*
 - takeScreenshot: example/.maestro/artifacts/react-native-logs-results
 - tapOn:
     id: logs-range-month

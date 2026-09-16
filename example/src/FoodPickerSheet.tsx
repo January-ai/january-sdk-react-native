@@ -15,6 +15,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { VoiceInputButton } from './VoiceInputButton';
+
 import type {
   FoodSearchItem,
   FoodSelection,
@@ -166,6 +168,17 @@ export function FoodPickerSheet({
               testID="food-picker-input"
               value={query}
             />
+            {visible ? (
+              // Mounted only while shown, so closing the sheet mid-recording
+              // releases the microphone instead of transcribing into a hidden view.
+              <VoiceInputButton
+                onError={(message) => setError(message)}
+                onTranscript={(transcript) => {
+                  search(transcript).catch(() => undefined);
+                }}
+                testID="food-picker-voice"
+              />
+            ) : null}
             {query ? (
               <Pressable
                 accessibilityLabel="Clear food search"

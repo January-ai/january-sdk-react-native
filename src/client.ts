@@ -10,6 +10,8 @@ import type {
   CreateFoodLogRequest,
   FoodLog,
   FoodLogList,
+  GetFoodLogSummaryRequest,
+  FoodLogSummary,
   GetRestaurantMenuItemsRequest,
   GetRestaurantMenuItemsResponse,
   FoodScan,
@@ -66,6 +68,7 @@ export class JanuaryClient {
   readonly foodLogs: {
     create: (request: CreateFoodLogRequest) => Promise<FoodLog>;
     delete: (id: string) => Promise<void>;
+    getSummary: (request: GetFoodLogSummaryRequest) => Promise<FoodLogSummary>;
     list: (request: ListFoodLogsRequest) => Promise<FoodLogList>;
     update: (request: UpdateFoodLogRequest) => Promise<FoodLog>;
   };
@@ -203,7 +206,11 @@ export class JanuaryClient {
         const image = request.image.trim();
         if (!image) throw new Error('image is required.');
         return parseNativeJson<FoodScan>(
-          await native.foodAnalysisAnalyzePhoto(this.clientId, image)
+          await native.foodAnalysisAnalyzePhoto(
+            this.clientId,
+            image,
+            request.reasoningEffort ?? null
+          )
         );
       },
       correct: async (request) => {
@@ -237,6 +244,21 @@ export class JanuaryClient {
         this.assertActive();
         if (!id.trim()) throw new Error('id is required.');
         await native.foodLogsDelete(this.clientId, id);
+      },
+      getSummary: async (request) => {
+        this.assertActive();
+        if (!request.start.trim() || !request.end.trim()) {
+          throw new Error('start and end are required.');
+        }
+        return parseNativeJson<FoodLogSummary>(
+          await native.foodLogsGetSummary(
+            this.clientId,
+            request.start,
+            request.end,
+            request.groupBy ?? 'day',
+            request.weekStart ?? 'monday'
+          )
+        );
       },
       list: async (request) => {
         this.assertActive();

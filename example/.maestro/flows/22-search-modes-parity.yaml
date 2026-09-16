@@ -27,8 +27,16 @@ tags:
 - takeScreenshot: example/.maestro/artifacts/react-native-description-results
 - tapOn:
     id: search-clear
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - assertVisible:
+          id: search-voice
 - tapOn:
     id: search-mode-barcode
+- assertNotVisible:
+    id: search-voice
 - assertVisible: Enter or scan a barcode
 - assertVisible:
     id: scan-barcode-button

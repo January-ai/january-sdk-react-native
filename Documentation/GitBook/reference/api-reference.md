@@ -32,9 +32,17 @@
 | --- | --- | --- |
 | `foodLogs.create` | `CreateFoodLogRequest` | `FoodLog` |
 | `foodLogs.list` | `ListFoodLogsRequest` | `FoodLogList` |
+| `foodLogs.getSummary` | `GetFoodLogSummaryRequest` | `FoodLogSummary` |
 | `foodLogs.update` | `UpdateFoodLogRequest` | `FoodLog` |
 | `foodLogs.delete` | log ID string | `void` |
 | `glucose.predict` | `PredictGlucoseRequest` | `GlucosePrediction` |
 
 All methods return promises and reject when local validation, authentication,
 transport, or native SDK processing fails.
+
+## Voice capture
+
+`VoiceCaptureSession` (`isSupported`, `snapshot`, `subscribe`, `start`, `stop`,
+`cancel`, `dispose`) wraps the native speech recognizers; see
+[Voice capture](../guides/voice-capture.md). `stop()` resolves with
+`VoiceCaptureResult`; failures are `VoiceCaptureError` with a stable `code`.

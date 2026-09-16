@@ -1,6 +1,7 @@
 import type {
   AutocompleteFoodsResponse,
   FoodLog,
+  FoodLogSummary,
   FoodScan,
   FoodCategoryValue,
   FoodSearchItem,
@@ -213,14 +214,12 @@ export const fixtureScan: FoodScan = {
           fiber: { value: 3, unit: 'g' },
           sodium: { value: 10, unit: 'mg' },
         },
-        servings: [
-          {
-            id: 'fixture-oatmeal-serving',
-            quantity: 1,
-            selectedQuantity: 1,
-            unit: 'cup',
-          },
-        ],
+        quantity: 1,
+        serving: {
+          id: 'fixture-oatmeal-serving',
+          quantity: 1,
+          unit: 'cup',
+        },
       },
     },
   ],
@@ -251,7 +250,8 @@ export const fixtureFoodLogs: FoodLog[] = [
   {
     id: 'fixture-log-breakfast',
     name: 'Fixture breakfast',
-    timestampUTC: '2026-08-31T12:00:00Z',
+    // Today at noon UTC, so the log sits inside the default week range.
+    timestampUTC: `${new Date().toISOString().slice(0, 10)}T12:00:00Z`,
     foods: [
       {
         id: 'fixture-oatmeal',
@@ -268,6 +268,39 @@ export const fixtureFoodLogs: FoodLog[] = [
     ],
   },
 ];
+
+export const fixtureFoodLogSummary: FoodLogSummary = {
+  groupBy: 'day',
+  timezone: 'UTC',
+  startDate: '2026-08-31',
+  endDate: '2026-09-06',
+  // One bucket per day of the range, as the API returns them; only the first
+  // day has a log.
+  buckets: [
+    {
+      startDate: '2026-08-31',
+      endDate: '2026-08-31',
+      logsCount: 1,
+      daysWithLogs: 1,
+      nutrients: fixtureScan.detections[0]!.food.nutrients,
+    },
+    ...['01', '02', '03', '04', '05', '06'].map((day) => ({
+      startDate: `2026-09-${day}`,
+      endDate: `2026-09-${day}`,
+      logsCount: 0,
+      daysWithLogs: 0,
+      nutrients: {},
+    })),
+  ],
+  totals: {
+    logsCount: 1,
+    daysWithLogs: 1,
+    nutrients: fixtureScan.detections[0]!.food.nutrients,
+  },
+  averagePerLoggedDay: {
+    nutrients: fixtureScan.detections[0]!.food.nutrients,
+  },
+};
 
 export const fixtureGlucosePrediction: GlucosePrediction = {
   impact: 'medium',
@@ -347,7 +380,6 @@ export async function suggestFixtureAlternatives(
           {
             id: 'fixture-lentils-serving',
             quantity: 1,
-            selectedQuantity: 1,
             unit: 'cup',
           },
         ],

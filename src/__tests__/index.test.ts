@@ -21,6 +21,26 @@ jest.mock('../NativeJanuaryReactNative', () => ({
     foodLogsList: jest.fn(async () =>
       JSON.stringify({ items: [], total_count: 0 })
     ),
+    foodLogsGetSummary: jest.fn(async () =>
+      JSON.stringify({
+        group_by: 'day',
+        week_start: null,
+        timezone: 'UTC',
+        start_date: '2026-09-14',
+        end_date: '2026-09-14',
+        buckets: [
+          {
+            start_date: '2026-09-14',
+            end_date: '2026-09-14',
+            logs_count: 1,
+            days_with_logs: 1,
+            nutrients: { calories: { value: 1853.06, unit: 'kcal' } },
+          },
+        ],
+        totals: { logs_count: 3, days_with_logs: 2, nutrients: {} },
+        average_per_logged_day: { nutrients: {} },
+      })
+    ),
     foodLogsUpdate: jest.fn(async () =>
       JSON.stringify({ foods: [], id: 'log-1', timestamp_utc: 'now' })
     ),
@@ -35,7 +55,7 @@ jest.mock('../NativeJanuaryReactNative', () => ({
     foodsSuggestAlternatives: jest.fn(async () =>
       JSON.stringify({ alternatives: [] })
     ),
-    getNativeModuleVersion: jest.fn(() => '0.1.0'),
+    getNativeModuleVersion: jest.fn(() => '0.2.0'),
     glucosePredict: jest.fn(async () =>
       JSON.stringify({ chart: {}, prediction: [] })
     ),
@@ -114,6 +134,30 @@ describe('January React Native SDK', () => {
 
     expect(mockNativeModule.foodAnalysisAnalyzePhoto).toHaveBeenCalled();
     expect(mockNativeModule.foodLogsList).toHaveBeenCalled();
+
+    const summary = await client.foodLogs.getSummary({
+      start: '2026-09-14',
+      end: '2026-09-14',
+    });
+    expect(mockNativeModule.foodLogsGetSummary).toHaveBeenCalledWith(
+      expect.any(String),
+      '2026-09-14',
+      '2026-09-14',
+      'day',
+      'monday'
+    );
+    expect(summary.buckets[0]?.nutrients.calories?.value).toBe(1853.06);
+    expect(summary.totals.daysWithLogs).toBe(2);
+
+    await client.foodAnalysis.analyzePhoto({
+      image: 'https://example.com/meal.jpg',
+      reasoningEffort: 'xhigh',
+    });
+    expect(mockNativeModule.foodAnalysisAnalyzePhoto).toHaveBeenLastCalledWith(
+      expect.any(String),
+      'https://example.com/meal.jpg',
+      'xhigh'
+    );
     expect(mockNativeModule.foodLogsCreate).toHaveBeenCalled();
     expect(mockNativeModule.foodLogsUpdate).toHaveBeenCalled();
     expect(mockNativeModule.foodLogsDelete).toHaveBeenCalled();

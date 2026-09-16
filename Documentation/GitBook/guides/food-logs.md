@@ -22,6 +22,19 @@ const logs = await january.foodLogs.list({
 });
 ```
 
+Summarize a range per day or week instead of paging through logs:
+
+```ts
+const summary = await january.foodLogs.getSummary({
+  start: '2026-09-01',
+  end: '2026-09-30',
+  groupBy: 'week',
+});
+summary.buckets.forEach((week) =>
+  console.log(week.startDate, week.logsCount, week.nutrients.calories?.value)
+);
+```
+
 Update or delete a log:
 
 ```ts

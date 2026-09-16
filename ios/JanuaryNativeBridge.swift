@@ -1,9 +1,22 @@
+import Combine
 import Foundation
 import January
+import Speech
 
 @objc(JanuaryNativeBridge)
 public final class JanuaryNativeBridge: NSObject, @unchecked Sendable {
     @objc public var tokenRequestHandler: ((NSDictionary) -> Void)?
+    @objc public var voiceUpdateHandler: ((NSDictionary) -> Void)?
+
+    private final class VoiceHolder {
+        let session: VoiceCaptureSession
+        var cancellables: Set<AnyCancellable> = []
+        /// The JavaScript start() this holder currently serves; stamped on every update.
+        var captureID: String = ""
+        init(session: VoiceCaptureSession) { self.session = session }
+    }
+
+    private var voiceSessions: [String: VoiceHolder] = [:]
 
     private struct PendingRequest {
         let clientID: String
@@ -288,14 +301,16 @@ public final class JanuaryNativeBridge: NSObject, @unchecked Sendable {
         }
     }
 
-    @objc(foodAnalysisAnalyzePhoto:image:completion:)
+    @objc(foodAnalysisAnalyzePhoto:image:reasoningEffort:completion:)
     public func foodAnalysisAnalyzePhoto(
         _ clientID: String,
         image: String,
+        reasoningEffort: String?,
         completion: @escaping (NSString?, NSError?) -> Void
     ) {
+        let effort = reasoningEffort.flatMap(AnalysisEffort.init(rawValue:))
         perform(clientID, completion: completion) { client in
-            try await client.foodAnalysis.analyzePhoto(.init(image: image))
+            try await client.foodAnalysis.analyzePhoto(.init(image: image, reasoningEffort: effort))
         }
     }
 
@@ -327,6 +342,25 @@ public final class JanuaryNativeBridge: NSObject, @unchecked Sendable {
     ) {
         perform(clientID, completion: completion) { client in
             try await client.foodLogs.list(start: start, end: end)
+        }
+    }
+
+    @objc(foodLogsGetSummary:start:end:groupBy:weekStart:completion:)
+    public func foodLogsGetSummary(
+        _ clientID: String,
+        start: String,
+        end: String,
+        groupBy: String,
+        weekStart: String,
+        completion: @escaping (NSString?, NSError?) -> Void
+    ) {
+        perform(clientID, completion: completion) { client in
+            try await client.foodLogs.getSummary(
+                start: start,
+                end: end,
+                groupBy: groupBy == "week" ? .week : .day,
+                weekStart: weekStart == "sunday" ? .sunday : .monday
+            )
         }
     }
 
@@ -528,6 +562,135 @@ public final class JanuaryNativeBridge: NSObject, @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return operation()
+    }
+
+    // MARK: - Voice capture
+
+    /// Whether this device has a speech recognizer for the current locale. Transient
+    /// unavailability (for example no network for a server-backed locale) is reported by
+    /// `voiceCaptureStart` as `recognizer_unavailable` rather than hiding the feature.
+    @objc public func voiceCaptureIsSupported(_ locale: String?) -> Bool {
+        // Check the same locale the session will record with; the device locale otherwise.
+        let requested = locale.flatMap { $0.isEmpty ? nil : Locale(identifier: $0) } ?? Locale.current
+        return SFSpeechRecognizer(locale: requested) != nil
+    }
+
+    @objc(voiceCaptureStart:locale:captureID:completion:)
+    public func voiceCaptureStart(
+        _ sessionID: String,
+        locale: String?,
+        captureID: String,
+        completion: @escaping (NSString?, NSError?) -> Void
+    ) {
+        Task { @MainActor in
+            do {
+                let holder = self.voiceHolder(sessionID, locale: locale)
+                holder.captureID = captureID
+                try await holder.session.startRecording()
+                completion("{}", nil)
+            } catch {
+                completion(nil, self.voiceError(error))
+            }
+        }
+    }
+
+    @objc(voiceCaptureStop:completion:)
+    public func voiceCaptureStop(
+        _ sessionID: String,
+        completion: @escaping (NSString?, NSError?) -> Void
+    ) {
+        Task { @MainActor in
+            guard let holder = self.voiceSessions[sessionID] else {
+                completion(nil, self.voiceNSError("invalid_state", "Voice capture is not recording."))
+                return
+            }
+            do {
+                let result = try await holder.session.stopAndTranscribe()
+                let payload: [String: Any] = [
+                    "transcript": result.transcript,
+                    "durationMs": Int(result.duration * 1000),
+                ]
+                let data = try JSONSerialization.data(withJSONObject: payload)
+                completion(String(decoding: data, as: UTF8.self) as NSString, nil)
+            } catch {
+                completion(nil, self.voiceError(error))
+            }
+        }
+    }
+
+    @objc public func voiceCaptureCancel(_ sessionID: String) {
+        Task { @MainActor in
+            self.voiceSessions[sessionID]?.session.cancel()
+        }
+    }
+
+    @objc public func voiceCaptureDispose(_ sessionID: String) {
+        Task { @MainActor in
+            guard let holder = self.voiceSessions.removeValue(forKey: sessionID) else { return }
+            holder.session.cancel()
+            holder.cancellables.removeAll()
+        }
+    }
+
+    @MainActor
+    private func voiceHolder(_ sessionID: String, locale: String?) -> VoiceHolder {
+        if let existing = voiceSessions[sessionID] { return existing }
+        let session = VoiceCaptureSession(locale: locale.map(Locale.init(identifier:)))
+        let holder = VoiceHolder(session: session)
+        let emit: () -> Void = { [weak self, weak session, weak holder] in
+            guard let self, let session, let holder else { return }
+            let state: String
+            switch session.state {
+            case .idle: state = "idle"
+            case .requestingPermissions: state = "requestingPermission"
+            case .recording: state = "recording"
+            case .transcribing: state = "processing"
+            }
+            self.voiceUpdateHandler?([
+                "sessionId": sessionID,
+                "captureId": holder.captureID,
+                "state": state,
+                "audioLevel": Double(session.audioLevel),
+                "durationMs": Int(session.recordingDuration * 1000),
+                "partialTranscript": "",
+                "transcript": NSNull(),
+                "errorCode": NSNull(),
+                "errorMessage": NSNull(),
+            ] as NSDictionary)
+        }
+        // @Published publishes from willSet, so hop to the next main-queue turn before
+        // reading the session's properties; otherwise the event carries the previous values.
+        session.$state.dropFirst().receive(on: DispatchQueue.main).sink { _ in emit() }.store(in: &holder.cancellables)
+        session.$audioLevel.dropFirst().receive(on: DispatchQueue.main).sink { _ in emit() }.store(in: &holder.cancellables)
+        session.$recordingDuration.dropFirst().receive(on: DispatchQueue.main).sink { _ in emit() }.store(in: &holder.cancellables)
+        voiceSessions[sessionID] = holder
+        return holder
+    }
+
+    private func voiceError(_ error: Error) -> NSError {
+        guard let voice = error as? VoiceCaptureError else {
+            return voiceNSError("unknown", error.localizedDescription)
+        }
+        let code: String
+        switch voice {
+        case .missingUsageDescription, .microphonePermissionDenied, .speechRecognitionPermissionDenied:
+            code = "permission_denied"
+        case .speechRecognizerUnavailable: code = "recognizer_unavailable"
+        case .recordingFailed: code = "recording_failed"
+        case .transcriptionFailed: code = "transcription_failed"
+        case .emptyTranscript: code = "no_match"
+        case .invalidState: code = "invalid_state"
+        case .cancelled: code = "cancelled"
+        }
+        return voiceNSError(code, voice.errorDescription ?? "Voice capture failed.")
+    }
+
+    private func voiceNSError(_ code: String, _ message: String) -> NSError {
+        NSError(
+            domain: "ai.january.sdk.voice",
+            code: 0,
+            userInfo: [NSLocalizedDescriptionKey: message, "code": code]
+        )
     }
 
     private func nativeError(_ error: Error) -> NSError {

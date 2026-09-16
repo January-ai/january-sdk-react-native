@@ -1,5 +1,13 @@
 export { JanuaryClient } from './client';
 export { getNativeModuleVersion } from './native';
+export { VoiceCaptureError, VoiceCaptureSession } from './voice-capture';
+export type {
+  VoiceCaptureErrorCode,
+  VoiceCaptureOptions,
+  VoiceCaptureResult,
+  VoiceCaptureSnapshot,
+  VoiceCaptureState,
+} from './voice-capture';
 export { FoodCategory } from './types';
 export type {
   ActivityLevel,
@@ -10,8 +18,17 @@ export type {
   AutocompleteFoodsResponse,
   CorrectPhotoScanRequest,
   CreateFoodLogRequest,
+  AlternativeFood,
+  AnalysisEffort,
   DetectedFood,
   DetectedServing,
+  FoodLogSummary,
+  FoodLogSummaryBucket,
+  FoodLogSummaryGrouping,
+  FoodLogSummaryTotals,
+  GetFoodLogSummaryRequest,
+  ServingSummary,
+  WeekStart,
   DietPreference,
   DietRestriction,
   FoodDetection,

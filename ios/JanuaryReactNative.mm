@@ -14,13 +14,16 @@
     _bridge.tokenRequestHandler = ^(NSDictionary<NSString *, NSString *> *request) {
       [weakSelf emitOnTokenRequested:request];
     };
+    _bridge.voiceUpdateHandler = ^(NSDictionary *update) {
+      [weakSelf emitOnVoiceCaptureUpdate:update];
+    };
   }
   return self;
 }
 
 - (NSString *)getNativeModuleVersion
 {
-  return @"0.1.0";
+  return @"0.2.0";
 }
 
 - (NSString * _Nullable)configureClient:(NSString *)clientId
@@ -83,10 +86,11 @@
 
 - (void)foodAnalysisAnalyzePhoto:(NSString *)clientId
                            image:(NSString *)image
+                 reasoningEffort:(NSString *)reasoningEffort
                          resolve:(RCTPromiseResolveBlock)resolve
                           reject:(RCTPromiseRejectBlock)reject
 {
-  [_bridge foodAnalysisAnalyzePhoto:clientId image:image completion:^(NSString *json, NSError *error) {
+  [_bridge foodAnalysisAnalyzePhoto:clientId image:image reasoningEffort:reasoningEffort completion:^(NSString *json, NSError *error) {
     if (error) { reject(error.userInfo[@"code"] ?: @"january_error", error.localizedDescription, error); return; }
     resolve(json);
   }];
@@ -218,6 +222,20 @@
   }];
 }
 
+- (void)foodLogsGetSummary:(NSString *)clientId
+                      start:(NSString *)start
+                        end:(NSString *)end
+                    groupBy:(NSString *)groupBy
+                  weekStart:(NSString *)weekStart
+                    resolve:(RCTPromiseResolveBlock)resolve
+                     reject:(RCTPromiseRejectBlock)reject
+{
+  [_bridge foodLogsGetSummary:clientId start:start end:end groupBy:groupBy weekStart:weekStart completion:^(NSString *json, NSError *error) {
+    if (error) { reject(error.userInfo[@"code"] ?: @"january_error", error.localizedDescription, error); return; }
+    resolve(json);
+  }];
+}
+
 - (void)foodLogsCreate:(NSString *)clientId
               foodsJson:(NSString *)foodsJson
            timestampUtc:(NSString * _Nullable)timestampUtc
@@ -265,6 +283,43 @@
     if (error) { reject(error.userInfo[@"code"] ?: @"january_error", error.localizedDescription, error); return; }
     resolve(json);
   }];
+}
+
+- (NSNumber *)voiceCaptureIsSupported:(NSString *)locale
+{
+  return @([_bridge voiceCaptureIsSupported:locale]);
+}
+
+- (void)voiceCaptureStart:(NSString *)sessionId
+                   locale:(NSString *)locale
+                captureId:(NSString *)captureId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                   reject:(RCTPromiseRejectBlock)reject
+{
+  [_bridge voiceCaptureStart:sessionId locale:locale captureID:captureId completion:^(NSString *json, NSError *error) {
+    if (error) { reject(error.userInfo[@"code"] ?: @"unknown", error.localizedDescription, error); return; }
+    resolve(json);
+  }];
+}
+
+- (void)voiceCaptureStop:(NSString *)sessionId
+                 resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject
+{
+  [_bridge voiceCaptureStop:sessionId completion:^(NSString *json, NSError *error) {
+    if (error) { reject(error.userInfo[@"code"] ?: @"unknown", error.localizedDescription, error); return; }
+    resolve(json);
+  }];
+}
+
+- (void)voiceCaptureCancel:(NSString *)sessionId
+{
+  [_bridge voiceCaptureCancel:sessionId];
+}
+
+- (void)voiceCaptureDispose:(NSString *)sessionId
+{
+  [_bridge voiceCaptureDispose:sessionId];
 }
 
 - (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:

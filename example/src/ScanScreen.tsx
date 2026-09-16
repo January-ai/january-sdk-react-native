@@ -18,6 +18,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type {
+  DetectedFood,
   FoodScan,
   JanuaryClient,
   NutritionFacts,
@@ -497,6 +498,11 @@ function MealAnalysisSheet({
                     {detection.food.brandName ? (
                       <Text style={styles.detectionBrand}>
                         {detection.food.brandName}
+                      </Text>
+                    ) : null}
+                    {formatServing(detection.food) ? (
+                      <Text style={styles.detectionBrand}>
+                        {formatServing(detection.food)}
                       </Text>
                     ) : null}
                   </View>
@@ -997,3 +1003,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+
+// Shows only what the API returned: no invented "1" when a quantity is absent.
+function formatServing(food: DetectedFood): string {
+  const size = [food.serving.quantity, food.serving.unit]
+    .filter((part) => part != null && part !== '')
+    .join(' ');
+  if (!size) return '';
+  return food.quantity != null ? `${food.quantity} × ${size}` : size;
+}

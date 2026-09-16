@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -14,7 +14,13 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { FoodLog, JanuaryClient } from '@januaryai/react-native';
+import type {
+  FoodLog,
+  FoodLogSummary,
+  NutrientAmount,
+  NutritionFacts,
+  JanuaryClient,
+} from '@januaryai/react-native';
 
 import { palette, sharedStyles } from './demoTheme';
 import {
@@ -31,7 +37,11 @@ import {
   SectionLabel,
   WorkflowGuideCard,
 } from './designSystem';
-import { fixtureDelay, fixtureFoodLogs } from './e2eFixtures';
+import {
+  fixtureDelay,
+  fixtureFoodLogs,
+  fixtureFoodLogSummary,
+} from './e2eFixtures';
 import { FoodPickerSheet, type SelectedFood } from './FoodPickerSheet';
 
 interface FoodLogsScreenProps {
@@ -53,6 +63,7 @@ export function FoodLogsScreen({
 }: FoodLogsScreenProps) {
   const [range, setRange] = useState<Range>('week');
   const [logs, setLogs] = useState<FoodLog[]>([]);
+  const [summary, setSummary] = useState<FoodLogSummary>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
   const [editor, setEditor] = useState<FoodLog | 'new'>();
@@ -71,24 +82,39 @@ export function FoodLogsScreen({
       setLoading(true);
       setError(undefined);
       setDeleteRetryLog(undefined);
+      setSummary(undefined);
+      // This load owns the screen only while its ticket is current; a range
+      // change or a newer refresh that lands first wins.
+      const ticket = ++summaryTicket.current;
       try {
         if (fixtures) {
           await fixtureDelay(8000);
+          if (ticket !== summaryTicket.current) return;
           if (forceFixtureFailure) {
             throw new Error('Temporary fixture food logs failure.');
           }
           setLogs(range === 'month' ? [] : fixtureFoodLogs.map(copyFoodLog));
         } else {
           const dates = dateRange(range);
-          const result = await client.foodLogs.list(dates);
-          setLogs(result.items);
+          // The list is the screen; the summary is a bonus row, so its failure
+          // must not blank the logs.
+          const [listed, summarized] = await Promise.allSettled([
+            client.foodLogs.list(dates),
+            client.foodLogs.getSummary({ ...dates, groupBy: 'day' }),
+          ]);
+          if (ticket !== summaryTicket.current) return;
+          if (listed.status === 'rejected') throw listed.reason;
+          setLogs(listed.value.items);
+          setSummary(
+            summarized.status === 'fulfilled' ? summarized.value : undefined
+          );
         }
       } catch (caught) {
         setError(
           caught instanceof Error ? caught.message : 'Food logs failed to load.'
         );
       } finally {
-        setLoading(false);
+        if (ticket === summaryTicket.current) setLoading(false);
       }
     },
     [client, configured, fixtures, range]
@@ -97,6 +123,30 @@ export function FoodLogsScreen({
   useEffect(() => {
     load().catch(() => undefined);
   }, [load]);
+
+  // Totals change after every create, update, or delete. Live mode asks the
+  // API again; fixture mode derives the summary from the logs on screen, so
+  // the two can never disagree.
+  // Each request takes a ticket; a response whose ticket is no longer current
+  // (a range change or a newer refresh happened meanwhile) is dropped.
+  const summaryTicket = useRef(0);
+  const refreshSummary = useCallback(async () => {
+    if (!configured || fixtures) return;
+    const ticket = ++summaryTicket.current;
+    try {
+      const next = await client.foodLogs.getSummary({
+        ...dateRange(range),
+        groupBy: 'day',
+      });
+      if (ticket === summaryTicket.current) setSummary(next);
+    } catch {
+      // Keep the previous total; the next full load retries.
+    }
+  }, [client, configured, fixtures, range]);
+  const shownSummary = useMemo(
+    () => (fixtures ? fixtureSummaryFor(logs, dateRange(range)) : summary),
+    [fixtures, logs, range, summary]
+  );
 
   async function deleteLog(log: FoodLog) {
     if (!log.id) return;
@@ -115,6 +165,7 @@ export function FoodLogsScreen({
       setLogs((current) =>
         current.filter((candidate) => candidate.id !== log.id)
       );
+      refreshSummary().catch(() => undefined);
       closeDetail();
       setDeleteRetryLog(undefined);
     } catch (caught) {
@@ -244,6 +295,14 @@ export function FoodLogsScreen({
             <Text style={styles.datesLabel}>Dates</Text>
             <Text style={styles.datesValue}>{formatRange(range)}</Text>
           </View>
+          {shownSummary && shownSummary.totals.logsCount > 0 ? (
+            <View style={styles.datesRow} testID="food-log-summary">
+              <Text style={styles.datesLabel}>Range total</Text>
+              <Text style={styles.datesValue}>
+                {formatSummary(shownSummary)}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         <Pressable
@@ -408,6 +467,7 @@ export function FoodLogsScreen({
             if (index < 0) return [saved, ...current];
             return current.map((item) => (item.id === saved.id ? saved : item));
           });
+          refreshSummary().catch(() => undefined);
           closeDetail();
           setEditor(undefined);
         }}
@@ -971,6 +1031,93 @@ function dateRange(range: Range): { start: string; end: string } {
     end.setDate(0);
   }
   return { start: isoDate(start), end: isoDate(end) };
+}
+
+// Fixture mode has no server to total the logs, so the summary is computed
+// from the logs on screen the way the API would for the selected range: one
+// bucket per day of the range, only logs inside it, sparse nutrient totals,
+// and an average per logged day.
+function fixtureSummaryFor(
+  logs: FoodLog[],
+  range: { start: string; end: string }
+): FoodLogSummary | undefined {
+  const inRange = logs.filter((log) => {
+    const day = log.timestampUTC.slice(0, 10);
+    return day >= range.start && day <= range.end;
+  });
+  if (inRange.length === 0) return undefined;
+  const byDay = new Map<string, FoodLog[]>();
+  for (const log of inRange) {
+    const day = log.timestampUTC.slice(0, 10);
+    byDay.set(day, [...(byDay.get(day) ?? []), log]);
+  }
+  const buckets: FoodLogSummary['buckets'] = [];
+  for (
+    const cursor = new Date(`${range.start}T00:00:00Z`);
+    cursor.toISOString().slice(0, 10) <= range.end;
+    cursor.setUTCDate(cursor.getUTCDate() + 1)
+  ) {
+    const day = cursor.toISOString().slice(0, 10);
+    const dayLogs = byDay.get(day) ?? [];
+    buckets.push({
+      startDate: day,
+      endDate: day,
+      logsCount: dayLogs.length,
+      daysWithLogs: dayLogs.length > 0 ? 1 : 0,
+      nutrients: sumNutrients(dayLogs),
+    });
+  }
+  const totals = sumNutrients(inRange);
+  const daysWithLogs = byDay.size;
+  return {
+    ...fixtureFoodLogSummary,
+    startDate: range.start,
+    endDate: range.end,
+    buckets,
+    totals: { logsCount: inRange.length, daysWithLogs, nutrients: totals },
+    averagePerLoggedDay: {
+      nutrients: Object.fromEntries(
+        Object.entries(totals).map(([key, amount]) => [
+          key,
+          { ...amount, value: amount.value / daysWithLogs },
+        ])
+      ),
+    },
+  };
+}
+
+// Sparse like the API: a nutrient appears only when at least one food had it.
+// A logged food's nutrients are already the amount eaten (the meal total on
+// the detail view sums them the same way), so no further scaling applies.
+function sumNutrients(logs: FoodLog[]): NutritionFacts {
+  const totals: Record<string, NutrientAmount> = {};
+  for (const log of logs) {
+    for (const food of log.foods) {
+      for (const [key, amount] of Object.entries(food.nutrients) as [
+        string,
+        NutrientAmount | undefined,
+      ][]) {
+        if (!amount) continue;
+        const current = totals[key];
+        totals[key] = current
+          ? { ...current, value: current.value + amount.value }
+          : { ...amount };
+      }
+    }
+  }
+  return totals;
+}
+
+function formatSummary(summary: FoodLogSummary): string {
+  const { logsCount, nutrients } = summary.totals;
+  const parts = [`${logsCount} ${logsCount === 1 ? 'log' : 'logs'}`];
+  // Nutrients are sparse: a missing calories entry means nothing could be
+  // totalled, which is not the same as 0 kcal.
+  const total = nutrients.calories?.value;
+  if (total != null) parts.push(`${Math.round(total)} kcal`);
+  const average = summary.averagePerLoggedDay.nutrients.calories?.value;
+  if (average != null) parts.push(`avg ${Math.round(average)} kcal/day`);
+  return parts.join(' · ');
 }
 
 function formatRange(range: Range): string {

@@ -5,6 +5,27 @@ This project uses Semantic Versioning.
 
 ## [Unreleased]
 
+Breaking: the Partner API changed the shape of a detected food, and 0.1.0
+fails to decode photo scans and description analyses with an unreadable
+response error. Update to restore them.
+
+- `DetectedFood` no longer has `servings`. It has `serving` (the selected
+  catalog serving, a `ServingSummary`) and `quantity` (how many of that serving
+  were eaten). `nutrients` are already scaled to `quantity`. `DetectedServing`
+  is a deprecated alias of `ServingSummary`; its `selectedQuantity` moved to
+  `DetectedFood.quantity`.
+- Food alternatives are `AlternativeFood` values with `servings:
+  ServingSummary[]`.
+- Added `foodLogs.getSummary`: nutrients summed per day or week over a date
+  range, with totals and a per-logged-day average (`FoodLogSummary`).
+- Added `AnalyzePhotoRequest.reasoningEffort` (`'xhigh'`) to opt into the
+  reasoning-based photo analyzer.
+- Added `VoiceCaptureSession`: microphone capture and speech recognition
+  through the platform recognizers (Apple Speech, Android `SpeechRecognizer`),
+  with live level, duration, partial text on Android, and stable error codes. The example shows a microphone in the search field and the
+  food picker.
+- Pin the January iOS SDK `0.2.0` and Android SDK `0.2.0`, which carry the
+  same changes.
 - `yarn example android` now finds the Android SDK and a JDK 17–21 on its own,
   starts an emulator when no device is connected, and forwards ports 8081 and
   8787 into it, so `example/.env` is the same for iOS and Android.

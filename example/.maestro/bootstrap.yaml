@@ -27,6 +27,16 @@ appId: ai.january.sdk.demo
             - openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
             - waitForAnimationToEnd
             - openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
+            - waitForAnimationToEnd
+            # react-native-screens can throw "runtime not ready" on a warm
+            # relaunch of the dev build; RELOAD on the red screen recovers it.
+            - tapOn:
+                text: "RELOAD.*"
+                optional: true
+            - waitForAnimationToEnd
+            - tapOn:
+                text: "RELOAD.*"
+                optional: true
       - tapOn:
           text: Continue
           optional: true
@@ -36,4 +46,4 @@ appId: ai.january.sdk.demo
       - extendedWaitUntil:
           visible:
             id: search-screen
-          timeout: 30000
+          timeout: 45000

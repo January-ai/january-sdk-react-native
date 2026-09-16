@@ -27,7 +27,12 @@ import ai.january.partner.foods.SuggestFoodAlternativesResponse
 import ai.january.partner.foodlogs.FoodLog
 import ai.january.partner.foodlogs.ListFoodLogsResponse
 import ai.january.partner.foods.DetectedFood
-import ai.january.partner.foods.DetectedServing
+import ai.january.partner.foods.AlternativeFood
+import ai.january.partner.foods.ServingSummary
+import ai.january.partner.foodlogs.FoodLogSummary
+import ai.january.partner.foodlogs.FoodLogSummaryGrouping
+import ai.january.partner.foodlogs.WeekStart
+import ai.january.partner.photos.AnalysisEffort
 import ai.january.partner.glucose.ActivityLevel
 import ai.january.partner.glucose.GlucosePrediction
 import ai.january.partner.glucose.GlucosePredictionProfile
@@ -55,6 +60,23 @@ import ai.january.partner.restaurants.RestaurantMenuItem
 import ai.january.partner.restaurants.SearchRestaurantMenuItemsResponse
 import ai.january.partner.restaurants.SearchRestaurantsRequest
 import ai.january.partner.restaurants.SearchRestaurantsResponse
+import ai.january.partner.voice.VoiceCaptureErrorCode
+import ai.january.partner.voice.VoiceCaptureException
+import ai.january.partner.voice.VoiceCaptureResult
+import ai.january.partner.voice.VoiceCaptureSession
+import ai.january.partner.voice.VoiceCaptureState
+import android.speech.SpeechRecognizer
+import com.facebook.react.bridge.UiThreadUtil
+import java.util.Locale
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withTimeout
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
@@ -80,11 +102,26 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
   )
 
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+  private val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
   private val clients = ConcurrentHashMap<String, JanuaryPartnerUserClient>()
+  private val voiceSessions = HashMap<String, VoiceHolder>()
+
+  private class VoiceHolder(val session: VoiceCaptureSession) {
+    /** Collects the recognizer's flows for exactly one capture; replaced on every start(). */
+    var collector: Job? = null
+    var pendingStop: Job? = null
+  }
+  private data class VoiceSnapshot(
+    val state: VoiceCaptureState,
+    val level: Float,
+    val partial: String,
+    val error: VoiceCaptureException?,
+    val result: VoiceCaptureResult?,
+  )
   private val pendingTokenRequests = ConcurrentHashMap<String, PendingTokenRequest>()
 
   override fun getNativeModuleVersion(): String {
-    return "0.1.0"
+    return "0.2.0"
   }
 
   override fun configureClient(clientId: String, endUserId: String, timezone: String?): String? =
@@ -173,9 +210,19 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
     }
   }
 
-  override fun foodAnalysisAnalyzePhoto(clientId: String, image: String, promise: Promise) {
+  override fun foodAnalysisAnalyzePhoto(
+    clientId: String,
+    image: String,
+    reasoningEffort: String?,
+    promise: Promise,
+  ) {
     withClient(clientId, promise) { client ->
-      client.foodAnalysis.analyzePhoto(ScanFoodPhotoRequest(image)).toJsonObject()
+      val effort = when (reasoningEffort) {
+        "xhigh" -> AnalysisEffort.XHIGH
+        "none" -> AnalysisEffort.NONE
+        else -> null
+      }
+      client.foodAnalysis.analyzePhoto(ScanFoodPhotoRequest(image, reasoningEffort = effort)).toJsonObject()
     }
   }
 
@@ -303,6 +350,24 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  override fun foodLogsGetSummary(
+    clientId: String,
+    start: String,
+    end: String,
+    groupBy: String,
+    weekStart: String,
+    promise: Promise,
+  ) {
+    withClient(clientId, promise) { client ->
+      client.foodLogs.getSummary(
+        start,
+        end,
+        if (groupBy == "week") FoodLogSummaryGrouping.WEEK else FoodLogSummaryGrouping.DAY,
+        if (weekStart == "sunday") WeekStart.SUNDAY else WeekStart.MONDAY,
+      ).toJsonObject()
+    }
+  }
+
   override fun foodLogsCreate(
     clientId: String,
     foodsJson: String,
@@ -346,7 +411,224 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  // ——— Voice capture ————————————————————————————————————————————————————————
+
+  // Android's recognizer availability is device-wide; the locale is chosen per session.
+  override fun voiceCaptureIsSupported(locale: String?): Boolean =
+    SpeechRecognizer.isRecognitionAvailable(reactApplicationContext)
+
+  override fun voiceCaptureStart(sessionId: String, locale: String?, captureId: String, promise: Promise) {
+    UiThreadUtil.runOnUiThread {
+      val existing = voiceSessions[sessionId]
+      val holder = existing ?: createVoiceSession(sessionId, locale)
+      try {
+        holder.session.clearResult()
+        holder.session.clearError()
+        // A fresh collector per capture: every update it emits is stamped with this
+        // capture's id as a constant, so nothing collected for an earlier capture can be
+        // delivered under a newer id.
+        holder.collector?.cancel()
+        holder.collector = collectVoiceUpdates(sessionId, captureId, holder.session)
+        holder.session.startListening()
+        promise.resolve("{}")
+      } catch (error: Exception) {
+        holder.collector?.cancel()
+        holder.collector = null
+        if (existing == null) {
+          // Capture never started: do not keep the session alive for it.
+          voiceSessions.remove(sessionId)
+          holder.session.close()
+        }
+        rejectVoice(promise, error)
+      }
+    }
+  }
+
+  override fun voiceCaptureStop(sessionId: String, promise: Promise) {
+    UiThreadUtil.runOnUiThread {
+      val holder = voiceSessions[sessionId]
+      if (holder == null) {
+        promise.reject("invalid_state", "Voice capture is not recording.")
+        return@runOnUiThread
+      }
+      val session = holder.session
+      try {
+        if (session.state.value == VoiceCaptureState.LISTENING) session.stopListening()
+      } catch (error: Exception) {
+        rejectVoice(promise, error)
+        return@runOnUiThread
+      }
+      holder.pendingStop?.cancel()
+      holder.pendingStop = mainScope.launch {
+        try {
+          val outcome = withTimeout(20_000) {
+            merge(
+              session.latestResult.filterNotNull().map { result -> Result.success(result) },
+              session.error.filterNotNull().map { error -> Result.failure(error) },
+            ).first()
+          }
+          outcome.fold(
+            onSuccess = { result ->
+              session.clearResult()
+              promise.resolve(
+                JSONObject()
+                  .put("transcript", result.transcript)
+                  .put("durationMillis", result.durationMillis)
+                  .put("durationMs", result.durationMillis)
+                  .toString(),
+              )
+            },
+            onFailure = { error ->
+              session.clearError()
+              rejectVoice(promise, error)
+            },
+          )
+        } catch (error: Exception) {
+          if (error !is CancellationException || error is TimeoutCancellationException) session.cancel()
+          rejectVoice(promise, error)
+        } finally {
+          if (holder.pendingStop?.isActive != true) holder.pendingStop = null
+        }
+      }
+    }
+  }
+
+  override fun voiceCaptureCancel(sessionId: String) {
+    UiThreadUtil.runOnUiThread {
+      voiceSessions[sessionId]?.let { holder ->
+        holder.pendingStop?.cancel()
+        holder.pendingStop = null
+        holder.session.cancel()
+      }
+    }
+  }
+
+  override fun voiceCaptureDispose(sessionId: String) {
+    UiThreadUtil.runOnUiThread {
+      voiceSessions.remove(sessionId)?.let { holder ->
+        holder.pendingStop?.cancel()
+        holder.collector?.cancel()
+        holder.session.cancel()
+        holder.session.close()
+      }
+    }
+  }
+
+  private fun createVoiceSession(sessionId: String, locale: String?): VoiceHolder {
+    val session = VoiceCaptureSession(
+      reactApplicationContext,
+      locale?.takeIf { it.isNotBlank() }?.let(Locale::forLanguageTag) ?: Locale.getDefault(),
+    )
+    return VoiceHolder(session).also { voiceSessions[sessionId] = it }
+  }
+
+  private fun collectVoiceUpdates(sessionId: String, captureId: String, session: VoiceCaptureSession): Job {
+    val collector = mainScope.launch {
+      combine(session.state, session.audioLevel, session.partialTranscript, session.error, session.latestResult) { state, level, partial, error, result ->
+        VoiceSnapshot(state, level, partial, error, result)
+      }.collect { snapshot ->
+        // StateFlows replay their current values, so the collector starts with an IDLE snapshot
+        // before startListening() has run. A plain idle carries nothing JavaScript needs (it
+        // publishes idle itself when stop() or cancel() settles) and would reset an active start.
+        if (snapshot.state == VoiceCaptureState.IDLE && snapshot.error == null && snapshot.result == null) return@collect
+        emitVoiceUpdate(
+          sessionId,
+          captureId,
+          snapshot.state,
+          snapshot.level,
+          snapshot.partial,
+          snapshot.result?.durationMillis ?: session.elapsedDurationMillis,
+          snapshot.error,
+          // The recognizer can finalize on its own (silence, "stop" not yet called); forward
+          // that transcript so JavaScript does not wait for a stop() that never resolves it.
+          snapshot.result?.takeIf { snapshot.state == VoiceCaptureState.IDLE }?.transcript,
+        )
+      }
+    }
+    val ticker = mainScope.launch {
+      while (true) {
+        delay(250)
+        if (session.state.value == VoiceCaptureState.LISTENING) {
+          emitVoiceUpdate(
+            sessionId,
+            captureId,
+            session.state.value,
+            session.audioLevel.value,
+            session.partialTranscript.value,
+            session.elapsedDurationMillis,
+          )
+        }
+      }
+    }
+    collector.invokeOnCompletion { ticker.cancel() }
+    return collector
+  }
+
+  private fun emitVoiceUpdate(
+    sessionId: String,
+    captureId: String,
+    state: VoiceCaptureState,
+    level: Float,
+    partial: String,
+    durationMillis: Long,
+    error: VoiceCaptureException? = null,
+    transcript: String? = null,
+  ) {
+    val event = Arguments.createMap().apply {
+      if (transcript != null) putString("transcript", transcript) else putNull("transcript")
+      if (error != null) {
+        putString("errorCode", voiceCode(error))
+        putString("errorMessage", error.message ?: "Voice capture failed.")
+      } else {
+        putNull("errorCode")
+        putNull("errorMessage")
+      }
+      putString("sessionId", sessionId)
+      putString("captureId", captureId)
+      putString(
+        "state",
+        when (state) {
+          VoiceCaptureState.IDLE -> "idle"
+          VoiceCaptureState.LISTENING -> "recording"
+          VoiceCaptureState.PROCESSING -> "processing"
+        },
+      )
+      putDouble("audioLevel", level.toDouble())
+      putDouble("durationMs", durationMillis.toDouble())
+      putString("partialTranscript", partial)
+    }
+    reactApplicationContext.runOnJSQueueThread { emitOnVoiceCaptureUpdate(event) }
+  }
+
+  private fun rejectVoice(promise: Promise, error: Throwable) {
+    promise.reject(voiceCode(error), error.message ?: "Voice capture failed.", error)
+  }
+
+  private fun voiceCode(error: Throwable): String {
+    if (error is TimeoutCancellationException) return "transcription_failed"
+    if (error is CancellationException) return "cancelled"
+    return when ((error as? VoiceCaptureException)?.code) {
+      VoiceCaptureErrorCode.PERMISSION_DENIED -> "permission_denied"
+      VoiceCaptureErrorCode.RECOGNIZER_UNAVAILABLE, VoiceCaptureErrorCode.RECOGNIZER_BUSY -> "recognizer_unavailable"
+      VoiceCaptureErrorCode.AUDIO -> "recording_failed"
+      VoiceCaptureErrorCode.NETWORK -> "transcription_failed"
+      VoiceCaptureErrorCode.NO_MATCH -> "no_match"
+      VoiceCaptureErrorCode.INVALID_STATE -> "invalid_state"
+      VoiceCaptureErrorCode.UNKNOWN -> "unknown"
+      null -> "unknown"
+    }
+  }
+
   override fun invalidate() {
+    UiThreadUtil.runOnUiThread {
+      voiceSessions.values.forEach { holder ->
+        holder.collector?.cancel()
+        holder.session.cancel()
+        holder.session.close()
+      }
+      voiceSessions.clear()
+    }
+    mainScope.cancel()
     clients.clear()
     pendingTokenRequests.values.forEach { it.deferred.cancel() }
     pendingTokenRequests.clear()
@@ -409,18 +691,25 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
   private fun SuggestFoodAlternativesResponse.toJsonObject(): JSONObject = JSONObject()
     .put("alternatives", JSONArray(alternatives.map { it.toJsonObject() }))
 
+  private fun AlternativeFood.toJsonObject(): JSONObject = JSONObject()
+    .putNullable("id", id)
+    .putNullable("name", name)
+    .putNullable("brandName", brandName)
+    .put("nutrients", nutrients.toJsonObject())
+    .put("servings", JSONArray(servings.map { it.toJsonObject() }))
+
+  private fun ServingSummary.toJsonObject(): JSONObject = JSONObject()
+    .putNullable("id", id)
+    .putNullable("quantity", quantity)
+    .putNullable("unit", unit)
+
   private fun DetectedFood.toJsonObject(): JSONObject = JSONObject()
     .putNullable("id", id)
     .putNullable("name", name)
     .putNullable("brandName", brandName)
     .put("nutrients", nutrients.toJsonObject())
-    .put("servings", JSONArray(servings.orEmpty().map { serving ->
-      JSONObject()
-        .putNullable("id", serving.id)
-        .putNullable("quantity", serving.quantity)
-        .putNullable("unit", serving.unit)
-        .putNullable("selectedQuantity", serving.selectedQuantity)
-    }))
+    .put("serving", serving.toJsonObject())
+    .putNullable("quantity", quantity)
 
   private fun FoodSearchItem.toJsonObject(): JSONObject = JSONObject()
     .put("id", id.value)
@@ -561,19 +850,28 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
     .put("detections", JSONArray(detections.map { detection ->
       JSONObject()
         .putNullable("confidenceScore", detection.confidenceScore)
-        .put("food", JSONObject()
-          .putNullable("id", detection.food.id)
-          .putNullable("name", detection.food.name)
-          .putNullable("brandName", detection.food.brandName)
-          .put("nutrients", detection.food.nutrients.toJsonObject())
-          .put("servings", JSONArray(detection.food.servings.orEmpty().map { serving ->
-            JSONObject()
-              .putNullable("id", serving.id)
-              .putNullable("quantity", serving.quantity)
-              .putNullable("unit", serving.unit)
-              .putNullable("selectedQuantity", serving.selectedQuantity)
-          })))
+        .put("food", detection.food.toJsonObject())
     }))
+
+  private fun FoodLogSummary.toJsonObject(): JSONObject = JSONObject()
+    .put("groupBy", groupBy.name.lowercase())
+    .apply { weekStart?.let { put("weekStart", it.name.lowercase()) } }
+    .put("timezone", timezone)
+    .put("startDate", startDate)
+    .put("endDate", endDate)
+    .put("buckets", JSONArray(buckets.map { bucket ->
+      JSONObject()
+        .put("startDate", bucket.startDate)
+        .put("endDate", bucket.endDate)
+        .put("logsCount", bucket.logsCount)
+        .put("daysWithLogs", bucket.daysWithLogs)
+        .put("nutrients", bucket.nutrients.toJsonObject())
+    }))
+    .put("totals", JSONObject()
+      .put("logsCount", totals.logsCount)
+      .put("daysWithLogs", totals.daysWithLogs)
+      .put("nutrients", totals.nutrients.toJsonObject()))
+    .put("averagePerLoggedDay", JSONObject().put("nutrients", averagePerLoggedDay.nutrients.toJsonObject()))
 
   private fun ListFoodLogsResponse.toJsonObject(): JSONObject = JSONObject()
     .put("totalCount", totalCount)
@@ -660,24 +958,19 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
       detections = (0 until detections.length()).map { index ->
         val detection = detections.getJSONObject(index)
         val food = detection.getJSONObject("food")
-        val servings = food.optJSONArray("servings")
+        val serving = food.optJSONObject("serving")
         FoodDetection(
           food = DetectedFood(
             id = food.nullableString("id"),
             name = food.nullableString("name"),
             brandName = food.nullableString("brandName"),
             nutrients = parseCompleteNutrition(food.getJSONObject("nutrients")),
-            servings = servings?.let { values ->
-              (0 until values.length()).map { servingIndex ->
-                val serving = values.getJSONObject(servingIndex)
-                DetectedServing(
-                  id = serving.nullableString("id"),
-                  quantity = serving.nullableDouble("quantity"),
-                  unit = serving.nullableString("unit"),
-                  selectedQuantity = serving.nullableDouble("selectedQuantity"),
-                )
-              }
-            },
+            serving = ServingSummary(
+              id = serving?.nullableString("id"),
+              quantity = serving?.nullableDouble("quantity"),
+              unit = serving?.nullableString("unit"),
+            ),
+            quantity = food.nullableDouble("quantity"),
           ),
           confidenceScore = detection.nullableString("confidenceScore"),
         )

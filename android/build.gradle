@@ -53,6 +53,6 @@ android {
 
 dependencies {
   implementation "com.facebook.react:react-android"
-  implementation "ai.january:january-sdk-android:0.1.2"
+  implementation "ai.january:january-sdk-android:0.2.0"
   implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2"
 }
