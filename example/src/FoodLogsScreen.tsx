@@ -86,7 +86,6 @@ export function FoodLogsScreen({
       // This load owns the screen only while its ticket is current; a range
       // change or a newer refresh that lands first wins.
       const ticket = ++loadTicket.current;
-      const summaryAtStart = ++summaryTicket.current;
       try {
         if (fixtures) {
           await fixtureDelay(8000);
@@ -106,12 +105,9 @@ export function FoodLogsScreen({
           if (ticket !== loadTicket.current) return;
           if (listed.status === 'rejected') throw listed.reason;
           setLogs(listed.value.items);
-          // A summary-only refresh may have landed meanwhile; keep the newer one.
-          if (summaryAtStart === summaryTicket.current) {
-            setSummary(
-              summarized.status === 'fulfilled' ? summarized.value : undefined
-            );
-          }
+          setSummary(
+            summarized.status === 'fulfilled' ? summarized.value : undefined
+          );
         }
       } catch (caught) {
         setError(
@@ -128,43 +124,20 @@ export function FoodLogsScreen({
     load().catch(() => undefined);
   }, [load]);
 
-  // Totals change after every create, update, or delete. Live mode asks the
-  // API again; fixture mode derives the summary from the logs on screen, so
-  // the two can never disagree.
-  // Each request takes a ticket; a response whose ticket is no longer current
-  // (a range change or a newer refresh happened meanwhile) is dropped. List
-  // loads and summary-only refreshes use separate tickets, so a refresh after
-  // a save or delete cannot invalidate a list load that is still in flight.
+  // Each load takes a ticket; a response whose ticket is no longer current
+  // (a range change or a newer load happened meanwhile) is dropped. After a
+  // create, update, or delete the live screen reloads list and summary from
+  // the API so both reflect the mutation; fixture mode derives the summary
+  // from the logs on screen, so the two can never disagree.
   const loadTicket = useRef(0);
-  const summaryTicket = useRef(0);
-  const refreshSummary = useCallback(async () => {
-    if (!configured || fixtures) return;
-    const ticket = ++summaryTicket.current;
-    try {
-      const next = await client.foodLogs.getSummary({
-        ...dateRange(range),
-        groupBy: 'day',
-      });
-      if (ticket === summaryTicket.current) setSummary(next);
-    } catch {
-      // Keep the previous total; the next full load retries.
-    }
-  }, [client, configured, fixtures, range]);
   const shownSummary = useMemo(
     () => (fixtures ? fixtureSummaryFor(logs, dateRange(range)) : summary),
     [fixtures, logs, range, summary]
   );
 
-  // A mutation makes any list response still in flight stale: it would carry
-  // the pre-mutation list and undo the optimistic update below. The dropped
-  // load also skips its own cleanup, so clear the loading state here.
-  const invalidatePendingLoads = () => {
-    loadTicket.current += 1;
-    setLoading(false);
-  };
-
   async function deleteLog(log: FoodLog) {
     if (!log.id) return;
+    let reload = false;
     setLoading(true);
     setError(undefined);
     try {
@@ -177,12 +150,10 @@ export function FoodLogsScreen({
       } else {
         await client.foodLogs.delete(log.id);
       }
-      // Only a successful delete makes an in-flight list response stale.
-      invalidatePendingLoads();
       setLogs((current) =>
         current.filter((candidate) => candidate.id !== log.id)
       );
-      refreshSummary().catch(() => undefined);
+      reload = !fixtures;
       closeDetail();
       setDeleteRetryLog(undefined);
     } catch (caught) {
@@ -193,6 +164,9 @@ export function FoodLogsScreen({
       closeDetail();
     } finally {
       setLoading(false);
+      // Reload list and summary from the API so a list response that was in
+      // flight during the delete cannot leave the screen out of date.
+      if (reload) load().catch(() => undefined);
     }
   }
 
@@ -479,15 +453,15 @@ export function FoodLogsScreen({
         fixtures={fixtures}
         onClose={() => setEditor(undefined)}
         onSaved={(saved) => {
-          invalidatePendingLoads();
           setLogs((current) => {
             const index = current.findIndex((item) => item.id === saved.id);
             if (index < 0) return [saved, ...current];
             return current.map((item) => (item.id === saved.id ? saved : item));
           });
-          refreshSummary().catch(() => undefined);
           closeDetail();
           setEditor(undefined);
+          // Reload list and summary from the API so both reflect the save.
+          if (!fixtures) load().catch(() => undefined);
         }}
         visible={editor != null}
       />

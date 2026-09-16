@@ -27,7 +27,9 @@ response error. Update to restore them.
   with live level, duration, partial text on Android, and stable error codes. The example shows a microphone in the search field and the
   food picker.
 - Pin the January iOS SDK `0.2.0` and Android SDK `0.2.0`, which carry the
-  same changes.
+  same changes; the Android pin also includes the 0.1.2 fix that reports client
+  token provider failures as SDK errors instead of crashing the app when the
+  token endpoint is unreachable.
 - `yarn example android` now finds the Android SDK and a JDK 17–21 on its own,
   starts an emulator when no device is connected, and forwards ports 8081 and
   8787 into it, so `example/.env` is the same for iOS and Android.
@@ -35,9 +37,6 @@ response error. Update to restore them.
   on `react-native-screens`). Food detail, restaurant detail and menu items,
   food-log detail, and the glucose conditions and result screens now push and
   pop with the platform transition and support the iOS swipe-back gesture.
-- Pin the January Android SDK `0.1.2`, which reports client token provider
-  failures as SDK errors instead of crashing the app when the token endpoint
-  is unreachable.
 
 ## [0.1.0] - 2026-09-03
 
