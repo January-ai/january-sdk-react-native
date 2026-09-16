@@ -244,6 +244,34 @@ describe('VoiceCaptureSession', () => {
     session.dispose();
   });
 
+  it('a start() cancelled mid-flight settles before the next start() and cannot reset it', async () => {
+    let finishFirst: (value: string) => void = () => undefined;
+    native.voiceCaptureStart
+      .mockImplementationOnce(
+        () => new Promise<string>((resolve) => (finishFirst = resolve))
+      )
+      .mockImplementationOnce(async () => '{}');
+    const session = new VoiceCaptureSession();
+    const before = native.voiceCaptureStart.mock.calls.length;
+    const first = session.start();
+    session.cancel();
+    let secondStarted = false;
+    const second = session.start().then(() => {
+      secondStarted = true;
+    });
+    // The second start waits for the first to settle rather than overlapping it.
+    await Promise.resolve();
+    expect(secondStarted).toBe(false);
+    expect(native.voiceCaptureStart).toHaveBeenCalledTimes(before + 1);
+    finishFirst('{}');
+    await expect(first).rejects.toMatchObject({ code: 'cancelled' });
+    await second;
+    expect(secondStarted).toBe(true);
+    expect(native.voiceCaptureStart).toHaveBeenCalledTimes(before + 2);
+    expect(session.snapshot.state).toBe('recording');
+    session.dispose();
+  });
+
   it('cancel releases the native capture and returns to idle', async () => {
     const session = new VoiceCaptureSession();
     await session.start();

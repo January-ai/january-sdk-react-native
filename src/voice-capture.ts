@@ -135,6 +135,7 @@ export class VoiceCaptureSession {
   private generation = 0;
   /** Sent to the native start(); native updates echo it so stale ones are dropped. */
   private captureId = '';
+  private pendingStart?: Promise<void>;
 
   constructor(options: VoiceCaptureOptions = {}) {
     this.locale = options.locale ?? null;
@@ -174,6 +175,9 @@ export class VoiceCaptureSession {
         'Speech recognition is not available on this device.'
       );
     }
+    // A previous start() may still be awaiting the permission prompt or the native
+    // recognizer after cancel(); let it settle so two starts never overlap natively.
+    if (this.pendingStart) await this.pendingStart.catch(() => undefined);
     if (this.current.state !== 'idle') {
       throw new VoiceCaptureError(
         'invalid_state',
@@ -182,47 +186,59 @@ export class VoiceCaptureSession {
     }
     this.ensureSubscription();
     this.active = true;
-    this.generation += 1;
-    this.captureId = `${this.sessionId}#${this.generation}`;
+    const generation = ++this.generation;
+    this.captureId = `${this.sessionId}#${generation}`;
     this.publish({ ...idleSnapshot, state: 'requestingPermission' });
-    try {
-      if (Platform.OS === 'android') {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
-        );
-        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-          throw new VoiceCaptureError(
-            'permission_denied',
-            'Microphone access is required for voice input.'
+    const run = (async () => {
+      try {
+        if (Platform.OS === 'android') {
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
           );
+          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+            throw new VoiceCaptureError(
+              'permission_denied',
+              'Microphone access is required for voice input.'
+            );
+          }
         }
-      }
-      // cancel() or dispose() may have run while the permission prompt was open;
-      // starting the recognizer now would leave it recording with no owner.
-      this.assertStillActive();
-      await requireNativeModule().voiceCaptureStart(
-        this.sessionId,
-        this.locale,
-        this.captureId
-      );
-      if (!this.active) {
-        // Cancelled while the native start was in flight: release it again.
-        try {
-          requireNativeModule().voiceCaptureCancel(this.sessionId);
-        } catch {
-          // Nothing to release.
+        // cancel() or dispose() may have run while the permission prompt was open;
+        // starting the recognizer now would leave it recording with no owner.
+        this.assertCurrent(generation);
+        await requireNativeModule().voiceCaptureStart(
+          this.sessionId,
+          this.locale,
+          this.captureId
+        );
+        if (generation !== this.generation) {
+          // Cancelled while the native start was in flight: release it again.
+          try {
+            requireNativeModule().voiceCaptureCancel(this.sessionId);
+          } catch {
+            // Nothing to release.
+          }
+          this.assertCurrent(generation);
         }
-        this.assertStillActive();
+        // The native call resolves once the microphone is live; the first native
+        // update may still be in flight.
+        if (this.snapshot.state === 'requestingPermission') {
+          this.publish({ ...this.current, state: 'recording' });
+        }
+      } catch (error) {
+        // Only the start that still owns the session may reset it; a stale
+        // failure must not disturb a capture started after cancel().
+        if (generation === this.generation) {
+          this.active = false;
+          this.publish(idleSnapshot);
+        }
+        throw toVoiceCaptureError(error);
       }
-      // The native call resolves once the microphone is live; the first native
-      // update may still be in flight.
-      if (this.snapshot.state === 'requestingPermission') {
-        this.publish({ ...this.current, state: 'recording' });
-      }
-    } catch (error) {
-      this.active = false;
-      this.publish(idleSnapshot);
-      throw toVoiceCaptureError(error);
+    })();
+    this.pendingStart = run;
+    try {
+      await run;
+    } finally {
+      if (this.pendingStart === run) this.pendingStart = undefined;
     }
   }
 
@@ -368,8 +384,8 @@ export class VoiceCaptureSession {
     for (const listener of this.listeners) listener({ ...snapshot });
   }
 
-  private assertStillActive(): void {
-    if (!this.active) {
+  private assertCurrent(generation: number): void {
+    if (generation !== this.generation || !this.active) {
       throw new VoiceCaptureError(
         'cancelled',
         'Voice capture was cancelled before recording started.'
