@@ -55,7 +55,7 @@ jest.mock('../NativeJanuaryReactNative', () => ({
     foodsSuggestAlternatives: jest.fn(async () =>
       JSON.stringify({ alternatives: [] })
     ),
-    getNativeModuleVersion: jest.fn(() => '0.1.0'),
+    getNativeModuleVersion: jest.fn(() => '0.2.0'),
     glucosePredict: jest.fn(async () =>
       JSON.stringify({ chart: {}, prediction: [] })
     ),

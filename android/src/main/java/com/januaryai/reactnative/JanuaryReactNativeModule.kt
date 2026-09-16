@@ -62,6 +62,7 @@ import ai.january.partner.restaurants.SearchRestaurantsRequest
 import ai.january.partner.restaurants.SearchRestaurantsResponse
 import ai.january.partner.voice.VoiceCaptureErrorCode
 import ai.january.partner.voice.VoiceCaptureException
+import ai.january.partner.voice.VoiceCaptureResult
 import ai.january.partner.voice.VoiceCaptureSession
 import ai.january.partner.voice.VoiceCaptureState
 import android.speech.SpeechRecognizer
@@ -74,6 +75,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.Arguments
@@ -104,17 +106,20 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
   private val clients = ConcurrentHashMap<String, JanuaryPartnerUserClient>()
   private val voiceSessions = HashMap<String, VoiceHolder>()
 
-  private class VoiceHolder(val session: VoiceCaptureSession, val collector: Job)
+  private class VoiceHolder(val session: VoiceCaptureSession, val collector: Job) {
+    var pendingStop: Job? = null
+  }
   private data class VoiceSnapshot(
     val state: VoiceCaptureState,
     val level: Float,
     val partial: String,
     val error: VoiceCaptureException?,
+    val result: VoiceCaptureResult?,
   )
   private val pendingTokenRequests = ConcurrentHashMap<String, PendingTokenRequest>()
 
   override fun getNativeModuleVersion(): String {
-    return "0.1.0"
+    return "0.2.0"
   }
 
   override fun configureClient(clientId: String, endUserId: String, timezone: String?): String? =
@@ -413,6 +418,8 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
     UiThreadUtil.runOnUiThread {
       try {
         val holder = voiceSessions[sessionId] ?: createVoiceSession(sessionId, locale)
+        holder.session.clearResult()
+        holder.session.clearError()
         holder.session.startListening()
         promise.resolve("{}")
       } catch (error: Exception) {
@@ -435,7 +442,8 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
         rejectVoice(promise, error)
         return@runOnUiThread
       }
-      mainScope.launch {
+      holder.pendingStop?.cancel()
+      holder.pendingStop = mainScope.launch {
         try {
           val outcome = withTimeout(20_000) {
             merge(
@@ -460,20 +468,29 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
             },
           )
         } catch (error: Exception) {
-          session.cancel()
+          if (error !is CancellationException || error is TimeoutCancellationException) session.cancel()
           rejectVoice(promise, error)
+        } finally {
+          if (holder.pendingStop?.isActive != true) holder.pendingStop = null
         }
       }
     }
   }
 
   override fun voiceCaptureCancel(sessionId: String) {
-    UiThreadUtil.runOnUiThread { voiceSessions[sessionId]?.session?.cancel() }
+    UiThreadUtil.runOnUiThread {
+      voiceSessions[sessionId]?.let { holder ->
+        holder.pendingStop?.cancel()
+        holder.pendingStop = null
+        holder.session.cancel()
+      }
+    }
   }
 
   override fun voiceCaptureDispose(sessionId: String) {
     UiThreadUtil.runOnUiThread {
       voiceSessions.remove(sessionId)?.let { holder ->
+        holder.pendingStop?.cancel()
         holder.collector.cancel()
         holder.session.cancel()
         holder.session.close()
@@ -487,10 +504,20 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
       locale?.takeIf { it.isNotBlank() }?.let(Locale::forLanguageTag) ?: Locale.getDefault(),
     )
     val collector = mainScope.launch {
-      combine(session.state, session.audioLevel, session.partialTranscript, session.error) { state, level, partial, error ->
-        VoiceSnapshot(state, level, partial, error)
+      combine(session.state, session.audioLevel, session.partialTranscript, session.error, session.latestResult) { state, level, partial, error, result ->
+        VoiceSnapshot(state, level, partial, error, result)
       }.collect { snapshot ->
-        emitVoiceUpdate(sessionId, snapshot.state, snapshot.level, snapshot.partial, session.elapsedDurationMillis, snapshot.error)
+        emitVoiceUpdate(
+          sessionId,
+          snapshot.state,
+          snapshot.level,
+          snapshot.partial,
+          snapshot.result?.durationMillis ?: session.elapsedDurationMillis,
+          snapshot.error,
+          // The recognizer can finalize on its own (silence, "stop" not yet called); forward
+          // that transcript so JavaScript does not wait for a stop() that never resolves it.
+          snapshot.result?.takeIf { snapshot.state == VoiceCaptureState.IDLE }?.transcript,
+        )
       }
     }
     val ticker = mainScope.launch {
@@ -518,8 +545,10 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
     partial: String,
     durationMillis: Long,
     error: VoiceCaptureException? = null,
+    transcript: String? = null,
   ) {
     val event = Arguments.createMap().apply {
+      if (transcript != null) putString("transcript", transcript) else putNull("transcript")
       if (error != null) {
         putString("errorCode", voiceCode(error))
         putString("errorMessage", error.message ?: "Voice capture failed.")
@@ -548,6 +577,8 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
   }
 
   private fun voiceCode(error: Throwable): String {
+    if (error is TimeoutCancellationException) return "transcription_failed"
+    if (error is CancellationException) return "cancelled"
     return when ((error as? VoiceCaptureException)?.code) {
       VoiceCaptureErrorCode.PERMISSION_DENIED -> "permission_denied"
       VoiceCaptureErrorCode.RECOGNIZER_UNAVAILABLE, VoiceCaptureErrorCode.RECOGNIZER_BUSY -> "recognizer_unavailable"
@@ -556,7 +587,7 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
       VoiceCaptureErrorCode.NO_MATCH -> "no_match"
       VoiceCaptureErrorCode.INVALID_STATE -> "invalid_state"
       VoiceCaptureErrorCode.UNKNOWN -> "unknown"
-      null -> if (error is kotlinx.coroutines.TimeoutCancellationException) "transcription_failed" else "unknown"
+      null -> "unknown"
     }
   }
 
@@ -796,7 +827,7 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
 
   private fun FoodLogSummary.toJsonObject(): JSONObject = JSONObject()
     .put("groupBy", groupBy.name.lowercase())
-    .putNullable("weekStart", weekStart?.name?.lowercase())
+    .apply { weekStart?.let { put("weekStart", it.name.lowercase()) } }
     .put("timezone", timezone)
     .put("startDate", startDate)
     .put("endDate", endDate)

@@ -273,6 +273,8 @@ export const fixtureFoodLogSummary: FoodLogSummary = {
   timezone: 'UTC',
   startDate: '2026-08-31',
   endDate: '2026-09-06',
+  // One bucket per day of the range, as the API returns them; only the first
+  // day has a log.
   buckets: [
     {
       startDate: '2026-08-31',
@@ -281,6 +283,13 @@ export const fixtureFoodLogSummary: FoodLogSummary = {
       daysWithLogs: 1,
       nutrients: fixtureScan.detections[0]!.food.nutrients,
     },
+    ...['01', '02', '03', '04', '05', '06'].map((day) => ({
+      startDate: `2026-09-${day}`,
+      endDate: `2026-09-${day}`,
+      logsCount: 0,
+      daysWithLogs: 0,
+      nutrients: {},
+    })),
   ],
   totals: {
     logsCount: 1,

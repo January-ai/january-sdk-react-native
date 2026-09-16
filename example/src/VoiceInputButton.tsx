@@ -59,6 +59,16 @@ export function VoiceInputButton({
         );
       }
       if (!next.error) lastError = undefined;
+      if (next.result) {
+        // Android ends a capture on its own after a pause; collect that transcript.
+        session
+          .stop()
+          .then((result) => {
+            if (result.transcript)
+              callbacks.current.onTranscript(result.transcript);
+          })
+          .catch(() => undefined);
+      }
     });
     return () => {
       unsubscribe();

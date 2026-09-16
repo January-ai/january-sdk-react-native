@@ -57,7 +57,8 @@ describe('VoiceCaptureSession', () => {
 
     const result = await session.stop();
     expect(result).toEqual({ transcript: 'two eggs', durationMs: 1800 });
-    expect(states).toEqual([
+    // Consecutive duplicates are level/duration updates within one state.
+    expect(states.filter((state, i) => state !== states[i - 1])).toEqual([
       'idle',
       'requestingPermission',
       'recording',
@@ -109,6 +110,57 @@ describe('VoiceCaptureSession', () => {
     });
     await expect(session.stop()).rejects.toMatchObject({ code: 'no_match' });
     expect(session.snapshot.error).toBeUndefined();
+    session.dispose();
+  });
+
+  it('stop is only accepted while recording; a second stop during processing is rejected', async () => {
+    const session = new VoiceCaptureSession();
+    const first = session.start();
+    await expect(session.stop()).rejects.toMatchObject({
+      code: 'invalid_state',
+    });
+    await first;
+    expect(session.snapshot.state).toBe('recording');
+    const stopping = session.stop();
+    expect(session.snapshot.state).toBe('processing');
+    await expect(session.stop()).rejects.toMatchObject({
+      code: 'invalid_state',
+    });
+    await expect(stopping).resolves.toEqual({
+      transcript: 'two eggs',
+      durationMs: 1800,
+    });
+    session.dispose();
+  });
+
+  it('a transcript the recognizer finalized on its own is kept until stop() collects it', async () => {
+    const session = new VoiceCaptureSession();
+    await session.start();
+    const sessionId = native.voiceCaptureStart.mock.calls.at(-1)![0];
+    native.voiceCaptureStop.mockClear();
+    emit(sessionId, {
+      state: 'idle',
+      audioLevel: 0,
+      durationMs: 2400,
+      partialTranscript: '',
+      transcript: ' one banana ',
+      errorCode: null,
+      errorMessage: null,
+    });
+    expect(session.snapshot.state).toBe('idle');
+    expect(session.snapshot.result).toEqual({
+      transcript: 'one banana',
+      durationMs: 2400,
+    });
+    await expect(session.stop()).resolves.toEqual({
+      transcript: 'one banana',
+      durationMs: 2400,
+    });
+    expect(native.voiceCaptureStop).not.toHaveBeenCalled();
+    expect(session.snapshot.result).toBeUndefined();
+    await expect(session.stop()).rejects.toMatchObject({
+      code: 'invalid_state',
+    });
     session.dispose();
   });
 

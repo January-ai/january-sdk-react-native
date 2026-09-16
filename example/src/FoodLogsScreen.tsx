@@ -80,6 +80,7 @@ export function FoodLogsScreen({
       setLoading(true);
       setError(undefined);
       setDeleteRetryLog(undefined);
+      setSummary(undefined);
       try {
         if (fixtures) {
           await fixtureDelay(8000);
@@ -90,12 +91,17 @@ export function FoodLogsScreen({
           setSummary(range === 'month' ? undefined : fixtureFoodLogSummary);
         } else {
           const dates = dateRange(range);
-          const [result, rangeSummary] = await Promise.all([
+          // The list is the screen; the summary is a bonus row, so its failure
+          // must not blank the logs.
+          const [listed, summarized] = await Promise.allSettled([
             client.foodLogs.list(dates),
             client.foodLogs.getSummary({ ...dates, groupBy: 'day' }),
           ]);
-          setLogs(result.items);
-          setSummary(rangeSummary);
+          if (listed.status === 'rejected') throw listed.reason;
+          setLogs(listed.value.items);
+          setSummary(
+            summarized.status === 'fulfilled' ? summarized.value : undefined
+          );
         }
       } catch (caught) {
         setError(
@@ -111,6 +117,21 @@ export function FoodLogsScreen({
   useEffect(() => {
     load().catch(() => undefined);
   }, [load]);
+
+  // Totals change after every create, update, or delete.
+  const refreshSummary = useCallback(async () => {
+    if (!configured || fixtures) return;
+    try {
+      setSummary(
+        await client.foodLogs.getSummary({
+          ...dateRange(range),
+          groupBy: 'day',
+        })
+      );
+    } catch {
+      // Keep the previous total; the next full load retries.
+    }
+  }, [client, configured, fixtures, range]);
 
   async function deleteLog(log: FoodLog) {
     if (!log.id) return;
@@ -129,6 +150,7 @@ export function FoodLogsScreen({
       setLogs((current) =>
         current.filter((candidate) => candidate.id !== log.id)
       );
+      refreshSummary().catch(() => undefined);
       closeDetail();
       setDeleteRetryLog(undefined);
     } catch (caught) {
@@ -261,16 +283,7 @@ export function FoodLogsScreen({
           {summary && summary.totals.logsCount > 0 ? (
             <View style={styles.datesRow} testID="food-log-summary">
               <Text style={styles.datesLabel}>Range total</Text>
-              <Text style={styles.datesValue}>
-                {summary.totals.logsCount}{' '}
-                {summary.totals.logsCount === 1 ? 'log' : 'logs'} ·{' '}
-                {Math.round(summary.totals.nutrients.calories?.value ?? 0)} kcal
-                · avg{' '}
-                {Math.round(
-                  summary.averagePerLoggedDay.nutrients.calories?.value ?? 0
-                )}{' '}
-                kcal/day
-              </Text>
+              <Text style={styles.datesValue}>{formatSummary(summary)}</Text>
             </View>
           ) : null}
         </View>
@@ -437,6 +450,7 @@ export function FoodLogsScreen({
             if (index < 0) return [saved, ...current];
             return current.map((item) => (item.id === saved.id ? saved : item));
           });
+          refreshSummary().catch(() => undefined);
           closeDetail();
           setEditor(undefined);
         }}
@@ -1000,6 +1014,18 @@ function dateRange(range: Range): { start: string; end: string } {
     end.setDate(0);
   }
   return { start: isoDate(start), end: isoDate(end) };
+}
+
+function formatSummary(summary: FoodLogSummary): string {
+  const { logsCount, nutrients } = summary.totals;
+  const parts = [`${logsCount} ${logsCount === 1 ? 'log' : 'logs'}`];
+  // Nutrients are sparse: a missing calories entry means nothing could be
+  // totalled, which is not the same as 0 kcal.
+  const total = nutrients.calories?.value;
+  if (total != null) parts.push(`${Math.round(total)} kcal`);
+  const average = summary.averagePerLoggedDay.nutrients.calories?.value;
+  if (average != null) parts.push(`avg ${Math.round(average)} kcal/day`);
+  return parts.join(' · ');
 }
 
 function formatRange(range: Range): string {

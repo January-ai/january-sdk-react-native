@@ -564,6 +564,9 @@ public final class JanuaryNativeBridge: NSObject, @unchecked Sendable {
 
     // MARK: - Voice capture
 
+    /// Whether this device has a speech recognizer for the current locale. Transient
+    /// unavailability (for example no network for a server-backed locale) is reported by
+    /// `voiceCaptureStart` as `recognizer_unavailable` rather than hiding the feature.
     @objc public func voiceCaptureIsSupported() -> Bool {
         SFSpeechRecognizer(locale: Locale.current) != nil || SFSpeechRecognizer() != nil
     }
@@ -643,13 +646,16 @@ public final class JanuaryNativeBridge: NSObject, @unchecked Sendable {
                 "audioLevel": Double(session.audioLevel),
                 "durationMs": Int(session.recordingDuration * 1000),
                 "partialTranscript": "",
+                "transcript": NSNull(),
                 "errorCode": NSNull(),
                 "errorMessage": NSNull(),
             ] as NSDictionary)
         }
-        session.$state.dropFirst().sink { _ in emit() }.store(in: &holder.cancellables)
-        session.$audioLevel.dropFirst().sink { _ in emit() }.store(in: &holder.cancellables)
-        session.$recordingDuration.dropFirst().sink { _ in emit() }.store(in: &holder.cancellables)
+        // @Published publishes from willSet, so hop to the next main-queue turn before
+        // reading the session's properties; otherwise the event carries the previous values.
+        session.$state.dropFirst().receive(on: DispatchQueue.main).sink { _ in emit() }.store(in: &holder.cancellables)
+        session.$audioLevel.dropFirst().receive(on: DispatchQueue.main).sink { _ in emit() }.store(in: &holder.cancellables)
+        session.$recordingDuration.dropFirst().receive(on: DispatchQueue.main).sink { _ in emit() }.store(in: &holder.cancellables)
         voiceSessions[sessionID] = holder
         return holder
     }

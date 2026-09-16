@@ -3,8 +3,11 @@
 `VoiceCaptureSession` records from the microphone and returns a transcript
 using the device's own speech recognizer: Apple Speech on iOS and Android
 `SpeechRecognizer` on Android. It is meant for explicit, user-driven input such
-as speaking a food name or a meal description. No audio is retained or uploaded
-by the SDK.
+as speaking a food name or a meal description.
+
+The SDK does not store the audio or send it to January. Recognition runs
+through the platform's speech service, which may process audio off the device
+under Apple's or Google's own terms; say so in your privacy disclosures.
 
 ## Capture and transcribe
 
@@ -38,9 +41,14 @@ unsubscribe();
 voice.dispose();
 ```
 
-`stop()` resolves once the recognizer produces its final text. `cancel()`
-discards the active capture; `dispose()` also releases the native session and
-removes subscribers. Check `session.isSupported` before showing a microphone
+`stop()` is accepted while the state is `recording` and resolves once the
+recognizer produces its final text; calling it while permission is pending or
+while a previous `stop()` is in flight rejects with `invalid_state`. The
+recognizer can also end a capture on its own: Android stops after a pause in
+speech. The snapshot then returns to `idle` carrying either `result` (text was
+recognized) or `error` (for example `no_match`); call `stop()` to collect
+either one. `cancel()` discards the active capture; `dispose()` also releases
+the native session and removes subscribers. Check `session.isSupported` before showing a microphone
 control; it is `false` on devices without a speech recognizer, such as some
 Android emulator images.
 

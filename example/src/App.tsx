@@ -24,6 +24,7 @@ import {
   FoodCategory,
   JanuaryClient,
   getNativeModuleVersion,
+  type DetectedFood,
   type FoodCategoryValue,
   type FoodScan,
   type FoodSearchItem,
@@ -1020,7 +1021,7 @@ function NaturalLanguageResult({ result }: { result: FoodScan }) {
           ) : null}
           {detection.food.serving.unit ? (
             <Text style={styles.foodBrand}>
-              {`${detection.food.quantity ?? 1} × ${detection.food.serving.quantity ?? 1} ${detection.food.serving.unit}`}
+              {formatDetectedServing(detection.food)}
             </Text>
           ) : null}
           <NaturalMacroCard compact nutrients={detection.food.nutrients} />
@@ -1098,7 +1099,12 @@ function FoodRow({
   const serving =
     item.servings.find((candidate) => candidate.isPrimary) ?? item.servings[0];
   const servingLabel = serving
-    ? `${formatNumber(serving.quantity ?? 1)} ${serving.unit ?? 'serving'}`
+    ? [
+        serving.quantity != null ? formatNumber(serving.quantity) : undefined,
+        serving.unit ?? 'serving',
+      ]
+        .filter(Boolean)
+        .join(' ')
     : undefined;
 
   return (
@@ -1144,6 +1150,15 @@ function FoodRow({
       />
     </Pressable>
   );
+}
+
+// Shows only what the API returned: no invented "1" when a quantity is absent.
+function formatDetectedServing(food: DetectedFood): string {
+  const size = [food.serving.quantity, food.serving.unit]
+    .filter((part) => part != null && part !== '')
+    .join(' ');
+  if (!size) return '';
+  return food.quantity != null ? `${food.quantity} × ${size}` : size;
 }
 
 function formatNumber(value: number): string {

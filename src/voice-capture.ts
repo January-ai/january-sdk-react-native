@@ -55,6 +55,11 @@ export interface VoiceCaptureResult {
 export interface VoiceCaptureSnapshot {
   /** Set when the recognizer ended the capture on its own, for example with no speech. Cleared on the next `start()`. */
   error?: { code: VoiceCaptureErrorCode; message: string };
+  /**
+   * Set when the recognizer finished the capture on its own with speech (Android ends a
+   * capture after a pause). Call `stop()` to collect it; cleared on the next `start()`.
+   */
+  result?: VoiceCaptureResult;
   state: VoiceCaptureState;
   /** Normalized microphone level from 0 (silent) to 1. */
   audioLevel: number;
@@ -104,7 +109,9 @@ function toVoiceCaptureError(error: unknown): VoiceCaptureError {
  * Create one session per input, subscribe before `start()`, and call `start()` from a user
  * gesture. Android needs the `RECORD_AUDIO` runtime permission before `start()`; iOS needs
  * `NSMicrophoneUsageDescription` and `NSSpeechRecognitionUsageDescription` in Info.plist.
- * No audio is retained or uploaded by the SDK.
+ *
+ * The SDK does not store audio or send it to January. Recognition runs through the platform
+ * speech service, which may process audio off the device under the platform's own terms.
  */
 export class VoiceCaptureSession {
   readonly isSupported: boolean;
@@ -167,6 +174,11 @@ export class VoiceCaptureSession {
         this.sessionId,
         this.locale
       );
+      // The native call resolves once the microphone is live; the first native
+      // update may still be in flight.
+      if (this.active && this.snapshot.state === 'requestingPermission') {
+        this.publish({ ...this.current, state: 'recording' });
+      }
     } catch (error) {
       this.active = false;
       this.publish(idleSnapshot);
@@ -174,12 +186,19 @@ export class VoiceCaptureSession {
     }
   }
 
-  /** Stops recording and resolves with the transcript. */
+  /**
+   * Stops recording and resolves with the transcript. Also collects a `result` or `error`
+   * the recognizer produced on its own; rejects with `invalid_state` while permission is
+   * still pending or a previous `stop()` is in flight.
+   */
   async stop(): Promise<VoiceCaptureResult> {
     this.assertUsable();
-    this.active = false;
     if (this.current.state === 'idle') {
-      const ended = this.current.error;
+      const { error: ended, result } = this.current;
+      if (result) {
+        this.publish(idleSnapshot);
+        return result;
+      }
       if (ended) {
         this.publish(idleSnapshot);
         throw new VoiceCaptureError(ended.code, ended.message);
@@ -189,6 +208,15 @@ export class VoiceCaptureSession {
         'Voice capture is not recording.'
       );
     }
+    if (this.current.state !== 'recording') {
+      throw new VoiceCaptureError(
+        'invalid_state',
+        this.current.state === 'processing'
+          ? 'Voice capture is already stopping.'
+          : 'Voice capture is still waiting for permission.'
+      );
+    }
+    this.active = false;
     this.publish({ ...this.current, state: 'processing' });
     try {
       const raw = await requireNativeModule().voiceCaptureStop(this.sessionId);
@@ -248,6 +276,17 @@ export class VoiceCaptureSession {
                 ? (update.errorCode as VoiceCaptureErrorCode)
                 : 'unknown',
               message: update.errorMessage ?? 'Voice capture failed.',
+            },
+          });
+          return;
+        }
+        if (update.transcript != null && this.active) {
+          this.active = false;
+          this.publish({
+            ...idleSnapshot,
+            result: {
+              transcript: update.transcript.trim(),
+              durationMs: Math.max(0, Math.round(update.durationMs)),
             },
           });
           return;

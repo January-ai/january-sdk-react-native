@@ -16,6 +16,8 @@ export type VoiceCaptureUpdate = {
   audioLevel: number;
   durationMs: number;
   partialTranscript: string;
+  /** Final transcript when the recognizer ended the capture on its own (Android). */
+  transcript: string | null;
   errorCode: string | null;
   errorMessage: string | null;
 };

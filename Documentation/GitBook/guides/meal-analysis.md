@@ -26,8 +26,10 @@ Each detection's `food` carries the selected catalog `serving` (`id`,
 ```ts
 const foods = scan.detections.flatMap((detection) => {
   const { id, serving, quantity } = detection.food;
-  if (!id || !serving.id) return [];
-  return [{ id, serving: { id: serving.id, quantity: quantity ?? 1 } }];
+  // Skip a detection the API could not size rather than inventing a quantity;
+  // let the user pick a serving for it instead.
+  if (!id || !serving.id || quantity == null) return [];
+  return [{ id, serving: { id: serving.id, quantity } }];
 });
 ```
 

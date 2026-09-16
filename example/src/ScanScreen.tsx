@@ -1004,8 +1004,11 @@ const styles = StyleSheet.create({
   },
 });
 
+// Shows only what the API returned: no invented "1" when a quantity is absent.
 function formatServing(food: DetectedFood): string {
-  const eaten = food.quantity ?? 1;
-  const size = food.serving.quantity ?? 1;
-  return `${eaten} × ${size} ${food.serving.unit ?? ''}`.trim();
+  const size = [food.serving.quantity, food.serving.unit]
+    .filter((part) => part != null && part !== '')
+    .join(' ');
+  if (!size) return '';
+  return food.quantity != null ? `${food.quantity} × ${size}` : size;
 }
