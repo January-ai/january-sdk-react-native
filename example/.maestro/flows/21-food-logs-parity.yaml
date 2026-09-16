@@ -22,8 +22,11 @@ tags:
     timeout: 15000
 - tapOn:
     id: food-logs-refresh
-- assertVisible:
-    id: food-logs-loading
+- scrollUntilVisible:
+    element:
+      id: food-logs-loading
+    direction: DOWN
+    timeout: 8000
 - takeScreenshot: example/.maestro/artifacts/react-native-logs-loading
 - extendedWaitUntil:
     visible:
