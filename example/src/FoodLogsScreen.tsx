@@ -119,19 +119,26 @@ export function FoodLogsScreen({
   }, [load]);
 
   // Totals change after every create, update, or delete.
-  const refreshSummary = useCallback(async () => {
-    if (!configured || fixtures) return;
-    try {
-      setSummary(
-        await client.foodLogs.getSummary({
-          ...dateRange(range),
-          groupBy: 'day',
-        })
-      );
-    } catch {
-      // Keep the previous total; the next full load retries.
-    }
-  }, [client, configured, fixtures, range]);
+  const refreshSummary = useCallback(
+    async (nextLogs: FoodLog[]) => {
+      if (!configured) return;
+      if (fixtures) {
+        setSummary(fixtureSummaryFor(nextLogs));
+        return;
+      }
+      try {
+        setSummary(
+          await client.foodLogs.getSummary({
+            ...dateRange(range),
+            groupBy: 'day',
+          })
+        );
+      } catch {
+        // Keep the previous total; the next full load retries.
+      }
+    },
+    [client, configured, fixtures, range]
+  );
 
   async function deleteLog(log: FoodLog) {
     if (!log.id) return;
@@ -147,10 +154,9 @@ export function FoodLogsScreen({
       } else {
         await client.foodLogs.delete(log.id);
       }
-      setLogs((current) =>
-        current.filter((candidate) => candidate.id !== log.id)
-      );
-      refreshSummary().catch(() => undefined);
+      const remaining = logs.filter((candidate) => candidate.id !== log.id);
+      setLogs(remaining);
+      refreshSummary(remaining).catch(() => undefined);
       closeDetail();
       setDeleteRetryLog(undefined);
     } catch (caught) {
@@ -445,12 +451,11 @@ export function FoodLogsScreen({
         fixtures={fixtures}
         onClose={() => setEditor(undefined)}
         onSaved={(saved) => {
-          setLogs((current) => {
-            const index = current.findIndex((item) => item.id === saved.id);
-            if (index < 0) return [saved, ...current];
-            return current.map((item) => (item.id === saved.id ? saved : item));
-          });
-          refreshSummary().catch(() => undefined);
+          const next = logs.some((item) => item.id === saved.id)
+            ? logs.map((item) => (item.id === saved.id ? saved : item))
+            : [saved, ...logs];
+          setLogs(next);
+          refreshSummary(next).catch(() => undefined);
           closeDetail();
           setEditor(undefined);
         }}
@@ -1014,6 +1019,20 @@ function dateRange(range: Range): { start: string; end: string } {
     end.setDate(0);
   }
   return { start: isoDate(start), end: isoDate(end) };
+}
+
+// Fixture mode has no server to total the logs; keep the counts honest.
+function fixtureSummaryFor(logs: FoodLog[]): FoodLogSummary | undefined {
+  if (logs.length === 0) return undefined;
+  const days = new Set(logs.map((log) => log.timestampUTC.slice(0, 10)));
+  return {
+    ...fixtureFoodLogSummary,
+    totals: {
+      ...fixtureFoodLogSummary.totals,
+      logsCount: logs.length,
+      daysWithLogs: days.size,
+    },
+  };
 }
 
 function formatSummary(summary: FoodLogSummary): string {
