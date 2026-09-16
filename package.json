@@ -10,7 +10,8 @@
       "types": "./lib/typescript/src/index.d.ts",
       "default": "./lib/module/index.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./app.plugin.js": "./app.plugin.js"
   },
   "files": [
     "CHANGELOG.md",
@@ -20,6 +21,7 @@
     "ios",
     "*.podspec",
     "react-native.config.js",
+    "app.plugin.js",
     "!ios/build",
     "!android/build",
     "!android/gradle",

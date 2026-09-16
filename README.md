@@ -13,7 +13,7 @@ For an app that uses the SDK:
 - React Native 0.83+ with the New Architecture (0.83 and 0.86 verified)
 - React 19.2+
 - iOS 15.1+
-- Android 8.0+ (API 26)
+- Android 7.0+ (API 24); apps with `minSdkVersion` below 26 enable core library desugaring
 
 To run the demo on your computer:
 
@@ -179,7 +179,11 @@ npx pod-install
 ```
 
 Autolinking installs the native module. Set the consuming Android application's
-`minSdkVersion` to 26, then rebuild the app.
+`minSdkVersion` to 24 or higher; if it is below 26, also enable core library
+desugaring in `android/app/build.gradle` (the SDK uses `java.time`), then
+rebuild the app. The
+[installation guide](Documentation/GitBook/getting-started/installation.md)
+shows both snippets.
 
 For an Expo application:
 
@@ -192,7 +196,8 @@ npx expo run:android
 
 The SDK contains custom native code and requires an Expo development build. It
 does not run in Expo Go. Configure `expo-build-properties` with Android
-`minSdkVersion: 26`; the
+`minSdkVersion: 24` or higher and add `"@januaryai/react-native"` to
+`expo.plugins` so the build enables core library desugaring; the
 [installation guide](Documentation/GitBook/getting-started/installation.md)
 contains the complete configuration.
 

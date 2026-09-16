@@ -68,6 +68,10 @@ export function FoodLogsScreen({
   const [error, setError] = useState<string>();
   const [editor, setEditor] = useState<FoodLog | 'new'>();
   const [selectedLog, setSelectedLog] = useState<FoodLog>();
+  // Latest selection, for async completions that should only close the detail
+  // screen of the log they started from.
+  const selectedLogRef = useRef(selectedLog);
+  selectedLogRef.current = selectedLog;
   const [deleteRetryLog, setDeleteRetryLog] = useState<FoodLog>();
   const stack = useScreenStack();
   const closeDetail = () => {
@@ -150,6 +154,9 @@ export function FoodLogsScreen({
   const changeRange = (next: Range) => {
     if (next === range) return;
     loadTicket.current += 1;
+    // Do not show the old range's rows under the new label while it loads.
+    setLogs([]);
+    setSummary(undefined);
     setRange(next);
   };
 
@@ -179,7 +186,7 @@ export function FoodLogsScreen({
       } else {
         await client.foodLogs.delete(log.id);
       }
-      closeDetail();
+      if (selectedLogRef.current?.id === log.id) closeDetail();
       setDeleteRetryLog(undefined);
       if (loadTicket.current !== revision) {
         // The user moved to another range meanwhile; its load owns the screen.
@@ -196,7 +203,7 @@ export function FoodLogsScreen({
       setLoading(false);
       reload = !fixtures;
     } catch (caught) {
-      closeDetail();
+      if (selectedLogRef.current?.id === log.id) closeDetail();
       // Report the failure only to the range it happened on.
       if (loadTicket.current !== revision) return;
       setError(
@@ -506,8 +513,18 @@ export function FoodLogsScreen({
           }
           setLogs((current) => {
             const index = current.findIndex((item) => item.id === saved.id);
-            if (index < 0) return [saved, ...current];
-            return current.map((item) => (item.id === saved.id ? saved : item));
+            if (index >= 0) {
+              return current.map((item) =>
+                item.id === saved.id ? saved : item
+              );
+            }
+            // A new log belongs on screen only if its date is in the selected
+            // range ("Last month" is a past window; today's log is not in it).
+            const dates = dateRange(range);
+            const day = saved.timestampUTC.slice(0, 10);
+            return day >= dates.start && day <= dates.end
+              ? [saved, ...current]
+              : current;
           });
           // A load still in flight would overwrite the saved log; drop it. In
           // live mode reload list and summary so both reflect the save.
@@ -592,7 +609,11 @@ function FoodLogEditor({
   return (
     <Modal
       animationType="none"
-      onRequestClose={onClose}
+      // Closing mid-save would let the result land on whatever the user opened
+      // next; the editor stays until the request settles.
+      onRequestClose={() => {
+        if (!saving) onClose();
+      }}
       statusBarTranslucent
       transparent
       visible={visible}
@@ -611,8 +632,9 @@ function FoodLogEditor({
           <View style={styles.editorHeader}>
             <Pressable
               accessibilityLabel="Close food log editor"
+              disabled={saving}
               onPress={onClose}
-              style={sharedStyles.iconButton}
+              style={[sharedStyles.iconButton, saving && sharedStyles.disabled]}
             >
               <MaterialCommunityIcons
                 color={palette.ink}
@@ -910,8 +932,9 @@ function FoodLogDetail({
       <View style={styles.detailHeader}>
         <Pressable
           accessibilityLabel="Back from food log"
+          disabled={loading}
           onPress={onClose}
-          style={sharedStyles.iconButton}
+          style={[sharedStyles.iconButton, loading && sharedStyles.disabled]}
         >
           <MaterialCommunityIcons
             color={palette.ink}
