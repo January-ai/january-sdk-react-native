@@ -154,6 +154,9 @@ export function FoodLogsScreen({
   const changeRange = (next: Range) => {
     if (next === range) return;
     loadTicket.current += 1;
+    // Do not show the old range's rows under the new label while it loads.
+    setLogs([]);
+    setSummary(undefined);
     setRange(next);
   };
 
@@ -510,8 +513,18 @@ export function FoodLogsScreen({
           }
           setLogs((current) => {
             const index = current.findIndex((item) => item.id === saved.id);
-            if (index < 0) return [saved, ...current];
-            return current.map((item) => (item.id === saved.id ? saved : item));
+            if (index >= 0) {
+              return current.map((item) =>
+                item.id === saved.id ? saved : item
+              );
+            }
+            // A new log belongs on screen only if its date is in the selected
+            // range ("Last month" is a past window; today's log is not in it).
+            const dates = dateRange(range);
+            const day = saved.timestampUTC.slice(0, 10);
+            return day >= dates.start && day <= dates.end
+              ? [saved, ...current]
+              : current;
           });
           // A load still in flight would overwrite the saved log; drop it. In
           // live mode reload list and summary so both reflect the save.
