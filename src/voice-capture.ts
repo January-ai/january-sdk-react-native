@@ -189,13 +189,25 @@ export class VoiceCaptureSession {
           );
         }
       }
+      // cancel() or dispose() may have run while the permission prompt was open;
+      // starting the recognizer now would leave it recording with no owner.
+      this.assertStillActive();
       await requireNativeModule().voiceCaptureStart(
         this.sessionId,
         this.locale
       );
+      if (!this.active) {
+        // Cancelled while the native start was in flight: release it again.
+        try {
+          requireNativeModule().voiceCaptureCancel(this.sessionId);
+        } catch {
+          // Nothing to release.
+        }
+        this.assertStillActive();
+      }
       // The native call resolves once the microphone is live; the first native
       // update may still be in flight.
-      if (this.active && this.snapshot.state === 'requestingPermission') {
+      if (this.snapshot.state === 'requestingPermission') {
         this.publish({ ...this.current, state: 'recording' });
       }
     } catch (error) {
@@ -324,6 +336,15 @@ export class VoiceCaptureSession {
   private publish(snapshot: VoiceCaptureSnapshot): void {
     this.current = snapshot;
     for (const listener of this.listeners) listener({ ...snapshot });
+  }
+
+  private assertStillActive(): void {
+    if (!this.active) {
+      throw new VoiceCaptureError(
+        'cancelled',
+        'Voice capture was cancelled before recording started.'
+      );
+    }
   }
 
   private assertUsable(): void {

@@ -164,6 +164,24 @@ describe('VoiceCaptureSession', () => {
     session.dispose();
   });
 
+  it('cancelling while start is in flight releases the recognizer and rejects start', async () => {
+    let finishStart: (value: string) => void = () => undefined;
+    native.voiceCaptureStart.mockImplementationOnce(
+      () => new Promise<string>((resolve) => (finishStart = resolve))
+    );
+    native.voiceCaptureCancel.mockClear();
+    const session = new VoiceCaptureSession();
+    const starting = session.start();
+    expect(session.snapshot.state).toBe('requestingPermission');
+    session.cancel();
+    expect(session.snapshot.state).toBe('idle');
+    finishStart('{}');
+    await expect(starting).rejects.toMatchObject({ code: 'cancelled' });
+    expect(native.voiceCaptureCancel).toHaveBeenCalled();
+    expect(session.snapshot.state).toBe('idle');
+    session.dispose();
+  });
+
   it('cancel releases the native capture and returns to idle', async () => {
     const session = new VoiceCaptureSession();
     await session.start();
