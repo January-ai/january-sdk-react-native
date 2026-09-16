@@ -68,6 +68,10 @@ export function FoodLogsScreen({
   const [error, setError] = useState<string>();
   const [editor, setEditor] = useState<FoodLog | 'new'>();
   const [selectedLog, setSelectedLog] = useState<FoodLog>();
+  // Latest selection, for async completions that should only close the detail
+  // screen of the log they started from.
+  const selectedLogRef = useRef(selectedLog);
+  selectedLogRef.current = selectedLog;
   const [deleteRetryLog, setDeleteRetryLog] = useState<FoodLog>();
   const stack = useScreenStack();
   const closeDetail = () => {
@@ -179,7 +183,7 @@ export function FoodLogsScreen({
       } else {
         await client.foodLogs.delete(log.id);
       }
-      closeDetail();
+      if (selectedLogRef.current?.id === log.id) closeDetail();
       setDeleteRetryLog(undefined);
       if (loadTicket.current !== revision) {
         // The user moved to another range meanwhile; its load owns the screen.
@@ -196,7 +200,7 @@ export function FoodLogsScreen({
       setLoading(false);
       reload = !fixtures;
     } catch (caught) {
-      closeDetail();
+      if (selectedLogRef.current?.id === log.id) closeDetail();
       // Report the failure only to the range it happened on.
       if (loadTicket.current !== revision) return;
       setError(
@@ -592,7 +596,11 @@ function FoodLogEditor({
   return (
     <Modal
       animationType="none"
-      onRequestClose={onClose}
+      // Closing mid-save would let the result land on whatever the user opened
+      // next; the editor stays until the request settles.
+      onRequestClose={() => {
+        if (!saving) onClose();
+      }}
       statusBarTranslucent
       transparent
       visible={visible}
@@ -611,8 +619,9 @@ function FoodLogEditor({
           <View style={styles.editorHeader}>
             <Pressable
               accessibilityLabel="Close food log editor"
+              disabled={saving}
               onPress={onClose}
-              style={sharedStyles.iconButton}
+              style={[sharedStyles.iconButton, saving && sharedStyles.disabled]}
             >
               <MaterialCommunityIcons
                 color={palette.ink}
@@ -910,8 +919,9 @@ function FoodLogDetail({
       <View style={styles.detailHeader}>
         <Pressable
           accessibilityLabel="Back from food log"
+          disabled={loading}
           onPress={onClose}
-          style={sharedStyles.iconButton}
+          style={[sharedStyles.iconButton, loading && sharedStyles.disabled]}
         >
           <MaterialCommunityIcons
             color={palette.ink}
