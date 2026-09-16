@@ -10,9 +10,9 @@ public final class JanuaryNativeBridge: NSObject, @unchecked Sendable {
 
     private final class VoiceHolder {
         let session: VoiceCaptureSession
+        /// Subscriptions for exactly one capture; replaced on every start() so each update is
+        /// stamped with its own capture's id as a constant.
         var cancellables: Set<AnyCancellable> = []
-        /// The JavaScript start() this holder currently serves; stamped on every update.
-        var captureID: String = ""
         init(session: VoiceCaptureSession) { self.session = session }
     }
 
@@ -585,7 +585,7 @@ public final class JanuaryNativeBridge: NSObject, @unchecked Sendable {
         Task { @MainActor in
             do {
                 let holder = self.voiceHolder(sessionID, locale: locale)
-                holder.captureID = captureID
+                self.observeVoiceUpdates(holder, sessionID: sessionID, captureID: captureID)
                 try await holder.session.startRecording()
                 completion("{}", nil)
             } catch {
@@ -637,8 +637,18 @@ public final class JanuaryNativeBridge: NSObject, @unchecked Sendable {
         if let existing = voiceSessions[sessionID] { return existing }
         let session = VoiceCaptureSession(locale: locale.map(Locale.init(identifier:)))
         let holder = VoiceHolder(session: session)
-        let emit: () -> Void = { [weak self, weak session, weak holder] in
-            guard let self, let session, let holder else { return }
+        voiceSessions[sessionID] = holder
+        return holder
+    }
+
+    /// Replaces the holder's subscriptions with ones bound to `captureID`, so an update queued
+    /// for an earlier capture can never be delivered under a newer id.
+    @MainActor
+    private func observeVoiceUpdates(_ holder: VoiceHolder, sessionID: String, captureID: String) {
+        holder.cancellables.removeAll()
+        let session = holder.session
+        let emit: () -> Void = { [weak self, weak session] in
+            guard let self, let session else { return }
             let state: String
             switch session.state {
             case .idle: state = "idle"
@@ -648,7 +658,7 @@ public final class JanuaryNativeBridge: NSObject, @unchecked Sendable {
             }
             self.voiceUpdateHandler?([
                 "sessionId": sessionID,
-                "captureId": holder.captureID,
+                "captureId": captureID,
                 "state": state,
                 "audioLevel": Double(session.audioLevel),
                 "durationMs": Int(session.recordingDuration * 1000),
@@ -663,8 +673,6 @@ public final class JanuaryNativeBridge: NSObject, @unchecked Sendable {
         session.$state.dropFirst().receive(on: DispatchQueue.main).sink { _ in emit() }.store(in: &holder.cancellables)
         session.$audioLevel.dropFirst().receive(on: DispatchQueue.main).sink { _ in emit() }.store(in: &holder.cancellables)
         session.$recordingDuration.dropFirst().receive(on: DispatchQueue.main).sink { _ in emit() }.store(in: &holder.cancellables)
-        voiceSessions[sessionID] = holder
-        return holder
     }
 
     private func voiceError(_ error: Error) -> NSError {

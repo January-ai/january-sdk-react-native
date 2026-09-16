@@ -85,11 +85,14 @@ export function FoodLogsScreen({
       setSummary(undefined);
       // This load owns the screen only while its ticket is current; a range
       // change or a newer refresh that lands first wins.
-      const ticket = ++summaryTicket.current;
+      const ticket = ++loadTicket.current;
       try {
         if (fixtures) {
+          // Fixture mode is stateless by design: every load restores the
+          // fixture list, so a mutation that resolves after a newer load is
+          // intentionally not replayed onto it.
           await fixtureDelay(8000);
-          if (ticket !== summaryTicket.current) return;
+          if (ticket !== loadTicket.current) return;
           if (forceFixtureFailure) {
             throw new Error('Temporary fixture food logs failure.');
           }
@@ -102,7 +105,7 @@ export function FoodLogsScreen({
             client.foodLogs.list(dates),
             client.foodLogs.getSummary({ ...dates, groupBy: 'day' }),
           ]);
-          if (ticket !== summaryTicket.current) return;
+          if (ticket !== loadTicket.current) return;
           if (listed.status === 'rejected') throw listed.reason;
           setLogs(listed.value.items);
           setSummary(
@@ -110,46 +113,60 @@ export function FoodLogsScreen({
           );
         }
       } catch (caught) {
+        // A stale load's failure is not this screen's error any more.
+        if (ticket !== loadTicket.current) return;
         setError(
           caught instanceof Error ? caught.message : 'Food logs failed to load.'
         );
       } finally {
-        if (ticket === summaryTicket.current) setLoading(false);
+        if (ticket === loadTicket.current) setLoading(false);
       }
     },
     [client, configured, fixtures, range]
   );
+  // Mutations can outlive the render that started them (a delete while the
+  // user switches ranges, a save after the editor closed); reload through the
+  // latest load so they never fetch a range the screen has left.
+  const latestLoad = useRef(load);
+  latestLoad.current = load;
 
   useEffect(() => {
     load().catch(() => undefined);
   }, [load]);
 
-  // Totals change after every create, update, or delete. Live mode asks the
-  // API again; fixture mode derives the summary from the logs on screen, so
-  // the two can never disagree.
-  // Each request takes a ticket; a response whose ticket is no longer current
-  // (a range change or a newer refresh happened meanwhile) is dropped.
-  const summaryTicket = useRef(0);
-  const refreshSummary = useCallback(async () => {
-    if (!configured || fixtures) return;
-    const ticket = ++summaryTicket.current;
-    try {
-      const next = await client.foodLogs.getSummary({
-        ...dateRange(range),
-        groupBy: 'day',
-      });
-      if (ticket === summaryTicket.current) setSummary(next);
-    } catch {
-      // Keep the previous total; the next full load retries.
-    }
-  }, [client, configured, fixtures, range]);
+  // Each load takes a ticket; a response whose ticket is no longer current
+  // (a range change or a newer load happened meanwhile) is dropped. After a
+  // create, update, or delete the live screen reloads list and summary from
+  // the API so both reflect the mutation; fixture mode derives the summary
+  // from the logs on screen, so the two can never disagree.
+  const loadTicket = useRef(0);
   const shownSummary = useMemo(
     () => (fixtures ? fixtureSummaryFor(logs, dateRange(range)) : summary),
     [fixtures, logs, range, summary]
   );
 
+  // The effect that loads the new range runs after the next render; drop the
+  // active load now so it cannot fill the new range with the old one's data.
+  const changeRange = (next: Range) => {
+    if (next === range) return;
+    loadTicket.current += 1;
+    setRange(next);
+  };
+
+  // The editor remembers which load owned the screen when it opened, so a save
+  // that resolves after a range change does not patch the new range's list.
+  const editorRevision = useRef(0);
+  const openEditor = (target: FoodLog | 'new') => {
+    editorRevision.current = loadTicket.current;
+    setEditor(target);
+  };
+
   async function deleteLog(log: FoodLog) {
     if (!log.id) return;
+    let reload = false;
+    // Failure and loading updates apply only while no newer load or range has
+    // taken over the screen.
+    const revision = loadTicket.current;
     setLoading(true);
     setError(undefined);
     try {
@@ -162,20 +179,35 @@ export function FoodLogsScreen({
       } else {
         await client.foodLogs.delete(log.id);
       }
+      closeDetail();
+      setDeleteRetryLog(undefined);
+      if (loadTicket.current !== revision) {
+        // The user moved to another range meanwhile; its load owns the screen.
+        // Live mode reloads so that range reflects the deletion too.
+        reload = !fixtures;
+        return;
+      }
       setLogs((current) =>
         current.filter((candidate) => candidate.id !== log.id)
       );
-      refreshSummary().catch(() => undefined);
-      closeDetail();
-      setDeleteRetryLog(undefined);
+      // A load still in flight (fixture mode waits 8s) would resurrect the
+      // pre-mutation list; in live mode the reload below takes over.
+      loadTicket.current += 1;
+      setLoading(false);
+      reload = !fixtures;
     } catch (caught) {
+      closeDetail();
+      // Report the failure only to the range it happened on.
+      if (loadTicket.current !== revision) return;
       setError(
         caught instanceof Error ? caught.message : 'Food log deletion failed.'
       );
       setDeleteRetryLog(log);
-      closeDetail();
     } finally {
-      setLoading(false);
+      if (loadTicket.current === revision) setLoading(false);
+      // Reload list and summary from the API so a list response that was in
+      // flight during the delete cannot leave the screen out of date.
+      if (reload) latestLoad.current().catch(() => undefined);
     }
   }
 
@@ -186,11 +218,13 @@ export function FoodLogsScreen({
           <Pressable
             accessibilityLabel="Add food log"
             accessibilityRole="button"
-            disabled={!configured}
-            onPress={() => setEditor('new')}
+            // Like Delete, adding waits for the list load to settle so a
+            // mutation can never race the request that populates the screen.
+            disabled={!configured || loading}
+            onPress={() => openEditor('new')}
             style={[
               sharedStyles.iconButton,
-              !configured && sharedStyles.disabled,
+              (!configured || loading) && sharedStyles.disabled,
             ]}
             testID="food-log-add"
           >
@@ -254,11 +288,11 @@ export function FoodLogsScreen({
         </View>
 
         <Pressable
-          disabled={!configured}
-          onPress={() => setEditor('new')}
+          disabled={!configured || loading}
+          onPress={() => openEditor('new')}
           style={[
             sharedStyles.primaryButton,
-            !configured && sharedStyles.disabled,
+            (!configured || loading) && sharedStyles.disabled,
           ]}
           testID="food-log-create"
         >
@@ -274,19 +308,19 @@ export function FoodLogsScreen({
           <View style={styles.segmented}>
             <RangeButton
               label="Today"
-              onPress={() => setRange('today')}
+              onPress={() => changeRange('today')}
               selected={range === 'today'}
               testID="logs-range-today"
             />
             <RangeButton
               label="This week"
-              onPress={() => setRange('week')}
+              onPress={() => changeRange('week')}
               selected={range === 'week'}
               testID="logs-range-week"
             />
             <RangeButton
               label="Last month"
-              onPress={() => setRange('month')}
+              onPress={() => changeRange('month')}
               selected={range === 'month'}
               testID="logs-range-month"
             />
@@ -450,7 +484,7 @@ export function FoodLogsScreen({
                   ]
                 );
               }}
-              onEdit={(log) => setEditor(log)}
+              onEdit={(log) => openEditor(log)}
             />
           ) : null,
         }}
@@ -462,14 +496,24 @@ export function FoodLogsScreen({
         fixtures={fixtures}
         onClose={() => setEditor(undefined)}
         onSaved={(saved) => {
+          closeDetail();
+          setEditor(undefined);
+          if (loadTicket.current !== editorRevision.current) {
+            // The range changed while saving; that range's load owns the
+            // screen. Live mode reloads so it reflects the save as well.
+            if (!fixtures) latestLoad.current().catch(() => undefined);
+            return;
+          }
           setLogs((current) => {
             const index = current.findIndex((item) => item.id === saved.id);
             if (index < 0) return [saved, ...current];
             return current.map((item) => (item.id === saved.id ? saved : item));
           });
-          refreshSummary().catch(() => undefined);
-          closeDetail();
-          setEditor(undefined);
+          // A load still in flight would overwrite the saved log; drop it. In
+          // live mode reload list and summary so both reflect the save.
+          loadTicket.current += 1;
+          setLoading(false);
+          if (!fixtures) latestLoad.current().catch(() => undefined);
         }}
         visible={editor != null}
       />
