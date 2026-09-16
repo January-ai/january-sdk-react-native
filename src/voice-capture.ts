@@ -133,12 +133,14 @@ export class VoiceCaptureSession {
   private active = false;
   /** Bumped by start() and cancel() so a stale in-flight operation cannot touch a newer capture. */
   private generation = 0;
+  /** Sent to the native start(); native updates echo it so stale ones are dropped. */
+  private captureId = '';
 
   constructor(options: VoiceCaptureOptions = {}) {
     this.locale = options.locale ?? null;
     let supported = false;
     try {
-      supported = requireNativeModule().voiceCaptureIsSupported();
+      supported = requireNativeModule().voiceCaptureIsSupported(this.locale);
     } catch {
       supported = false;
     }
@@ -181,6 +183,7 @@ export class VoiceCaptureSession {
     this.ensureSubscription();
     this.active = true;
     this.generation += 1;
+    this.captureId = `${this.sessionId}#${this.generation}`;
     this.publish({ ...idleSnapshot, state: 'requestingPermission' });
     try {
       if (Platform.OS === 'android') {
@@ -199,7 +202,8 @@ export class VoiceCaptureSession {
       this.assertStillActive();
       await requireNativeModule().voiceCaptureStart(
         this.sessionId,
-        this.locale
+        this.locale,
+        this.captureId
       );
       if (!this.active) {
         // Cancelled while the native start was in flight: release it again.
@@ -314,6 +318,11 @@ export class VoiceCaptureSession {
     this.subscription = requireNativeModule().onVoiceCaptureUpdate(
       (update: VoiceCaptureUpdate) => {
         if (update.sessionId !== this.sessionId || this.disposed) return;
+        // An update from an earlier start() (queued before cancel() took effect)
+        // must not touch the current capture.
+        if (update.captureId != null && update.captureId !== this.captureId) {
+          return;
+        }
         if (update.errorCode && this.active) {
           this.active = false;
           this.publish({
@@ -341,7 +350,9 @@ export class VoiceCaptureSession {
         // Native cancellation is asynchronous: an update queued before cancel()
         // took effect must not revive a session that already returned to idle.
         if (!this.active) return;
-        if (this.current.state === 'idle' && update.state === 'idle') return;
+        // A bare idle (no error, no transcript) is the recognizer's resting state, not
+        // an outcome; the session publishes idle itself when stop() or cancel() settles.
+        if (update.state === 'idle') return;
         this.publish({
           state: normalizeState(update.state),
           audioLevel: clamp(update.audioLevel),

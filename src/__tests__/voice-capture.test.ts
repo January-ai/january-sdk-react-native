@@ -39,9 +39,20 @@ describe('VoiceCaptureSession', () => {
     await session.start();
     expect(native.voiceCaptureStart).toHaveBeenCalledWith(
       expect.stringMatching(/^january-voice-/),
-      'en-US'
+      'en-US',
+      expect.stringMatching(/^january-voice-.*#1$/)
     );
+    expect(native.voiceCaptureIsSupported).toHaveBeenCalledWith('en-US');
     const sessionId = native.voiceCaptureStart.mock.calls[0]![0];
+    // The native state flow replays its resting idle before recording begins;
+    // that must not reset an active start.
+    emit(sessionId, {
+      state: 'idle',
+      audioLevel: 0,
+      durationMs: 0,
+      partialTranscript: '',
+    });
+    expect(session.snapshot.state).toBe('recording');
     emit(sessionId, {
       state: 'recording',
       audioLevel: 0.42,
@@ -198,6 +209,38 @@ describe('VoiceCaptureSession', () => {
     finishStop(JSON.stringify({ transcript: 'stale', durationMs: 10 }));
     await expect(stopping).rejects.toMatchObject({ code: 'cancelled' });
     expect(session.snapshot.state).toBe('recording');
+    session.dispose();
+  });
+
+  it('drops updates stamped with an earlier capture id after cancel and restart', async () => {
+    const session = new VoiceCaptureSession();
+    await session.start();
+    const sessionId = native.voiceCaptureStart.mock.calls.at(-1)![0];
+    const firstCapture = native.voiceCaptureStart.mock.calls.at(-1)![2];
+    session.cancel();
+    await session.start();
+    const secondCapture = native.voiceCaptureStart.mock.calls.at(-1)![2];
+    expect(secondCapture).not.toBe(firstCapture);
+    emit(sessionId, {
+      captureId: firstCapture,
+      state: 'idle',
+      audioLevel: 0,
+      durationMs: 500,
+      partialTranscript: '',
+      transcript: 'stale words',
+      errorCode: null,
+      errorMessage: null,
+    });
+    expect(session.snapshot.state).toBe('recording');
+    expect(session.snapshot.result).toBeUndefined();
+    emit(sessionId, {
+      captureId: secondCapture,
+      state: 'recording',
+      audioLevel: 0.3,
+      durationMs: 800,
+      partialTranscript: 'fresh',
+    });
+    expect(session.snapshot.partialTranscript).toBe('fresh');
     session.dispose();
   });
 

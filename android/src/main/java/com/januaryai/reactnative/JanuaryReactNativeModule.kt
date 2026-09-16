@@ -106,8 +106,11 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
   private val clients = ConcurrentHashMap<String, JanuaryPartnerUserClient>()
   private val voiceSessions = HashMap<String, VoiceHolder>()
 
-  private class VoiceHolder(val session: VoiceCaptureSession, val collector: Job) {
+  private class VoiceHolder(val session: VoiceCaptureSession) {
+    lateinit var collector: Job
     var pendingStop: Job? = null
+    /** The JavaScript start() this holder currently serves; stamped on every update. */
+    var captureId: String = ""
   }
   private data class VoiceSnapshot(
     val state: VoiceCaptureState,
@@ -411,18 +414,27 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
 
   // ——— Voice capture ————————————————————————————————————————————————————————
 
-  override fun voiceCaptureIsSupported(): Boolean =
+  // Android's recognizer availability is device-wide; the locale is chosen per session.
+  override fun voiceCaptureIsSupported(locale: String?): Boolean =
     SpeechRecognizer.isRecognitionAvailable(reactApplicationContext)
 
-  override fun voiceCaptureStart(sessionId: String, locale: String?, promise: Promise) {
+  override fun voiceCaptureStart(sessionId: String, locale: String?, captureId: String, promise: Promise) {
     UiThreadUtil.runOnUiThread {
+      val existing = voiceSessions[sessionId]
+      val holder = existing ?: createVoiceSession(sessionId, locale)
+      holder.captureId = captureId
       try {
-        val holder = voiceSessions[sessionId] ?: createVoiceSession(sessionId, locale)
         holder.session.clearResult()
         holder.session.clearError()
         holder.session.startListening()
         promise.resolve("{}")
       } catch (error: Exception) {
+        if (existing == null) {
+          // Capture never started: do not keep a collector and ticker alive for it.
+          voiceSessions.remove(sessionId)
+          holder.collector.cancel()
+          holder.session.close()
+        }
         rejectVoice(promise, error)
       }
     }
@@ -503,12 +515,18 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
       reactApplicationContext,
       locale?.takeIf { it.isNotBlank() }?.let(Locale::forLanguageTag) ?: Locale.getDefault(),
     )
+    val holder = VoiceHolder(session)
     val collector = mainScope.launch {
       combine(session.state, session.audioLevel, session.partialTranscript, session.error, session.latestResult) { state, level, partial, error, result ->
         VoiceSnapshot(state, level, partial, error, result)
       }.collect { snapshot ->
+        // StateFlows replay their current values, so the collector starts with an IDLE snapshot
+        // before startListening() has run. A plain idle carries nothing JavaScript needs (it
+        // publishes idle itself when stop() or cancel() settles) and would reset an active start.
+        if (snapshot.state == VoiceCaptureState.IDLE && snapshot.error == null && snapshot.result == null) return@collect
         emitVoiceUpdate(
           sessionId,
+          holder.captureId,
           snapshot.state,
           snapshot.level,
           snapshot.partial,
@@ -526,6 +544,7 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
         if (session.state.value == VoiceCaptureState.LISTENING) {
           emitVoiceUpdate(
             sessionId,
+            holder.captureId,
             session.state.value,
             session.audioLevel.value,
             session.partialTranscript.value,
@@ -535,11 +554,13 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
       }
     }
     collector.invokeOnCompletion { ticker.cancel() }
-    return VoiceHolder(session, collector).also { voiceSessions[sessionId] = it }
+    holder.collector = collector
+    return holder.also { voiceSessions[sessionId] = it }
   }
 
   private fun emitVoiceUpdate(
     sessionId: String,
+    captureId: String,
     state: VoiceCaptureState,
     level: Float,
     partial: String,
@@ -557,6 +578,7 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
         putNull("errorMessage")
       }
       putString("sessionId", sessionId)
+      putString("captureId", captureId)
       putString(
         "state",
         when (state) {

@@ -250,7 +250,8 @@ export const fixtureFoodLogs: FoodLog[] = [
   {
     id: 'fixture-log-breakfast',
     name: 'Fixture breakfast',
-    timestampUTC: '2026-08-31T12:00:00Z',
+    // Today at noon UTC, so the log sits inside the default week range.
+    timestampUTC: `${new Date().toISOString().slice(0, 10)}T12:00:00Z`,
     foods: [
       {
         id: 'fixture-oatmeal',

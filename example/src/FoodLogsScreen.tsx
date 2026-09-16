@@ -83,6 +83,7 @@ export function FoodLogsScreen({
       setError(undefined);
       setDeleteRetryLog(undefined);
       setSummary(undefined);
+      summaryTicket.current += 1;
       try {
         if (fixtures) {
           await fixtureDelay(8000);
@@ -122,22 +123,25 @@ export function FoodLogsScreen({
   // Totals change after every create, update, or delete. Live mode asks the
   // API again; fixture mode derives the summary from the logs on screen, so
   // the two can never disagree.
+  // Each request takes a ticket; a response whose ticket is no longer current
+  // (a range change or a newer refresh happened meanwhile) is dropped.
+  const summaryTicket = useRef(0);
   const refreshSummary = useCallback(async () => {
     if (!configured || fixtures) return;
+    const ticket = ++summaryTicket.current;
     try {
-      setSummary(
-        await client.foodLogs.getSummary({
-          ...dateRange(range),
-          groupBy: 'day',
-        })
-      );
+      const next = await client.foodLogs.getSummary({
+        ...dateRange(range),
+        groupBy: 'day',
+      });
+      if (ticket === summaryTicket.current) setSummary(next);
     } catch {
       // Keep the previous total; the next full load retries.
     }
   }, [client, configured, fixtures, range]);
   const shownSummary = useMemo(
-    () => (fixtures ? fixtureSummaryFor(logs) : summary),
-    [fixtures, logs, summary]
+    () => (fixtures ? fixtureSummaryFor(logs, dateRange(range)) : summary),
+    [fixtures, logs, range, summary]
   );
 
   async function deleteLog(log: FoodLog) {
@@ -1026,23 +1030,27 @@ function dateRange(range: Range): { start: string; end: string } {
 }
 
 // Fixture mode has no server to total the logs, so the summary is computed
-// from the logs on screen the way the API would: one bucket per day from the
-// earliest to the latest log, sparse nutrient totals scaled by the servings
-// eaten, and an average per logged day.
-function fixtureSummaryFor(logs: FoodLog[]): FoodLogSummary | undefined {
-  if (logs.length === 0) return undefined;
+// from the logs on screen the way the API would for the selected range: one
+// bucket per day of the range, only logs inside it, sparse nutrient totals,
+// and an average per logged day.
+function fixtureSummaryFor(
+  logs: FoodLog[],
+  range: { start: string; end: string }
+): FoodLogSummary | undefined {
+  const inRange = logs.filter((log) => {
+    const day = log.timestampUTC.slice(0, 10);
+    return day >= range.start && day <= range.end;
+  });
+  if (inRange.length === 0) return undefined;
   const byDay = new Map<string, FoodLog[]>();
-  for (const log of logs) {
+  for (const log of inRange) {
     const day = log.timestampUTC.slice(0, 10);
     byDay.set(day, [...(byDay.get(day) ?? []), log]);
   }
-  const days = [...byDay.keys()].sort();
-  const startDate = days[0]!;
-  const endDate = days[days.length - 1]!;
   const buckets: FoodLogSummary['buckets'] = [];
   for (
-    const cursor = new Date(`${startDate}T00:00:00Z`);
-    cursor.toISOString().slice(0, 10) <= endDate;
+    const cursor = new Date(`${range.start}T00:00:00Z`);
+    cursor.toISOString().slice(0, 10) <= range.end;
     cursor.setUTCDate(cursor.getUTCDate() + 1)
   ) {
     const day = cursor.toISOString().slice(0, 10);
@@ -1055,14 +1063,14 @@ function fixtureSummaryFor(logs: FoodLog[]): FoodLogSummary | undefined {
       nutrients: sumNutrients(dayLogs),
     });
   }
-  const totals = sumNutrients(logs);
+  const totals = sumNutrients(inRange);
   const daysWithLogs = byDay.size;
   return {
     ...fixtureFoodLogSummary,
-    startDate,
-    endDate,
+    startDate: range.start,
+    endDate: range.end,
     buckets,
-    totals: { logsCount: logs.length, daysWithLogs, nutrients: totals },
+    totals: { logsCount: inRange.length, daysWithLogs, nutrients: totals },
     averagePerLoggedDay: {
       nutrients: Object.fromEntries(
         Object.entries(totals).map(([key, amount]) => [
@@ -1075,22 +1083,21 @@ function fixtureSummaryFor(logs: FoodLog[]): FoodLogSummary | undefined {
 }
 
 // Sparse like the API: a nutrient appears only when at least one food had it.
-// Fixture foods store per-serving nutrients, so scale by the servings eaten.
+// A logged food's nutrients are already the amount eaten (the meal total on
+// the detail view sums them the same way), so no further scaling applies.
 function sumNutrients(logs: FoodLog[]): NutritionFacts {
   const totals: Record<string, NutrientAmount> = {};
   for (const log of logs) {
     for (const food of log.foods) {
-      const servings = food.consumedServing.quantity;
       for (const [key, amount] of Object.entries(food.nutrients) as [
         string,
         NutrientAmount | undefined,
       ][]) {
         if (!amount) continue;
-        const value = servings == null ? amount.value : amount.value * servings;
         const current = totals[key];
         totals[key] = current
-          ? { ...current, value: current.value + value }
-          : { ...amount, value };
+          ? { ...current, value: current.value + amount.value }
+          : { ...amount };
       }
     }
   }

@@ -16,6 +16,8 @@ export type VoiceCaptureUpdate = {
   audioLevel: number;
   durationMs: number;
   partialTranscript: string;
+  /** Identifies the start() this update belongs to, so a stale update cannot touch a newer capture. */
+  captureId: string | null;
   /** Final transcript when the recognizer ended the capture on its own (Android). */
   transcript: string | null;
   errorCode: string | null;
@@ -125,8 +127,12 @@ export interface Spec extends TurboModule {
   ): Promise<string>;
   foodLogsDelete(clientId: string, id: string): Promise<string>;
   glucosePredict(clientId: string, requestJson: string): Promise<string>;
-  voiceCaptureIsSupported(): boolean;
-  voiceCaptureStart(sessionId: string, locale: string | null): Promise<string>;
+  voiceCaptureIsSupported(locale: string | null): boolean;
+  voiceCaptureStart(
+    sessionId: string,
+    locale: string | null,
+    captureId: string
+  ): Promise<string>;
   voiceCaptureStop(sessionId: string): Promise<string>;
   voiceCaptureCancel(sessionId: string): void;
   voiceCaptureDispose(sessionId: string): void;

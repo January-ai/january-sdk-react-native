@@ -285,17 +285,18 @@
   }];
 }
 
-- (NSNumber *)voiceCaptureIsSupported
+- (NSNumber *)voiceCaptureIsSupported:(NSString *)locale
 {
-  return @([_bridge voiceCaptureIsSupported]);
+  return @([_bridge voiceCaptureIsSupported:locale]);
 }
 
 - (void)voiceCaptureStart:(NSString *)sessionId
                    locale:(NSString *)locale
+                captureId:(NSString *)captureId
                   resolve:(RCTPromiseResolveBlock)resolve
                    reject:(RCTPromiseRejectBlock)reject
 {
-  [_bridge voiceCaptureStart:sessionId locale:locale completion:^(NSString *json, NSError *error) {
+  [_bridge voiceCaptureStart:sessionId locale:locale captureID:captureId completion:^(NSString *json, NSError *error) {
     if (error) { reject(error.userInfo[@"code"] ?: @"unknown", error.localizedDescription, error); return; }
     resolve(json);
   }];

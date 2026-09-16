@@ -11,6 +11,8 @@ public final class JanuaryNativeBridge: NSObject, @unchecked Sendable {
     private final class VoiceHolder {
         let session: VoiceCaptureSession
         var cancellables: Set<AnyCancellable> = []
+        /// The JavaScript start() this holder currently serves; stamped on every update.
+        var captureID: String = ""
         init(session: VoiceCaptureSession) { self.session = session }
     }
 
@@ -567,19 +569,25 @@ public final class JanuaryNativeBridge: NSObject, @unchecked Sendable {
     /// Whether this device has a speech recognizer for the current locale. Transient
     /// unavailability (for example no network for a server-backed locale) is reported by
     /// `voiceCaptureStart` as `recognizer_unavailable` rather than hiding the feature.
-    @objc public func voiceCaptureIsSupported() -> Bool {
-        SFSpeechRecognizer(locale: Locale.current) != nil || SFSpeechRecognizer() != nil
+    @objc public func voiceCaptureIsSupported(_ locale: String?) -> Bool {
+        // Check the same locale the session will record with, not the device default.
+        if let locale, !locale.isEmpty {
+            return SFSpeechRecognizer(locale: Locale(identifier: locale)) != nil
+        }
+        return SFSpeechRecognizer(locale: Locale.current) != nil || SFSpeechRecognizer() != nil
     }
 
-    @objc(voiceCaptureStart:locale:completion:)
+    @objc(voiceCaptureStart:locale:captureID:completion:)
     public func voiceCaptureStart(
         _ sessionID: String,
         locale: String?,
+        captureID: String,
         completion: @escaping (NSString?, NSError?) -> Void
     ) {
         Task { @MainActor in
             do {
                 let holder = self.voiceHolder(sessionID, locale: locale)
+                holder.captureID = captureID
                 try await holder.session.startRecording()
                 completion("{}", nil)
             } catch {
@@ -631,8 +639,8 @@ public final class JanuaryNativeBridge: NSObject, @unchecked Sendable {
         if let existing = voiceSessions[sessionID] { return existing }
         let session = VoiceCaptureSession(locale: locale.map(Locale.init(identifier:)))
         let holder = VoiceHolder(session: session)
-        let emit: () -> Void = { [weak self, weak session] in
-            guard let self, let session else { return }
+        let emit: () -> Void = { [weak self, weak session, weak holder] in
+            guard let self, let session, let holder else { return }
             let state: String
             switch session.state {
             case .idle: state = "idle"
@@ -642,6 +650,7 @@ public final class JanuaryNativeBridge: NSObject, @unchecked Sendable {
             }
             self.voiceUpdateHandler?([
                 "sessionId": sessionID,
+                "captureId": holder.captureID,
                 "state": state,
                 "audioLevel": Double(session.audioLevel),
                 "durationMs": Int(session.recordingDuration * 1000),
