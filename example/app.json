@@ -14,11 +14,12 @@
     },
     "plugins": [
       "./plugins/with-hidden-dev-menu-button",
+      "../app.plugin.js",
       [
         "expo-build-properties",
         {
           "android": {
-            "minSdkVersion": 26
+            "minSdkVersion": 24
           }
         }
       ],
