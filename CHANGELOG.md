@@ -5,6 +5,8 @@ This project uses Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-16
+
 Breaking: the Partner API changed the shape of a detected food, and 0.1.0
 fails to decode photo scans and description analyses with an unreadable
 response error. Update to restore them.
