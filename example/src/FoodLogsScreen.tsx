@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -17,6 +17,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type {
   FoodLog,
   FoodLogSummary,
+  NutrientAmount,
+  NutritionFacts,
   JanuaryClient,
 } from '@januaryai/react-native';
 
@@ -88,7 +90,6 @@ export function FoodLogsScreen({
             throw new Error('Temporary fixture food logs failure.');
           }
           setLogs(range === 'month' ? [] : fixtureFoodLogs.map(copyFoodLog));
-          setSummary(range === 'month' ? undefined : fixtureFoodLogSummary);
         } else {
           const dates = dateRange(range);
           // The list is the screen; the summary is a bonus row, so its failure
@@ -118,26 +119,25 @@ export function FoodLogsScreen({
     load().catch(() => undefined);
   }, [load]);
 
-  // Totals change after every create, update, or delete.
-  const refreshSummary = useCallback(
-    async (nextLogs: FoodLog[]) => {
-      if (!configured) return;
-      if (fixtures) {
-        setSummary(fixtureSummaryFor(nextLogs));
-        return;
-      }
-      try {
-        setSummary(
-          await client.foodLogs.getSummary({
-            ...dateRange(range),
-            groupBy: 'day',
-          })
-        );
-      } catch {
-        // Keep the previous total; the next full load retries.
-      }
-    },
-    [client, configured, fixtures, range]
+  // Totals change after every create, update, or delete. Live mode asks the
+  // API again; fixture mode derives the summary from the logs on screen, so
+  // the two can never disagree.
+  const refreshSummary = useCallback(async () => {
+    if (!configured || fixtures) return;
+    try {
+      setSummary(
+        await client.foodLogs.getSummary({
+          ...dateRange(range),
+          groupBy: 'day',
+        })
+      );
+    } catch {
+      // Keep the previous total; the next full load retries.
+    }
+  }, [client, configured, fixtures, range]);
+  const shownSummary = useMemo(
+    () => (fixtures ? fixtureSummaryFor(logs) : summary),
+    [fixtures, logs, summary]
   );
 
   async function deleteLog(log: FoodLog) {
@@ -154,9 +154,10 @@ export function FoodLogsScreen({
       } else {
         await client.foodLogs.delete(log.id);
       }
-      const remaining = logs.filter((candidate) => candidate.id !== log.id);
-      setLogs(remaining);
-      refreshSummary(remaining).catch(() => undefined);
+      setLogs((current) =>
+        current.filter((candidate) => candidate.id !== log.id)
+      );
+      refreshSummary().catch(() => undefined);
       closeDetail();
       setDeleteRetryLog(undefined);
     } catch (caught) {
@@ -286,10 +287,12 @@ export function FoodLogsScreen({
             <Text style={styles.datesLabel}>Dates</Text>
             <Text style={styles.datesValue}>{formatRange(range)}</Text>
           </View>
-          {summary && summary.totals.logsCount > 0 ? (
+          {shownSummary && shownSummary.totals.logsCount > 0 ? (
             <View style={styles.datesRow} testID="food-log-summary">
               <Text style={styles.datesLabel}>Range total</Text>
-              <Text style={styles.datesValue}>{formatSummary(summary)}</Text>
+              <Text style={styles.datesValue}>
+                {formatSummary(shownSummary)}
+              </Text>
             </View>
           ) : null}
         </View>
@@ -451,11 +454,12 @@ export function FoodLogsScreen({
         fixtures={fixtures}
         onClose={() => setEditor(undefined)}
         onSaved={(saved) => {
-          const next = logs.some((item) => item.id === saved.id)
-            ? logs.map((item) => (item.id === saved.id ? saved : item))
-            : [saved, ...logs];
-          setLogs(next);
-          refreshSummary(next).catch(() => undefined);
+          setLogs((current) => {
+            const index = current.findIndex((item) => item.id === saved.id);
+            if (index < 0) return [saved, ...current];
+            return current.map((item) => (item.id === saved.id ? saved : item));
+          });
+          refreshSummary().catch(() => undefined);
           closeDetail();
           setEditor(undefined);
         }}
@@ -1021,18 +1025,60 @@ function dateRange(range: Range): { start: string; end: string } {
   return { start: isoDate(start), end: isoDate(end) };
 }
 
-// Fixture mode has no server to total the logs; keep the counts honest.
+// Fixture mode has no server to total the logs, so the summary is computed
+// from the logs on screen the way the API would: one bucket per day of the
+// fixture week, sparse nutrient totals, and an average per logged day.
 function fixtureSummaryFor(logs: FoodLog[]): FoodLogSummary | undefined {
   if (logs.length === 0) return undefined;
-  const days = new Set(logs.map((log) => log.timestampUTC.slice(0, 10)));
+  const byDay = new Map<string, FoodLog[]>();
+  for (const log of logs) {
+    const day = log.timestampUTC.slice(0, 10);
+    byDay.set(day, [...(byDay.get(day) ?? []), log]);
+  }
+  const buckets = fixtureFoodLogSummary.buckets.map((bucket) => {
+    const dayLogs = byDay.get(bucket.startDate) ?? [];
+    return {
+      ...bucket,
+      logsCount: dayLogs.length,
+      daysWithLogs: dayLogs.length > 0 ? 1 : 0,
+      nutrients: sumNutrients(dayLogs),
+    };
+  });
+  const totals = sumNutrients(logs);
+  const daysWithLogs = byDay.size;
   return {
     ...fixtureFoodLogSummary,
-    totals: {
-      ...fixtureFoodLogSummary.totals,
-      logsCount: logs.length,
-      daysWithLogs: days.size,
+    buckets,
+    totals: { logsCount: logs.length, daysWithLogs, nutrients: totals },
+    averagePerLoggedDay: {
+      nutrients: Object.fromEntries(
+        Object.entries(totals).map(([key, amount]) => [
+          key,
+          { ...amount, value: amount.value / daysWithLogs },
+        ])
+      ),
     },
   };
+}
+
+// Sparse like the API: a nutrient appears only when at least one food had it.
+function sumNutrients(logs: FoodLog[]): NutritionFacts {
+  const totals: Record<string, NutrientAmount> = {};
+  for (const log of logs) {
+    for (const food of log.foods) {
+      for (const [key, amount] of Object.entries(food.nutrients) as [
+        string,
+        NutrientAmount | undefined,
+      ][]) {
+        if (!amount) continue;
+        const current = totals[key];
+        totals[key] = current
+          ? { ...current, value: current.value + amount.value }
+          : { ...amount };
+      }
+    }
+  }
+  return totals;
 }
 
 function formatSummary(summary: FoodLogSummary): string {
