@@ -180,7 +180,7 @@ export function FoodLogsScreen({
       setDeleteRetryLog(undefined);
     } catch (caught) {
       closeDetail();
-      if (loadTicket.current !== revision) return;
+      // The mutation itself was not superseded, so its failure always shows.
       setError(
         caught instanceof Error ? caught.message : 'Food log deletion failed.'
       );
@@ -200,11 +200,13 @@ export function FoodLogsScreen({
           <Pressable
             accessibilityLabel="Add food log"
             accessibilityRole="button"
-            disabled={!configured}
+            // Like Delete, adding waits for the list load to settle so a
+            // mutation can never race the request that populates the screen.
+            disabled={!configured || loading}
             onPress={() => setEditor('new')}
             style={[
               sharedStyles.iconButton,
-              !configured && sharedStyles.disabled,
+              (!configured || loading) && sharedStyles.disabled,
             ]}
             testID="food-log-add"
           >
