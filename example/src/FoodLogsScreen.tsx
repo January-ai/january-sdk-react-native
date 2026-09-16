@@ -83,10 +83,13 @@ export function FoodLogsScreen({
       setError(undefined);
       setDeleteRetryLog(undefined);
       setSummary(undefined);
-      summaryTicket.current += 1;
+      // This load owns the screen only while its ticket is current; a range
+      // change or a newer refresh that lands first wins.
+      const ticket = ++summaryTicket.current;
       try {
         if (fixtures) {
           await fixtureDelay(8000);
+          if (ticket !== summaryTicket.current) return;
           if (forceFixtureFailure) {
             throw new Error('Temporary fixture food logs failure.');
           }
@@ -99,6 +102,7 @@ export function FoodLogsScreen({
             client.foodLogs.list(dates),
             client.foodLogs.getSummary({ ...dates, groupBy: 'day' }),
           ]);
+          if (ticket !== summaryTicket.current) return;
           if (listed.status === 'rejected') throw listed.reason;
           setLogs(listed.value.items);
           setSummary(
@@ -110,7 +114,7 @@ export function FoodLogsScreen({
           caught instanceof Error ? caught.message : 'Food logs failed to load.'
         );
       } finally {
-        setLoading(false);
+        if (ticket === summaryTicket.current) setLoading(false);
       }
     },
     [client, configured, fixtures, range]

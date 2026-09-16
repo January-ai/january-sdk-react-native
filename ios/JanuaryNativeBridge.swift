@@ -570,11 +570,9 @@ public final class JanuaryNativeBridge: NSObject, @unchecked Sendable {
     /// unavailability (for example no network for a server-backed locale) is reported by
     /// `voiceCaptureStart` as `recognizer_unavailable` rather than hiding the feature.
     @objc public func voiceCaptureIsSupported(_ locale: String?) -> Bool {
-        // Check the same locale the session will record with, not the device default.
-        if let locale, !locale.isEmpty {
-            return SFSpeechRecognizer(locale: Locale(identifier: locale)) != nil
-        }
-        return SFSpeechRecognizer(locale: Locale.current) != nil || SFSpeechRecognizer() != nil
+        // Check the same locale the session will record with; the device locale otherwise.
+        let requested = locale.flatMap { $0.isEmpty ? nil : Locale(identifier: $0) } ?? Locale.current
+        return SFSpeechRecognizer(locale: requested) != nil
     }
 
     @objc(voiceCaptureStart:locale:captureID:completion:)
