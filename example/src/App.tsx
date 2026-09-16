@@ -1019,7 +1019,7 @@ function NaturalLanguageResult({ result }: { result: FoodScan }) {
           {detection.food.brandName ? (
             <Text style={styles.foodBrand}>{detection.food.brandName}</Text>
           ) : null}
-          {detection.food.serving.unit ? (
+          {formatDetectedServing(detection.food) ? (
             <Text style={styles.foodBrand}>
               {formatDetectedServing(detection.food)}
             </Text>

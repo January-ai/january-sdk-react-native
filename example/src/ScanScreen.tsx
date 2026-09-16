@@ -500,7 +500,7 @@ function MealAnalysisSheet({
                         {detection.food.brandName}
                       </Text>
                     ) : null}
-                    {detection.food.serving.unit ? (
+                    {formatServing(detection.food) ? (
                       <Text style={styles.detectionBrand}>
                         {formatServing(detection.food)}
                       </Text>
