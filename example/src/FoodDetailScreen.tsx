@@ -16,7 +16,7 @@ import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import type {
   DietPreference,
   DietRestriction,
-  DetectedFood,
+  AlternativeFood,
   FoodSearchItem,
   GlucosePrediction,
   JanuaryClient,
@@ -598,7 +598,7 @@ function AlternativesSheet({
   visible: boolean;
 }) {
   const [selected, setSelected] = useState<string[]>([]);
-  const [results, setResults] = useState<DetectedFood[]>();
+  const [results, setResults] = useState<AlternativeFood[]>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
   useEffect(() => {

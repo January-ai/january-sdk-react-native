@@ -18,6 +18,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type {
+  DetectedFood,
   FoodScan,
   JanuaryClient,
   NutritionFacts,
@@ -497,6 +498,11 @@ function MealAnalysisSheet({
                     {detection.food.brandName ? (
                       <Text style={styles.detectionBrand}>
                         {detection.food.brandName}
+                      </Text>
+                    ) : null}
+                    {detection.food.serving.unit ? (
+                      <Text style={styles.detectionBrand}>
+                        {formatServing(detection.food)}
                       </Text>
                     ) : null}
                   </View>
@@ -997,3 +1003,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+
+function formatServing(food: DetectedFood): string {
+  const eaten = food.quantity ?? 1;
+  const size = food.serving.quantity ?? 1;
+  return `${eaten} × ${size} ${food.serving.unit ?? ''}`.trim();
+}

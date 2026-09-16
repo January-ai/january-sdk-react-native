@@ -27,7 +27,12 @@ import ai.january.partner.foods.SuggestFoodAlternativesResponse
 import ai.january.partner.foodlogs.FoodLog
 import ai.january.partner.foodlogs.ListFoodLogsResponse
 import ai.january.partner.foods.DetectedFood
-import ai.january.partner.foods.DetectedServing
+import ai.january.partner.foods.AlternativeFood
+import ai.january.partner.foods.ServingSummary
+import ai.january.partner.foodlogs.FoodLogSummary
+import ai.january.partner.foodlogs.FoodLogSummaryGrouping
+import ai.january.partner.foodlogs.WeekStart
+import ai.january.partner.photos.AnalysisEffort
 import ai.january.partner.glucose.ActivityLevel
 import ai.january.partner.glucose.GlucosePrediction
 import ai.january.partner.glucose.GlucosePredictionProfile
@@ -173,9 +178,19 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
     }
   }
 
-  override fun foodAnalysisAnalyzePhoto(clientId: String, image: String, promise: Promise) {
+  override fun foodAnalysisAnalyzePhoto(
+    clientId: String,
+    image: String,
+    reasoningEffort: String?,
+    promise: Promise,
+  ) {
     withClient(clientId, promise) { client ->
-      client.foodAnalysis.analyzePhoto(ScanFoodPhotoRequest(image)).toJsonObject()
+      val effort = when (reasoningEffort) {
+        "xhigh" -> AnalysisEffort.XHIGH
+        "none" -> AnalysisEffort.NONE
+        else -> null
+      }
+      client.foodAnalysis.analyzePhoto(ScanFoodPhotoRequest(image, reasoningEffort = effort)).toJsonObject()
     }
   }
 
@@ -303,6 +318,24 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  override fun foodLogsGetSummary(
+    clientId: String,
+    start: String,
+    end: String,
+    groupBy: String,
+    weekStart: String,
+    promise: Promise,
+  ) {
+    withClient(clientId, promise) { client ->
+      client.foodLogs.getSummary(
+        start,
+        end,
+        if (groupBy == "week") FoodLogSummaryGrouping.WEEK else FoodLogSummaryGrouping.DAY,
+        if (weekStart == "sunday") WeekStart.SUNDAY else WeekStart.MONDAY,
+      ).toJsonObject()
+    }
+  }
+
   override fun foodLogsCreate(
     clientId: String,
     foodsJson: String,
@@ -409,18 +442,25 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
   private fun SuggestFoodAlternativesResponse.toJsonObject(): JSONObject = JSONObject()
     .put("alternatives", JSONArray(alternatives.map { it.toJsonObject() }))
 
+  private fun AlternativeFood.toJsonObject(): JSONObject = JSONObject()
+    .putNullable("id", id)
+    .putNullable("name", name)
+    .putNullable("brandName", brandName)
+    .put("nutrients", nutrients.toJsonObject())
+    .put("servings", JSONArray(servings.map { it.toJsonObject() }))
+
+  private fun ServingSummary.toJsonObject(): JSONObject = JSONObject()
+    .putNullable("id", id)
+    .putNullable("quantity", quantity)
+    .putNullable("unit", unit)
+
   private fun DetectedFood.toJsonObject(): JSONObject = JSONObject()
     .putNullable("id", id)
     .putNullable("name", name)
     .putNullable("brandName", brandName)
     .put("nutrients", nutrients.toJsonObject())
-    .put("servings", JSONArray(servings.orEmpty().map { serving ->
-      JSONObject()
-        .putNullable("id", serving.id)
-        .putNullable("quantity", serving.quantity)
-        .putNullable("unit", serving.unit)
-        .putNullable("selectedQuantity", serving.selectedQuantity)
-    }))
+    .put("serving", serving.toJsonObject())
+    .putNullable("quantity", quantity)
 
   private fun FoodSearchItem.toJsonObject(): JSONObject = JSONObject()
     .put("id", id.value)
@@ -561,19 +601,28 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
     .put("detections", JSONArray(detections.map { detection ->
       JSONObject()
         .putNullable("confidenceScore", detection.confidenceScore)
-        .put("food", JSONObject()
-          .putNullable("id", detection.food.id)
-          .putNullable("name", detection.food.name)
-          .putNullable("brandName", detection.food.brandName)
-          .put("nutrients", detection.food.nutrients.toJsonObject())
-          .put("servings", JSONArray(detection.food.servings.orEmpty().map { serving ->
-            JSONObject()
-              .putNullable("id", serving.id)
-              .putNullable("quantity", serving.quantity)
-              .putNullable("unit", serving.unit)
-              .putNullable("selectedQuantity", serving.selectedQuantity)
-          })))
+        .put("food", detection.food.toJsonObject())
     }))
+
+  private fun FoodLogSummary.toJsonObject(): JSONObject = JSONObject()
+    .put("groupBy", groupBy.name.lowercase())
+    .putNullable("weekStart", weekStart?.name?.lowercase())
+    .put("timezone", timezone)
+    .put("startDate", startDate)
+    .put("endDate", endDate)
+    .put("buckets", JSONArray(buckets.map { bucket ->
+      JSONObject()
+        .put("startDate", bucket.startDate)
+        .put("endDate", bucket.endDate)
+        .put("logsCount", bucket.logsCount)
+        .put("daysWithLogs", bucket.daysWithLogs)
+        .put("nutrients", bucket.nutrients.toJsonObject())
+    }))
+    .put("totals", JSONObject()
+      .put("logsCount", totals.logsCount)
+      .put("daysWithLogs", totals.daysWithLogs)
+      .put("nutrients", totals.nutrients.toJsonObject()))
+    .put("averagePerLoggedDay", JSONObject().put("nutrients", averagePerLoggedDay.nutrients.toJsonObject()))
 
   private fun ListFoodLogsResponse.toJsonObject(): JSONObject = JSONObject()
     .put("totalCount", totalCount)
@@ -660,24 +709,19 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
       detections = (0 until detections.length()).map { index ->
         val detection = detections.getJSONObject(index)
         val food = detection.getJSONObject("food")
-        val servings = food.optJSONArray("servings")
+        val serving = food.optJSONObject("serving")
         FoodDetection(
           food = DetectedFood(
             id = food.nullableString("id"),
             name = food.nullableString("name"),
             brandName = food.nullableString("brandName"),
             nutrients = parseCompleteNutrition(food.getJSONObject("nutrients")),
-            servings = servings?.let { values ->
-              (0 until values.length()).map { servingIndex ->
-                val serving = values.getJSONObject(servingIndex)
-                DetectedServing(
-                  id = serving.nullableString("id"),
-                  quantity = serving.nullableDouble("quantity"),
-                  unit = serving.nullableString("unit"),
-                  selectedQuantity = serving.nullableDouble("selectedQuantity"),
-                )
-              }
-            },
+            serving = ServingSummary(
+              id = serving?.nullableString("id"),
+              quantity = serving?.nullableDouble("quantity"),
+              unit = serving?.nullableString("unit"),
+            ),
+            quantity = food.nullableDouble("quantity"),
           ),
           confidenceScore = detection.nullableString("confidenceScore"),
         )

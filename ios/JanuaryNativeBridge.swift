@@ -288,14 +288,16 @@ public final class JanuaryNativeBridge: NSObject, @unchecked Sendable {
         }
     }
 
-    @objc(foodAnalysisAnalyzePhoto:image:completion:)
+    @objc(foodAnalysisAnalyzePhoto:image:reasoningEffort:completion:)
     public func foodAnalysisAnalyzePhoto(
         _ clientID: String,
         image: String,
+        reasoningEffort: String?,
         completion: @escaping (NSString?, NSError?) -> Void
     ) {
+        let effort = reasoningEffort.flatMap(AnalysisEffort.init(rawValue:))
         perform(clientID, completion: completion) { client in
-            try await client.foodAnalysis.analyzePhoto(.init(image: image))
+            try await client.foodAnalysis.analyzePhoto(.init(image: image, reasoningEffort: effort))
         }
     }
 
@@ -327,6 +329,25 @@ public final class JanuaryNativeBridge: NSObject, @unchecked Sendable {
     ) {
         perform(clientID, completion: completion) { client in
             try await client.foodLogs.list(start: start, end: end)
+        }
+    }
+
+    @objc(foodLogsGetSummary:start:end:groupBy:weekStart:completion:)
+    public func foodLogsGetSummary(
+        _ clientID: String,
+        start: String,
+        end: String,
+        groupBy: String,
+        weekStart: String,
+        completion: @escaping (NSString?, NSError?) -> Void
+    ) {
+        perform(clientID, completion: completion) { client in
+            try await client.foodLogs.getSummary(
+                start: start,
+                end: end,
+                groupBy: groupBy == "week" ? .week : .day,
+                weekStart: weekStart == "sunday" ? .sunday : .monday
+            )
         }
     }
 

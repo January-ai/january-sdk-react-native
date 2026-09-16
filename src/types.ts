@@ -110,7 +110,7 @@ export interface SuggestFoodAlternativesRequest {
 }
 
 export interface SuggestFoodAlternativesResponse {
-  alternatives: DetectedFood[];
+  alternatives: AlternativeFood[];
 }
 
 export interface NutrientAmount {
@@ -265,24 +265,47 @@ export interface FoodSelection {
   serving: ServingSelection;
 }
 
+/** How much analysis effort a photo scan uses. Both modes return the same FoodScan and cost the same. */
+export type AnalysisEffort = 'none' | 'xhigh';
+
 export interface AnalyzePhotoRequest {
   /** A base64 data URI or a remote image URL accepted by January. */
   image: string;
+  /** Omit or `'none'` for the standard analyzer; `'xhigh'` for the reasoning-based one. */
+  reasoningEffort?: AnalysisEffort;
 }
 
-export interface DetectedServing {
+/** The catalog serving a detected or alternative food is expressed in. `quantity` is the size of one serving, not the amount eaten. */
+export interface ServingSummary {
   id?: string;
   quantity?: number;
-  selectedQuantity?: number;
   unit?: string;
 }
 
+/** @deprecated Use ServingSummary. The amount eaten is now DetectedFood.quantity. */
+export type DetectedServing = ServingSummary;
+
+/**
+ * A food recognized from a photo or a description. `serving` is the selected catalog serving and
+ * `quantity` is how many of that serving were eaten, so together they are ready to log.
+ * `nutrients` are already scaled to `quantity`.
+ */
 export interface DetectedFood {
   brandName?: string;
   id?: string;
   name?: string;
   nutrients: NutritionFacts;
-  servings?: DetectedServing[];
+  quantity?: number;
+  serving: ServingSummary;
+}
+
+/** A healthier alternative to a food, with the servings its nutrition can be read against. */
+export interface AlternativeFood {
+  brandName?: string;
+  id?: string;
+  name?: string;
+  nutrients: NutritionFacts;
+  servings: ServingSummary[];
 }
 
 export interface FoodDetection {
@@ -340,6 +363,46 @@ export interface FoodLogList {
 export interface ListFoodLogsRequest {
   end: string;
   start: string;
+}
+
+export type FoodLogSummaryGrouping = 'day' | 'week';
+export type WeekStart = 'monday' | 'sunday';
+
+/** Inclusive calendar dates (YYYY-MM-DD) in the client's timezone, at most 366 days apart. */
+export interface GetFoodLogSummaryRequest {
+  end: string;
+  groupBy?: FoodLogSummaryGrouping;
+  start: string;
+  weekStart?: WeekStart;
+}
+
+/** One day or week of a summary. Buckets tile the range, so an empty period is present with zero counts. */
+export interface FoodLogSummaryBucket {
+  daysWithLogs: number;
+  endDate: string;
+  logsCount: number;
+  /** Sparse: a nutrient is absent when nothing could be totalled. */
+  nutrients: NutritionFacts;
+  startDate: string;
+}
+
+export interface FoodLogSummaryTotals {
+  daysWithLogs: number;
+  logsCount: number;
+  nutrients: NutritionFacts;
+}
+
+export interface FoodLogSummary {
+  /** Totals divided by the number of days that have at least one log. */
+  averagePerLoggedDay: { nutrients: NutritionFacts };
+  buckets: FoodLogSummaryBucket[];
+  endDate: string;
+  groupBy: FoodLogSummaryGrouping;
+  startDate: string;
+  timezone: string;
+  totals: FoodLogSummaryTotals;
+  /** Absent when grouped by day. */
+  weekStart?: WeekStart;
 }
 
 export interface CreateFoodLogRequest {

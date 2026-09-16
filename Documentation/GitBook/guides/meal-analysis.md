@@ -16,6 +16,23 @@ const scan = await january.foodAnalysis.analyzePhoto({
 });
 ```
 
+Pass `reasoningEffort: 'xhigh'` to use the reasoning-based analyzer; the result
+shape and cost are the same.
+
+Each detection's `food` carries the selected catalog `serving` (`id`,
+`quantity`, `unit`, where `quantity` is the size of one serving) and the
+`quantity` eaten, so a detection logs without another lookup:
+
+```ts
+const foods = scan.detections.flatMap((detection) => {
+  const { id, serving, quantity } = detection.food;
+  if (!id || !serving.id) return [];
+  return [{ id, serving: { id: serving.id, quantity: quantity ?? 1 } }];
+});
+```
+
+`nutrients` on each detection are already scaled to `quantity`.
+
 Correct a prior result by passing the complete analysis and an instruction:
 
 ```ts

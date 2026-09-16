@@ -32,6 +32,7 @@
 | --- | --- | --- |
 | `foodLogs.create` | `CreateFoodLogRequest` | `FoodLog` |
 | `foodLogs.list` | `ListFoodLogsRequest` | `FoodLogList` |
+| `foodLogs.getSummary` | `GetFoodLogSummaryRequest` | `FoodLogSummary` |
 | `foodLogs.update` | `UpdateFoodLogRequest` | `FoodLog` |
 | `foodLogs.delete` | log ID string | `void` |
 | `glucose.predict` | `PredictGlucoseRequest` | `GlucosePrediction` |

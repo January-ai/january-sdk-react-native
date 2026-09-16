@@ -213,14 +213,12 @@ export const fixtureScan: FoodScan = {
           fiber: { value: 3, unit: 'g' },
           sodium: { value: 10, unit: 'mg' },
         },
-        servings: [
-          {
-            id: 'fixture-oatmeal-serving',
-            quantity: 1,
-            selectedQuantity: 1,
-            unit: 'cup',
-          },
-        ],
+        quantity: 1,
+        serving: {
+          id: 'fixture-oatmeal-serving',
+          quantity: 1,
+          unit: 'cup',
+        },
       },
     },
   ],
@@ -347,7 +345,6 @@ export async function suggestFixtureAlternatives(
           {
             id: 'fixture-lentils-serving',
             quantity: 1,
-            selectedQuantity: 1,
             unit: 'cup',
           },
         ],

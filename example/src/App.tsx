@@ -994,6 +994,11 @@ function NaturalLanguageResult({ result }: { result: FoodScan }) {
           {detection.food.brandName ? (
             <Text style={styles.foodBrand}>{detection.food.brandName}</Text>
           ) : null}
+          {detection.food.serving.unit ? (
+            <Text style={styles.foodBrand}>
+              {`${detection.food.quantity ?? 1} × ${detection.food.serving.quantity ?? 1} ${detection.food.serving.unit}`}
+            </Text>
+          ) : null}
           <NaturalMacroCard compact nutrients={detection.food.nutrients} />
         </View>
       ))}

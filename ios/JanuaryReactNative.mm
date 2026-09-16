@@ -83,10 +83,11 @@
 
 - (void)foodAnalysisAnalyzePhoto:(NSString *)clientId
                            image:(NSString *)image
+                 reasoningEffort:(NSString *)reasoningEffort
                          resolve:(RCTPromiseResolveBlock)resolve
                           reject:(RCTPromiseRejectBlock)reject
 {
-  [_bridge foodAnalysisAnalyzePhoto:clientId image:image completion:^(NSString *json, NSError *error) {
+  [_bridge foodAnalysisAnalyzePhoto:clientId image:image reasoningEffort:reasoningEffort completion:^(NSString *json, NSError *error) {
     if (error) { reject(error.userInfo[@"code"] ?: @"january_error", error.localizedDescription, error); return; }
     resolve(json);
   }];
@@ -213,6 +214,20 @@
                reject:(RCTPromiseRejectBlock)reject
 {
   [_bridge foodLogsList:clientId start:start end:end completion:^(NSString *json, NSError *error) {
+    if (error) { reject(error.userInfo[@"code"] ?: @"january_error", error.localizedDescription, error); return; }
+    resolve(json);
+  }];
+}
+
+- (void)foodLogsGetSummary:(NSString *)clientId
+                      start:(NSString *)start
+                        end:(NSString *)end
+                    groupBy:(NSString *)groupBy
+                  weekStart:(NSString *)weekStart
+                    resolve:(RCTPromiseResolveBlock)resolve
+                     reject:(RCTPromiseRejectBlock)reject
+{
+  [_bridge foodLogsGetSummary:clientId start:start end:end groupBy:groupBy weekStart:weekStart completion:^(NSString *json, NSError *error) {
     if (error) { reject(error.userInfo[@"code"] ?: @"january_error", error.localizedDescription, error); return; }
     resolve(json);
   }];

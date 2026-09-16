@@ -76,7 +76,11 @@ export interface Spec extends TurboModule {
     limit: number,
     offset: number
   ): Promise<string>;
-  foodAnalysisAnalyzePhoto(clientId: string, image: string): Promise<string>;
+  foodAnalysisAnalyzePhoto(
+    clientId: string,
+    image: string,
+    reasoningEffort: string | null
+  ): Promise<string>;
   foodAnalysisAnalyzeDescription(
     clientId: string,
     query: string
@@ -87,6 +91,13 @@ export interface Spec extends TurboModule {
     instruction: string
   ): Promise<string>;
   foodLogsList(clientId: string, start: string, end: string): Promise<string>;
+  foodLogsGetSummary(
+    clientId: string,
+    start: string,
+    end: string,
+    groupBy: string,
+    weekStart: string
+  ): Promise<string>;
   foodLogsCreate(
     clientId: string,
     foodsJson: string,
