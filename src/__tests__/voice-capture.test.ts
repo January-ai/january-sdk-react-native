@@ -272,6 +272,23 @@ describe('VoiceCaptureSession', () => {
     session.dispose();
   });
 
+  it('a start() queued behind a pending start rejects if the session is disposed meanwhile', async () => {
+    let finishFirst: (value: string) => void = () => undefined;
+    native.voiceCaptureStart.mockImplementationOnce(
+      () => new Promise<string>((resolve) => (finishFirst = resolve))
+    );
+    const session = new VoiceCaptureSession();
+    const before = native.voiceCaptureStart.mock.calls.length;
+    const first = session.start();
+    session.cancel();
+    const second = session.start();
+    session.dispose();
+    finishFirst('{}');
+    await expect(first).rejects.toMatchObject({ code: 'cancelled' });
+    await expect(second).rejects.toMatchObject({ code: 'invalid_state' });
+    expect(native.voiceCaptureStart).toHaveBeenCalledTimes(before + 1);
+  });
+
   it('cancel releases the native capture and returns to idle', async () => {
     const session = new VoiceCaptureSession();
     await session.start();

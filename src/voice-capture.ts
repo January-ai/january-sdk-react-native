@@ -177,7 +177,11 @@ export class VoiceCaptureSession {
     }
     // A previous start() may still be awaiting the permission prompt or the native
     // recognizer after cancel(); let it settle so two starts never overlap natively.
-    if (this.pendingStart) await this.pendingStart.catch(() => undefined);
+    if (this.pendingStart) {
+      await this.pendingStart.catch(() => undefined);
+      // dispose() may have run while we waited.
+      this.assertUsable();
+    }
     if (this.current.state !== 'idle') {
       throw new VoiceCaptureError(
         'invalid_state',
