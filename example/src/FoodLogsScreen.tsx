@@ -86,7 +86,7 @@ export function FoodLogsScreen({
       // This load owns the screen only while its ticket is current; a range
       // change or a newer refresh that lands first wins.
       const ticket = ++loadTicket.current;
-      summaryTicket.current += 1;
+      const summaryAtStart = ++summaryTicket.current;
       try {
         if (fixtures) {
           await fixtureDelay(8000);
@@ -106,9 +106,12 @@ export function FoodLogsScreen({
           if (ticket !== loadTicket.current) return;
           if (listed.status === 'rejected') throw listed.reason;
           setLogs(listed.value.items);
-          setSummary(
-            summarized.status === 'fulfilled' ? summarized.value : undefined
-          );
+          // A summary-only refresh may have landed meanwhile; keep the newer one.
+          if (summaryAtStart === summaryTicket.current) {
+            setSummary(
+              summarized.status === 'fulfilled' ? summarized.value : undefined
+            );
+          }
         }
       } catch (caught) {
         setError(
@@ -152,8 +155,15 @@ export function FoodLogsScreen({
     [fixtures, logs, range, summary]
   );
 
+  // A mutation makes any list response still in flight stale: it would carry
+  // the pre-mutation list and undo the optimistic update below.
+  const invalidatePendingLoads = () => {
+    loadTicket.current += 1;
+  };
+
   async function deleteLog(log: FoodLog) {
     if (!log.id) return;
+    invalidatePendingLoads();
     setLoading(true);
     setError(undefined);
     try {
@@ -466,6 +476,7 @@ export function FoodLogsScreen({
         fixtures={fixtures}
         onClose={() => setEditor(undefined)}
         onSaved={(saved) => {
+          invalidatePendingLoads();
           setLogs((current) => {
             const index = current.findIndex((item) => item.id === saved.id);
             if (index < 0) return [saved, ...current];
