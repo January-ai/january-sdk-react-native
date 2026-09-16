@@ -110,6 +110,8 @@ export function FoodLogsScreen({
           );
         }
       } catch (caught) {
+        // A stale load's failure is not this screen's error any more.
+        if (ticket !== loadTicket.current) return;
         setError(
           caught instanceof Error ? caught.message : 'Food logs failed to load.'
         );
@@ -119,6 +121,11 @@ export function FoodLogsScreen({
     },
     [client, configured, fixtures, range]
   );
+  // Mutations can outlive the render that started them (a delete while the
+  // user switches ranges, a save after the editor closed); reload through the
+  // latest load so they never fetch a range the screen has left.
+  const latestLoad = useRef(load);
+  latestLoad.current = load;
 
   useEffect(() => {
     load().catch(() => undefined);
@@ -166,7 +173,7 @@ export function FoodLogsScreen({
       setLoading(false);
       // Reload list and summary from the API so a list response that was in
       // flight during the delete cannot leave the screen out of date.
-      if (reload) load().catch(() => undefined);
+      if (reload) latestLoad.current().catch(() => undefined);
     }
   }
 
@@ -461,7 +468,7 @@ export function FoodLogsScreen({
           closeDetail();
           setEditor(undefined);
           // Reload list and summary from the API so both reflect the save.
-          if (!fixtures) load().catch(() => undefined);
+          if (!fixtures) latestLoad.current().catch(() => undefined);
         }}
         visible={editor != null}
       />
