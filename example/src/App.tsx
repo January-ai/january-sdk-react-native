@@ -44,6 +44,7 @@ import { FoodLogsScreen } from './FoodLogsScreen';
 import { GlucoseScreen } from './GlucoseScreen';
 import { RestaurantScreens } from './RestaurantScreens';
 import { ScanScreen } from './ScanScreen';
+import { VoiceInputButton } from './VoiceInputButton';
 
 const tokenEndpoint = process.env.EXPO_PUBLIC_JANUARY_TOKEN_ENDPOINT;
 const developmentApiKey = process.env.EXPO_PUBLIC_JANUARY_API_KEY;
@@ -264,6 +265,18 @@ function DemoScreen() {
             setNaturalResult(undefined);
             setError(undefined);
           }}
+          onVoiceError={(message) =>
+            setError({ title: 'Voice input', message })
+          }
+          onVoiceTranscript={
+            foodMode === 'barcode'
+              ? undefined
+              : (transcript) => {
+                  setQuery(transcript);
+                  setError(undefined);
+                  search(transcript).catch(() => undefined);
+                }
+          }
           onClear={() => {
             setQuery('');
             setHasSearched(false);
@@ -631,6 +644,8 @@ interface SearchFieldProps {
   onChangeText: (value: string) => void;
   onClear: () => void;
   onSubmit: () => void;
+  onVoiceError?: (message: string) => void;
+  onVoiceTranscript?: (transcript: string) => void;
   placeholder: string;
   value: string;
 }
@@ -639,6 +654,8 @@ function SearchField({
   onChangeText,
   onClear,
   onSubmit,
+  onVoiceError,
+  onVoiceTranscript,
   placeholder,
   value,
 }: SearchFieldProps) {
@@ -657,6 +674,13 @@ function SearchField({
         testID="search-input"
         value={value}
       />
+      {onVoiceTranscript ? (
+        <VoiceInputButton
+          onError={onVoiceError}
+          onTranscript={onVoiceTranscript}
+          testID="search-voice"
+        />
+      ) : null}
       {value ? (
         <Pressable
           accessibilityLabel="Clear search"

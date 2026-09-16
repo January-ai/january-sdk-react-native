@@ -35,6 +35,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "ai.january.sdk.demo",
       "infoPlist": {
+        "NSMicrophoneUsageDescription": "Allow January SDK Demo to hear the food you say so it can search for it.",
+        "NSSpeechRecognitionUsageDescription": "Allow January SDK Demo to turn what you say into a food search.",
         "EXDevMenuIsOnboardingFinished": true,
         "EXDevMenuShowsAtLaunch": false,
         "EXDevMenuShowFloatingActionButton": false
@@ -47,7 +49,8 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "package": "ai.january.sdk.demo"
+      "package": "ai.january.sdk.demo",
+      "permissions": ["android.permission.RECORD_AUDIO"]
     },
     "web": {
       "favicon": "./assets/favicon.png"

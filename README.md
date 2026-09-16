@@ -253,6 +253,7 @@ troubleshooting.
 - [Meal analysis](Documentation/GitBook/guides/meal-analysis.md)
 - [Food logs](Documentation/GitBook/guides/food-logs.md)
 - [Glucose prediction](Documentation/GitBook/guides/glucose-prediction.md)
+- [Voice capture](Documentation/GitBook/guides/voice-capture.md)
 
 For SDK development, testing, IDE setup, native dependency pins, and publishing,
 see [CONTRIBUTING.md](CONTRIBUTING.md) and

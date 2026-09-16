@@ -10,6 +10,16 @@ export type TokenRequest = {
   requestId: string;
 };
 
+export type VoiceCaptureUpdate = {
+  sessionId: string;
+  state: string;
+  audioLevel: number;
+  durationMs: number;
+  partialTranscript: string;
+  errorCode: string | null;
+  errorMessage: string | null;
+};
+
 export interface Spec extends TurboModule {
   getNativeModuleVersion(): string;
   configureClient(
@@ -113,7 +123,13 @@ export interface Spec extends TurboModule {
   ): Promise<string>;
   foodLogsDelete(clientId: string, id: string): Promise<string>;
   glucosePredict(clientId: string, requestJson: string): Promise<string>;
+  voiceCaptureIsSupported(): boolean;
+  voiceCaptureStart(sessionId: string, locale: string | null): Promise<string>;
+  voiceCaptureStop(sessionId: string): Promise<string>;
+  voiceCaptureCancel(sessionId: string): void;
+  voiceCaptureDispose(sessionId: string): void;
   readonly onTokenRequested: CodegenTypes.EventEmitter<TokenRequest>;
+  readonly onVoiceCaptureUpdate: CodegenTypes.EventEmitter<VoiceCaptureUpdate>;
 }
 
 export default TurboModuleRegistry.get<Spec>('JanuaryReactNative');

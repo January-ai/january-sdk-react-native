@@ -20,6 +20,11 @@ response error. Update to restore them.
   range, with totals and a per-logged-day average (`FoodLogSummary`).
 - Added `AnalyzePhotoRequest.reasoningEffort` (`'xhigh'`) to opt into the
   reasoning-based photo analyzer.
+- Added `VoiceCaptureSession`: microphone capture with on-device speech
+  recognition through the native SDKs (Apple Speech, Android
+  `SpeechRecognizer`), with live level, duration, partial text on Android, and
+  stable error codes. The example shows a microphone in the search field and the
+  food picker.
 - Pin the January iOS SDK `0.2.0` and Android SDK `0.2.0`, which carry the
   same changes.
 - `yarn example android` now finds the Android SDK and a JDK 17–21 on its own,

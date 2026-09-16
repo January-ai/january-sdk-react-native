@@ -23,6 +23,7 @@
 * [Meal analysis](guides/meal-analysis.md)
 * [Food logs](guides/food-logs.md)
 * [Glucose prediction](guides/glucose-prediction.md)
+* [Voice capture](guides/voice-capture.md)
 
 ## Reference
 

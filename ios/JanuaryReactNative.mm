@@ -14,6 +14,9 @@
     _bridge.tokenRequestHandler = ^(NSDictionary<NSString *, NSString *> *request) {
       [weakSelf emitOnTokenRequested:request];
     };
+    _bridge.voiceUpdateHandler = ^(NSDictionary *update) {
+      [weakSelf emitOnVoiceCaptureUpdate:update];
+    };
   }
   return self;
 }
@@ -280,6 +283,42 @@
     if (error) { reject(error.userInfo[@"code"] ?: @"january_error", error.localizedDescription, error); return; }
     resolve(json);
   }];
+}
+
+- (NSNumber *)voiceCaptureIsSupported
+{
+  return @([_bridge voiceCaptureIsSupported]);
+}
+
+- (void)voiceCaptureStart:(NSString *)sessionId
+                   locale:(NSString *)locale
+                  resolve:(RCTPromiseResolveBlock)resolve
+                   reject:(RCTPromiseRejectBlock)reject
+{
+  [_bridge voiceCaptureStart:sessionId locale:locale completion:^(NSString *json, NSError *error) {
+    if (error) { reject(error.userInfo[@"code"] ?: @"unknown", error.localizedDescription, error); return; }
+    resolve(json);
+  }];
+}
+
+- (void)voiceCaptureStop:(NSString *)sessionId
+                 resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject
+{
+  [_bridge voiceCaptureStop:sessionId completion:^(NSString *json, NSError *error) {
+    if (error) { reject(error.userInfo[@"code"] ?: @"unknown", error.localizedDescription, error); return; }
+    resolve(json);
+  }];
+}
+
+- (void)voiceCaptureCancel:(NSString *)sessionId
+{
+  [_bridge voiceCaptureCancel:sessionId];
+}
+
+- (void)voiceCaptureDispose:(NSString *)sessionId
+{
+  [_bridge voiceCaptureDispose:sessionId];
 }
 
 - (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:

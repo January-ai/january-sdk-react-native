@@ -60,6 +60,21 @@ import ai.january.partner.restaurants.RestaurantMenuItem
 import ai.january.partner.restaurants.SearchRestaurantMenuItemsResponse
 import ai.january.partner.restaurants.SearchRestaurantsRequest
 import ai.january.partner.restaurants.SearchRestaurantsResponse
+import ai.january.partner.voice.VoiceCaptureErrorCode
+import ai.january.partner.voice.VoiceCaptureException
+import ai.january.partner.voice.VoiceCaptureSession
+import ai.january.partner.voice.VoiceCaptureState
+import android.speech.SpeechRecognizer
+import com.facebook.react.bridge.UiThreadUtil
+import java.util.Locale
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.withTimeout
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
@@ -85,7 +100,17 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
   )
 
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+  private val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
   private val clients = ConcurrentHashMap<String, JanuaryPartnerUserClient>()
+  private val voiceSessions = HashMap<String, VoiceHolder>()
+
+  private class VoiceHolder(val session: VoiceCaptureSession, val collector: Job)
+  private data class VoiceSnapshot(
+    val state: VoiceCaptureState,
+    val level: Float,
+    val partial: String,
+    val error: VoiceCaptureException?,
+  )
   private val pendingTokenRequests = ConcurrentHashMap<String, PendingTokenRequest>()
 
   override fun getNativeModuleVersion(): String {
@@ -379,7 +404,172 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  // ——— Voice capture ————————————————————————————————————————————————————————
+
+  override fun voiceCaptureIsSupported(): Boolean =
+    SpeechRecognizer.isRecognitionAvailable(reactApplicationContext)
+
+  override fun voiceCaptureStart(sessionId: String, locale: String?, promise: Promise) {
+    UiThreadUtil.runOnUiThread {
+      try {
+        val holder = voiceSessions[sessionId] ?: createVoiceSession(sessionId, locale)
+        holder.session.startListening()
+        promise.resolve("{}")
+      } catch (error: Exception) {
+        rejectVoice(promise, error)
+      }
+    }
+  }
+
+  override fun voiceCaptureStop(sessionId: String, promise: Promise) {
+    UiThreadUtil.runOnUiThread {
+      val holder = voiceSessions[sessionId]
+      if (holder == null) {
+        promise.reject("invalid_state", "Voice capture is not recording.")
+        return@runOnUiThread
+      }
+      val session = holder.session
+      try {
+        if (session.state.value == VoiceCaptureState.LISTENING) session.stopListening()
+      } catch (error: Exception) {
+        rejectVoice(promise, error)
+        return@runOnUiThread
+      }
+      mainScope.launch {
+        try {
+          val outcome = withTimeout(20_000) {
+            merge(
+              session.latestResult.filterNotNull().map { result -> Result.success(result) },
+              session.error.filterNotNull().map { error -> Result.failure(error) },
+            ).first()
+          }
+          outcome.fold(
+            onSuccess = { result ->
+              session.clearResult()
+              promise.resolve(
+                JSONObject()
+                  .put("transcript", result.transcript)
+                  .put("durationMillis", result.durationMillis)
+                  .put("durationMs", result.durationMillis)
+                  .toString(),
+              )
+            },
+            onFailure = { error ->
+              session.clearError()
+              rejectVoice(promise, error)
+            },
+          )
+        } catch (error: Exception) {
+          session.cancel()
+          rejectVoice(promise, error)
+        }
+      }
+    }
+  }
+
+  override fun voiceCaptureCancel(sessionId: String) {
+    UiThreadUtil.runOnUiThread { voiceSessions[sessionId]?.session?.cancel() }
+  }
+
+  override fun voiceCaptureDispose(sessionId: String) {
+    UiThreadUtil.runOnUiThread {
+      voiceSessions.remove(sessionId)?.let { holder ->
+        holder.collector.cancel()
+        holder.session.cancel()
+        holder.session.close()
+      }
+    }
+  }
+
+  private fun createVoiceSession(sessionId: String, locale: String?): VoiceHolder {
+    val session = VoiceCaptureSession(
+      reactApplicationContext,
+      locale?.takeIf { it.isNotBlank() }?.let(Locale::forLanguageTag) ?: Locale.getDefault(),
+    )
+    val collector = mainScope.launch {
+      combine(session.state, session.audioLevel, session.partialTranscript, session.error) { state, level, partial, error ->
+        VoiceSnapshot(state, level, partial, error)
+      }.collect { snapshot ->
+        emitVoiceUpdate(sessionId, snapshot.state, snapshot.level, snapshot.partial, session.elapsedDurationMillis, snapshot.error)
+      }
+    }
+    val ticker = mainScope.launch {
+      while (true) {
+        delay(250)
+        if (session.state.value == VoiceCaptureState.LISTENING) {
+          emitVoiceUpdate(
+            sessionId,
+            session.state.value,
+            session.audioLevel.value,
+            session.partialTranscript.value,
+            session.elapsedDurationMillis,
+          )
+        }
+      }
+    }
+    collector.invokeOnCompletion { ticker.cancel() }
+    return VoiceHolder(session, collector).also { voiceSessions[sessionId] = it }
+  }
+
+  private fun emitVoiceUpdate(
+    sessionId: String,
+    state: VoiceCaptureState,
+    level: Float,
+    partial: String,
+    durationMillis: Long,
+    error: VoiceCaptureException? = null,
+  ) {
+    val event = Arguments.createMap().apply {
+      if (error != null) {
+        putString("errorCode", voiceCode(error))
+        putString("errorMessage", error.message ?: "Voice capture failed.")
+      } else {
+        putNull("errorCode")
+        putNull("errorMessage")
+      }
+      putString("sessionId", sessionId)
+      putString(
+        "state",
+        when (state) {
+          VoiceCaptureState.IDLE -> "idle"
+          VoiceCaptureState.LISTENING -> "recording"
+          VoiceCaptureState.PROCESSING -> "processing"
+        },
+      )
+      putDouble("audioLevel", level.toDouble())
+      putDouble("durationMs", durationMillis.toDouble())
+      putString("partialTranscript", partial)
+    }
+    reactApplicationContext.runOnJSQueueThread { emitOnVoiceCaptureUpdate(event) }
+  }
+
+  private fun rejectVoice(promise: Promise, error: Throwable) {
+    promise.reject(voiceCode(error), error.message ?: "Voice capture failed.", error)
+  }
+
+  private fun voiceCode(error: Throwable): String {
+    return when ((error as? VoiceCaptureException)?.code) {
+      VoiceCaptureErrorCode.PERMISSION_DENIED -> "permission_denied"
+      VoiceCaptureErrorCode.RECOGNIZER_UNAVAILABLE, VoiceCaptureErrorCode.RECOGNIZER_BUSY -> "recognizer_unavailable"
+      VoiceCaptureErrorCode.AUDIO -> "recording_failed"
+      VoiceCaptureErrorCode.NETWORK -> "transcription_failed"
+      VoiceCaptureErrorCode.NO_MATCH -> "no_match"
+      VoiceCaptureErrorCode.INVALID_STATE -> "invalid_state"
+      VoiceCaptureErrorCode.UNKNOWN -> "unknown"
+      null -> if (error is kotlinx.coroutines.TimeoutCancellationException) "transcription_failed" else "unknown"
+    }
+  }
+
   override fun invalidate() {
+    UiThreadUtil.runOnUiThread {
+      voiceSessions.values.forEach { holder ->
+        holder.collector.cancel()
+        holder.session.cancel()
+        holder.session.close()
+      }
+      voiceSessions.clear()
+    }
+    mainScope.cancel()
     clients.clear()
     pendingTokenRequests.values.forEach { it.deferred.cancel() }
     pendingTokenRequests.clear()
