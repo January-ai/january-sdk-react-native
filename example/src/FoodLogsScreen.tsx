@@ -160,6 +160,10 @@ export function FoodLogsScreen({
       setLogs((current) =>
         current.filter((candidate) => candidate.id !== log.id)
       );
+      // A load still in flight (fixture mode waits 8s) would resurrect the
+      // pre-mutation list; in live mode the reload below takes over.
+      loadTicket.current += 1;
+      setLoading(false);
       reload = !fixtures;
       closeDetail();
       setDeleteRetryLog(undefined);
@@ -467,7 +471,10 @@ export function FoodLogsScreen({
           });
           closeDetail();
           setEditor(undefined);
-          // Reload list and summary from the API so both reflect the save.
+          // A load still in flight would overwrite the saved log; drop it. In
+          // live mode reload list and summary so both reflect the save.
+          loadTicket.current += 1;
+          setLoading(false);
           if (!fixtures) latestLoad.current().catch(() => undefined);
         }}
         visible={editor != null}
