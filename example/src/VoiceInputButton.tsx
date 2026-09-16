@@ -1,13 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  PermissionsAndroid,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   VoiceCaptureError,
@@ -92,17 +85,6 @@ export function VoiceInputButton({
         else
           callbacks.current.onError?.('No speech was recognized. Try again.');
         return;
-      }
-      if (Platform.OS === 'android') {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
-        );
-        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-          callbacks.current.onError?.(
-            'Microphone access is required for voice input.'
-          );
-          return;
-        }
       }
       await session.start();
     } catch (error) {

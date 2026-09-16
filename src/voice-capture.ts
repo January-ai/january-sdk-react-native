@@ -1,4 +1,8 @@
-import type { EventSubscription } from 'react-native';
+import {
+  PermissionsAndroid,
+  Platform,
+  type EventSubscription,
+} from 'react-native';
 
 import NativeJanuaryReactNative, {
   type VoiceCaptureUpdate,
@@ -151,7 +155,11 @@ export class VoiceCaptureSession {
     };
   }
 
-  /** Requests permissions if needed and starts recording. Resolves once the microphone is live. */
+  /**
+   * Requests permissions if needed and starts recording. Resolves once the microphone is live.
+   * On Android this asks for `RECORD_AUDIO` at runtime; on iOS the native SDK asks for
+   * microphone and speech-recognition access.
+   */
   async start(): Promise<void> {
     this.assertUsable();
     if (!this.isSupported) {
@@ -170,6 +178,17 @@ export class VoiceCaptureSession {
     this.active = true;
     this.publish({ ...idleSnapshot, state: 'requestingPermission' });
     try {
+      if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
+        );
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          throw new VoiceCaptureError(
+            'permission_denied',
+            'Microphone access is required for voice input.'
+          );
+        }
+      }
       await requireNativeModule().voiceCaptureStart(
         this.sessionId,
         this.locale

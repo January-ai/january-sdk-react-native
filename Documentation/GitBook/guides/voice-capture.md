@@ -71,19 +71,9 @@ in Info.plist (Expo: `ios.infoPlist` in `app.json`). The SDK asks for both when
 `start()` runs.
 
 Android needs `android.permission.RECORD_AUDIO` in the manifest (Expo:
-`android.permissions`), and the app must request it at runtime before `start()`:
-
-```ts
-import { PermissionsAndroid, Platform } from 'react-native';
-
-if (Platform.OS === 'android') {
-  const granted = await PermissionsAndroid.request(
-    PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
-  );
-  if (granted !== PermissionsAndroid.RESULTS.GRANTED) return;
-}
-await voice.start();
-```
+`android.permissions`). `start()` requests it at runtime and rejects with
+`permission_denied` if the user declines, so the app does not need its own
+`PermissionsAndroid` call.
 
 ## Example app
 
