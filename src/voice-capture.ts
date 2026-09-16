@@ -114,8 +114,10 @@ function toVoiceCaptureError(error: unknown): VoiceCaptureError {
  * gesture. Android needs the `RECORD_AUDIO` runtime permission before `start()`; iOS needs
  * `NSMicrophoneUsageDescription` and `NSSpeechRecognitionUsageDescription` in Info.plist.
  *
- * The SDK does not store audio or send it to January. Recognition runs through the platform
- * speech service, which may process audio off the device under the platform's own terms.
+ * The SDK does not send audio to January. iOS buffers the recording in a temporary file on
+ * the device and deletes it once transcription finishes or the capture is cancelled; Android
+ * streams to the recognizer without a file. Recognition runs through the platform speech
+ * service, which may process audio off the device under the platform's own terms.
  */
 export class VoiceCaptureSession {
   readonly isSupported: boolean;
@@ -322,6 +324,9 @@ export class VoiceCaptureSession {
           });
           return;
         }
+        // Native cancellation is asynchronous: an update queued before cancel()
+        // took effect must not revive a session that already returned to idle.
+        if (!this.active) return;
         if (this.current.state === 'idle' && update.state === 'idle') return;
         this.publish({
           state: normalizeState(update.state),

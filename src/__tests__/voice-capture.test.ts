@@ -185,8 +185,17 @@ describe('VoiceCaptureSession', () => {
   it('cancel releases the native capture and returns to idle', async () => {
     const session = new VoiceCaptureSession();
     await session.start();
+    const sessionId = native.voiceCaptureStart.mock.calls.at(-1)![0];
     session.cancel();
     expect(native.voiceCaptureCancel).toHaveBeenCalled();
+    expect(session.snapshot.state).toBe('idle');
+    // A native update that was already queued must not revive the session.
+    emit(sessionId, {
+      state: 'recording',
+      audioLevel: 0.5,
+      durationMs: 300,
+      partialTranscript: '',
+    });
     expect(session.snapshot.state).toBe('idle');
     session.dispose();
   });

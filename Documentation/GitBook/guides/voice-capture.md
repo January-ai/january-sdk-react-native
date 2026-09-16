@@ -5,9 +5,12 @@ using the device's own speech recognizer: Apple Speech on iOS and Android
 `SpeechRecognizer` on Android. It is meant for explicit, user-driven input such
 as speaking a food name or a meal description.
 
-The SDK does not store the audio or send it to January. Recognition runs
-through the platform's speech service, which may process audio off the device
-under Apple's or Google's own terms; say so in your privacy disclosures.
+The SDK does not send audio to January. On iOS the recording is buffered in a
+temporary file on the device and deleted once transcription finishes or the
+capture is cancelled; on Android audio streams to the recognizer with no file.
+Recognition runs through the platform's speech service, which may process audio
+off the device under Apple's or Google's own terms; say so in your privacy
+disclosures.
 
 ## Capture and transcribe
 
