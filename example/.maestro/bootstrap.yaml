@@ -1,4 +1,9 @@
 appId: ai.january.sdk.demo
+# URL-encoded Metro address for the dev-client deep link. Override to point the
+# dev client at another Metro, e.g. a fixture-mode one on another port while a
+# live one keeps serving a device: -e METRO_URL=http%3A%2F%2F127.0.0.1%3A8082
+env:
+  METRO_URL: http%3A%2F%2F127.0.0.1%3A8081
 ---
 - retry:
     maxRetries: 2
@@ -10,8 +15,9 @@ appId: ai.january.sdk.demo
             - launchApp:
                 clearState: false
                 stopApp: true
-                arguments:
-                  --initialUrl: http://127.0.0.1:8081
+            # The dev client reconnects to its last server, so point it explicitly.
+            - openLink: exp+january-sdk-demo://expo-development-client/?url=${METRO_URL}
+            - waitForAnimationToEnd
       - runFlow:
           when:
             platform: Android
@@ -24,9 +30,9 @@ appId: ai.january.sdk.demo
             - extendedWaitUntil:
                 visible: "(?i).*development server.*"
                 timeout: 30000
-            - openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
+            - openLink: exp+january-sdk-demo://expo-development-client/?url=${METRO_URL}
             - waitForAnimationToEnd
-            - openLink: exp+january-sdk-demo://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081
+            - openLink: exp+january-sdk-demo://expo-development-client/?url=${METRO_URL}
             - waitForAnimationToEnd
             # react-native-screens can throw "runtime not ready" on a warm
             # relaunch of the dev build; RELOAD on the red screen recovers it.

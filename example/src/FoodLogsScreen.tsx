@@ -160,13 +160,7 @@ export function FoodLogsScreen({
     setRange(next);
   };
 
-  // The editor remembers which load owned the screen when it opened, so a save
-  // that resolves after a range change does not patch the new range's list.
-  const editorRevision = useRef(0);
-  const openEditor = (target: FoodLog | 'new') => {
-    editorRevision.current = loadTicket.current;
-    setEditor(target);
-  };
+  const openEditor = (target: FoodLog | 'new') => setEditor(target);
 
   async function deleteLog(log: FoodLog) {
     if (!log.id) return;
@@ -188,12 +182,9 @@ export function FoodLogsScreen({
       }
       if (selectedLogRef.current?.id === log.id) closeDetail();
       setDeleteRetryLog(undefined);
-      if (loadTicket.current !== revision) {
-        // The user moved to another range meanwhile; its load owns the screen.
-        // Live mode reloads so that range reflects the deletion too.
-        reload = !fixtures;
-        return;
-      }
+      // The deletion succeeded, so it applies to whatever list is on screen; a
+      // load that raced it (fixture mode restores the fixture list) is dropped
+      // below rather than allowed to resurrect the row.
       setLogs((current) =>
         current.filter((candidate) => candidate.id !== log.id)
       );
@@ -505,12 +496,8 @@ export function FoodLogsScreen({
         onSaved={(saved) => {
           closeDetail();
           setEditor(undefined);
-          if (loadTicket.current !== editorRevision.current) {
-            // The range changed while saving; that range's load owns the
-            // screen. Live mode reloads so it reflects the save as well.
-            if (!fixtures) latestLoad.current().catch(() => undefined);
-            return;
-          }
+          // The save succeeded, so it applies to whatever list is on screen; the
+          // in-range check below keeps a new log out of a range it is not in.
           setLogs((current) => {
             const index = current.findIndex((item) => item.id === saved.id);
             if (index >= 0) {

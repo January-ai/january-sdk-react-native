@@ -571,8 +571,12 @@ public final class JanuaryNativeBridge: NSObject, @unchecked Sendable {
     /// `voiceCaptureStart` as `recognizer_unavailable` rather than hiding the feature.
     @objc public func voiceCaptureIsSupported(_ locale: String?) -> Bool {
         // Check the same locale the session will record with; the device locale otherwise.
-        let requested = locale.flatMap { $0.isEmpty ? nil : Locale(identifier: $0) } ?? Locale.current
-        return SFSpeechRecognizer(locale: requested) != nil
+        if let locale, !locale.isEmpty {
+            return SFSpeechRecognizer(locale: Locale(identifier: locale)) != nil
+        }
+        // Some simulator and device locales (regional variants) have no recognizer of their
+        // own; the parameterless initializer picks the system's default recognizer instead.
+        return SFSpeechRecognizer(locale: Locale.current) != nil || SFSpeechRecognizer() != nil
     }
 
     @objc(voiceCaptureStart:locale:captureID:completion:)
