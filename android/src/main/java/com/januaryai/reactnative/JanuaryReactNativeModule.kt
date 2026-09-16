@@ -107,10 +107,9 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
   private val voiceSessions = HashMap<String, VoiceHolder>()
 
   private class VoiceHolder(val session: VoiceCaptureSession) {
-    lateinit var collector: Job
+    /** Collects the recognizer's flows for exactly one capture; replaced on every start(). */
+    var collector: Job? = null
     var pendingStop: Job? = null
-    /** The JavaScript start() this holder currently serves; stamped on every update. */
-    var captureId: String = ""
   }
   private data class VoiceSnapshot(
     val state: VoiceCaptureState,
@@ -422,17 +421,22 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
     UiThreadUtil.runOnUiThread {
       val existing = voiceSessions[sessionId]
       val holder = existing ?: createVoiceSession(sessionId, locale)
-      holder.captureId = captureId
       try {
         holder.session.clearResult()
         holder.session.clearError()
+        // A fresh collector per capture: every update it emits is stamped with this
+        // capture's id as a constant, so nothing collected for an earlier capture can be
+        // delivered under a newer id.
+        holder.collector?.cancel()
+        holder.collector = collectVoiceUpdates(sessionId, captureId, holder.session)
         holder.session.startListening()
         promise.resolve("{}")
       } catch (error: Exception) {
+        holder.collector?.cancel()
+        holder.collector = null
         if (existing == null) {
-          // Capture never started: do not keep a collector and ticker alive for it.
+          // Capture never started: do not keep the session alive for it.
           voiceSessions.remove(sessionId)
-          holder.collector.cancel()
           holder.session.close()
         }
         rejectVoice(promise, error)
@@ -503,7 +507,7 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
     UiThreadUtil.runOnUiThread {
       voiceSessions.remove(sessionId)?.let { holder ->
         holder.pendingStop?.cancel()
-        holder.collector.cancel()
+        holder.collector?.cancel()
         holder.session.cancel()
         holder.session.close()
       }
@@ -515,7 +519,10 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
       reactApplicationContext,
       locale?.takeIf { it.isNotBlank() }?.let(Locale::forLanguageTag) ?: Locale.getDefault(),
     )
-    val holder = VoiceHolder(session)
+    return VoiceHolder(session).also { voiceSessions[sessionId] = it }
+  }
+
+  private fun collectVoiceUpdates(sessionId: String, captureId: String, session: VoiceCaptureSession): Job {
     val collector = mainScope.launch {
       combine(session.state, session.audioLevel, session.partialTranscript, session.error, session.latestResult) { state, level, partial, error, result ->
         VoiceSnapshot(state, level, partial, error, result)
@@ -526,7 +533,7 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
         if (snapshot.state == VoiceCaptureState.IDLE && snapshot.error == null && snapshot.result == null) return@collect
         emitVoiceUpdate(
           sessionId,
-          holder.captureId,
+          captureId,
           snapshot.state,
           snapshot.level,
           snapshot.partial,
@@ -544,7 +551,7 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
         if (session.state.value == VoiceCaptureState.LISTENING) {
           emitVoiceUpdate(
             sessionId,
-            holder.captureId,
+            captureId,
             session.state.value,
             session.audioLevel.value,
             session.partialTranscript.value,
@@ -554,8 +561,7 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
       }
     }
     collector.invokeOnCompletion { ticker.cancel() }
-    holder.collector = collector
-    return holder.also { voiceSessions[sessionId] = it }
+    return collector
   }
 
   private fun emitVoiceUpdate(
@@ -616,7 +622,7 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
   override fun invalidate() {
     UiThreadUtil.runOnUiThread {
       voiceSessions.values.forEach { holder ->
-        holder.collector.cancel()
+        holder.collector?.cancel()
         holder.session.cancel()
         holder.session.close()
       }
