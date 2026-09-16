@@ -88,6 +88,9 @@ export function FoodLogsScreen({
       const ticket = ++loadTicket.current;
       try {
         if (fixtures) {
+          // Fixture mode is stateless by design: every load restores the
+          // fixture list, so a mutation that resolves after a newer load is
+          // intentionally not replayed onto it.
           await fixtureDelay(8000);
           if (ticket !== loadTicket.current) return;
           if (forceFixtureFailure) {
