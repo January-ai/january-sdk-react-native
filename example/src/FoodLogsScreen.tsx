@@ -163,7 +163,6 @@ export function FoodLogsScreen({
 
   async function deleteLog(log: FoodLog) {
     if (!log.id) return;
-    invalidatePendingLoads();
     setLoading(true);
     setError(undefined);
     try {
@@ -176,6 +175,8 @@ export function FoodLogsScreen({
       } else {
         await client.foodLogs.delete(log.id);
       }
+      // Only a successful delete makes an in-flight list response stale.
+      invalidatePendingLoads();
       setLogs((current) =>
         current.filter((candidate) => candidate.id !== log.id)
       );
