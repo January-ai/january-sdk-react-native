@@ -47,6 +47,11 @@ tags:
     timeout: 15000
 - assertVisible: Temporary fixture food logs failure.
 - takeScreenshot: example/.maestro/artifacts/react-native-logs-error
+- scrollUntilVisible:
+    element:
+      id: food-logs-retry
+    direction: DOWN
+    centerElement: true
 - tapOn:
     id: food-logs-retry
 - extendedWaitUntil:

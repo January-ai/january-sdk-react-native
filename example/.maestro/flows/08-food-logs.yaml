@@ -12,6 +12,12 @@ tags:
     id: tab-food-logs
 - scrollUntilVisible:
     element:
+      id: food-log-summary
+    direction: DOWN
+    timeout: 30000
+- assertVisible: .*Range total.*
+- scrollUntilVisible:
+    element:
       id: food-log-0
     direction: DOWN
 - tapOn:

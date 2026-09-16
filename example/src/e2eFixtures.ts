@@ -1,6 +1,7 @@
 import type {
   AutocompleteFoodsResponse,
   FoodLog,
+  FoodLogSummary,
   FoodScan,
   FoodCategoryValue,
   FoodSearchItem,
@@ -266,6 +267,30 @@ export const fixtureFoodLogs: FoodLog[] = [
     ],
   },
 ];
+
+export const fixtureFoodLogSummary: FoodLogSummary = {
+  groupBy: 'day',
+  timezone: 'UTC',
+  startDate: '2026-08-31',
+  endDate: '2026-09-06',
+  buckets: [
+    {
+      startDate: '2026-08-31',
+      endDate: '2026-08-31',
+      logsCount: 1,
+      daysWithLogs: 1,
+      nutrients: fixtureScan.detections[0]!.food.nutrients,
+    },
+  ],
+  totals: {
+    logsCount: 1,
+    daysWithLogs: 1,
+    nutrients: fixtureScan.detections[0]!.food.nutrients,
+  },
+  averagePerLoggedDay: {
+    nutrients: fixtureScan.detections[0]!.food.nutrients,
+  },
+};
 
 export const fixtureGlucosePrediction: GlucosePrediction = {
   impact: 'medium',

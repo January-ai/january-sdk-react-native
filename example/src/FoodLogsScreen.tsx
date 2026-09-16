@@ -14,7 +14,11 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { FoodLog, JanuaryClient } from '@januaryai/react-native';
+import type {
+  FoodLog,
+  FoodLogSummary,
+  JanuaryClient,
+} from '@januaryai/react-native';
 
 import { palette, sharedStyles } from './demoTheme';
 import {
@@ -31,7 +35,11 @@ import {
   SectionLabel,
   WorkflowGuideCard,
 } from './designSystem';
-import { fixtureDelay, fixtureFoodLogs } from './e2eFixtures';
+import {
+  fixtureDelay,
+  fixtureFoodLogs,
+  fixtureFoodLogSummary,
+} from './e2eFixtures';
 import { FoodPickerSheet, type SelectedFood } from './FoodPickerSheet';
 
 interface FoodLogsScreenProps {
@@ -53,6 +61,7 @@ export function FoodLogsScreen({
 }: FoodLogsScreenProps) {
   const [range, setRange] = useState<Range>('week');
   const [logs, setLogs] = useState<FoodLog[]>([]);
+  const [summary, setSummary] = useState<FoodLogSummary>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
   const [editor, setEditor] = useState<FoodLog | 'new'>();
@@ -78,10 +87,15 @@ export function FoodLogsScreen({
             throw new Error('Temporary fixture food logs failure.');
           }
           setLogs(range === 'month' ? [] : fixtureFoodLogs.map(copyFoodLog));
+          setSummary(range === 'month' ? undefined : fixtureFoodLogSummary);
         } else {
           const dates = dateRange(range);
-          const result = await client.foodLogs.list(dates);
+          const [result, rangeSummary] = await Promise.all([
+            client.foodLogs.list(dates),
+            client.foodLogs.getSummary({ ...dates, groupBy: 'day' }),
+          ]);
           setLogs(result.items);
+          setSummary(rangeSummary);
         }
       } catch (caught) {
         setError(
@@ -244,6 +258,21 @@ export function FoodLogsScreen({
             <Text style={styles.datesLabel}>Dates</Text>
             <Text style={styles.datesValue}>{formatRange(range)}</Text>
           </View>
+          {summary && summary.totals.logsCount > 0 ? (
+            <View style={styles.datesRow} testID="food-log-summary">
+              <Text style={styles.datesLabel}>Range total</Text>
+              <Text style={styles.datesValue}>
+                {summary.totals.logsCount}{' '}
+                {summary.totals.logsCount === 1 ? 'log' : 'logs'} ·{' '}
+                {Math.round(summary.totals.nutrients.calories?.value ?? 0)} kcal
+                · avg{' '}
+                {Math.round(
+                  summary.averagePerLoggedDay.nutrients.calories?.value ?? 0
+                )}{' '}
+                kcal/day
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         <Pressable
