@@ -23,7 +23,7 @@ not supported; browser applications should use `@januaryai/web-sdk`.
 | React Native | 0.83 or later with the New Architecture enabled (0.83 and 0.86 verified) |
 | React | 19.2 or later |
 | iOS | 15 or later |
-| Android | API 26 or later |
+| Android | API 24 or later (core library desugaring below API 26) |
 | Android toolchain | JDK 17 |
 | Expo | A development build; Expo Go is not supported |
 | React Native Web | Not supported; use `@januaryai/web-sdk` |
