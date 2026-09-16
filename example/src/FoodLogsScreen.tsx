@@ -142,9 +142,20 @@ export function FoodLogsScreen({
     [fixtures, logs, range, summary]
   );
 
+  // The effect that loads the new range runs after the next render; drop the
+  // active load now so it cannot fill the new range with the old one's data.
+  const changeRange = (next: Range) => {
+    if (next === range) return;
+    loadTicket.current += 1;
+    setRange(next);
+  };
+
   async function deleteLog(log: FoodLog) {
     if (!log.id) return;
     let reload = false;
+    // Failure and loading updates apply only while no newer load or range has
+    // taken over the screen.
+    const revision = loadTicket.current;
     setLoading(true);
     setError(undefined);
     try {
@@ -168,13 +179,14 @@ export function FoodLogsScreen({
       closeDetail();
       setDeleteRetryLog(undefined);
     } catch (caught) {
+      closeDetail();
+      if (loadTicket.current !== revision) return;
       setError(
         caught instanceof Error ? caught.message : 'Food log deletion failed.'
       );
       setDeleteRetryLog(log);
-      closeDetail();
     } finally {
-      setLoading(false);
+      if (loadTicket.current === revision) setLoading(false);
       // Reload list and summary from the API so a list response that was in
       // flight during the delete cannot leave the screen out of date.
       if (reload) latestLoad.current().catch(() => undefined);
@@ -276,19 +288,19 @@ export function FoodLogsScreen({
           <View style={styles.segmented}>
             <RangeButton
               label="Today"
-              onPress={() => setRange('today')}
+              onPress={() => changeRange('today')}
               selected={range === 'today'}
               testID="logs-range-today"
             />
             <RangeButton
               label="This week"
-              onPress={() => setRange('week')}
+              onPress={() => changeRange('week')}
               selected={range === 'week'}
               testID="logs-range-week"
             />
             <RangeButton
               label="Last month"
-              onPress={() => setRange('month')}
+              onPress={() => changeRange('month')}
               selected={range === 'month'}
               testID="logs-range-month"
             />
