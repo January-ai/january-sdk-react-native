@@ -156,9 +156,11 @@ export function FoodLogsScreen({
   );
 
   // A mutation makes any list response still in flight stale: it would carry
-  // the pre-mutation list and undo the optimistic update below.
+  // the pre-mutation list and undo the optimistic update below. The dropped
+  // load also skips its own cleanup, so clear the loading state here.
   const invalidatePendingLoads = () => {
     loadTicket.current += 1;
+    setLoading(false);
   };
 
   async function deleteLog(log: FoodLog) {
