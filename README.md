@@ -10,7 +10,7 @@ React Native Web is not supported; use `@januaryai/web-sdk` in browsers.
 
 For an app that uses the SDK:
 
-- React Native 0.83+ with the New Architecture (0.83 and 0.86 verified)
+- React Native 0.83+ with the New Architecture (the example app and this repository build with 0.83; 0.86 is also verified)
 - React 19.2+
 - iOS 15.1+
 - Android 7.0+ (API 24); apps with `minSdkVersion` below 26 enable core library desugaring

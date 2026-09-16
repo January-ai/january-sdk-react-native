@@ -5,6 +5,13 @@ This project uses Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-09-16
+
+- The example app and the repository toolchain now run React Native 0.83.10
+  (Expo SDK 55), the minimum the SDK supports, instead of 0.86.
+- Pin the January Android SDK `0.2.2`: voice capture now waits two seconds of
+  silence before ending a capture, so speech is no longer cut off between
+  words.
 - Lower the minimum Android version from API 26 to API 24 and pin the January
   Android SDK `0.2.1`. Apps whose `minSdkVersion` is below 26 must enable core
   library desugaring; Expo apps add the `@januaryai/react-native` config plugin,
