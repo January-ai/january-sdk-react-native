@@ -150,6 +150,14 @@ export function FoodLogsScreen({
     setRange(next);
   };
 
+  // The editor remembers which load owned the screen when it opened, so a save
+  // that resolves after a range change does not patch the new range's list.
+  const editorRevision = useRef(0);
+  const openEditor = (target: FoodLog | 'new') => {
+    editorRevision.current = loadTicket.current;
+    setEditor(target);
+  };
+
   async function deleteLog(log: FoodLog) {
     if (!log.id) return;
     let reload = false;
@@ -168,6 +176,14 @@ export function FoodLogsScreen({
       } else {
         await client.foodLogs.delete(log.id);
       }
+      closeDetail();
+      setDeleteRetryLog(undefined);
+      if (loadTicket.current !== revision) {
+        // The user moved to another range meanwhile; its load owns the screen.
+        // Live mode reloads so that range reflects the deletion too.
+        reload = !fixtures;
+        return;
+      }
       setLogs((current) =>
         current.filter((candidate) => candidate.id !== log.id)
       );
@@ -176,11 +192,10 @@ export function FoodLogsScreen({
       loadTicket.current += 1;
       setLoading(false);
       reload = !fixtures;
-      closeDetail();
-      setDeleteRetryLog(undefined);
     } catch (caught) {
       closeDetail();
-      // The mutation itself was not superseded, so its failure always shows.
+      // Report the failure only to the range it happened on.
+      if (loadTicket.current !== revision) return;
       setError(
         caught instanceof Error ? caught.message : 'Food log deletion failed.'
       );
@@ -203,7 +218,7 @@ export function FoodLogsScreen({
             // Like Delete, adding waits for the list load to settle so a
             // mutation can never race the request that populates the screen.
             disabled={!configured || loading}
-            onPress={() => setEditor('new')}
+            onPress={() => openEditor('new')}
             style={[
               sharedStyles.iconButton,
               (!configured || loading) && sharedStyles.disabled,
@@ -271,7 +286,7 @@ export function FoodLogsScreen({
 
         <Pressable
           disabled={!configured || loading}
-          onPress={() => setEditor('new')}
+          onPress={() => openEditor('new')}
           style={[
             sharedStyles.primaryButton,
             (!configured || loading) && sharedStyles.disabled,
@@ -466,7 +481,7 @@ export function FoodLogsScreen({
                   ]
                 );
               }}
-              onEdit={(log) => setEditor(log)}
+              onEdit={(log) => openEditor(log)}
             />
           ) : null,
         }}
@@ -478,13 +493,19 @@ export function FoodLogsScreen({
         fixtures={fixtures}
         onClose={() => setEditor(undefined)}
         onSaved={(saved) => {
+          closeDetail();
+          setEditor(undefined);
+          if (loadTicket.current !== editorRevision.current) {
+            // The range changed while saving; that range's load owns the
+            // screen. Live mode reloads so it reflects the save as well.
+            if (!fixtures) latestLoad.current().catch(() => undefined);
+            return;
+          }
           setLogs((current) => {
             const index = current.findIndex((item) => item.id === saved.id);
             if (index < 0) return [saved, ...current];
             return current.map((item) => (item.id === saved.id ? saved : item));
           });
-          closeDetail();
-          setEditor(undefined);
           // A load still in flight would overwrite the saved log; drop it. In
           // live mode reload list and summary so both reflect the save.
           loadTicket.current += 1;
