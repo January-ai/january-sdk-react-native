@@ -84,9 +84,13 @@ jobs:
         uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
           path: ${{ env.TURBO_CACHE_DIR }}
-          key: ${{ runner.os }}-turborepo-android-${{ hashFiles('yarn.lock') }}
+          # A new key every run, so the freshly written Turborepo entries are
+          # saved (Actions cache entries are immutable); the prefixes restore the
+          # closest earlier cache. turbo.json is in the key so a changed task
+          # definition never reuses entries written under the old one.
+          key: ${{ runner.os }}-turborepo-android-${{ hashFiles('yarn.lock', 'turbo.json') }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-turborepo-android-
+            ${{ runner.os }}-turborepo-android-${{ hashFiles('yarn.lock', 'turbo.json') }}-
 
       - name: Install JDK
         uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
@@ -154,9 +158,13 @@ jobs:
         uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
           path: ${{ env.TURBO_CACHE_DIR }}
-          key: ${{ runner.os }}-turborepo-ios-${{ hashFiles('yarn.lock') }}
+          # A new key every run, so the freshly written Turborepo entries are
+          # saved (Actions cache entries are immutable); the prefixes restore the
+          # closest earlier cache. turbo.json is in the key so a changed task
+          # definition never reuses entries written under the old one.
+          key: ${{ runner.os }}-turborepo-ios-${{ hashFiles('yarn.lock', 'turbo.json') }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-turborepo-ios-
+            ${{ runner.os }}-turborepo-ios-${{ hashFiles('yarn.lock', 'turbo.json') }}-
 
       - name: Check turborepo cache for iOS
         run: |
