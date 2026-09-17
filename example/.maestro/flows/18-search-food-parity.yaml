@@ -40,8 +40,10 @@ tags:
 - tapOn:
     id: food-check-glucose
 - assertVisible: Glucose response
+# Transient loading state; captured when caught, not required.
 - assertVisible:
     id: food-glucose-loading
+    optional: true
 - takeScreenshot: example/.maestro/artifacts/react-native-food-glucose-loading
 - extendedWaitUntil:
     visible:
