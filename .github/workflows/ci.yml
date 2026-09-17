@@ -234,11 +234,11 @@ jobs:
           yarn example build:web
 
   # The Maestro suites reuse the apps the build jobs produced and split the
-  # flows across several emulators and simulators, so each job stays well
-  # under its time limit. Maestro's failure screenshots and view hierarchies
+  # flows across several emulators and simulators (four Android, three iOS),
+  # so each job stays well under its time limit. Maestro's failure screenshots and view hierarchies
   # are uploaded with the JUnit results.
   ui-test-android:
-    name: ui-test-android (shard ${{ matrix.shard }} of 3)
+    name: ui-test-android (shard ${{ matrix.shard }} of 4)
     needs: build-android
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -246,7 +246,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2]
+        shard: [0, 1, 2, 3]
 
     steps:
       - name: Checkout
@@ -290,7 +290,7 @@ jobs:
           api-level: 35
           arch: x86_64
           profile: pixel_6
-          script: .github/scripts/android-ui-suite.sh "$RUNNER_TEMP/android-app/app-debug.apk" ${{ matrix.shard }} 3
+          script: .github/scripts/android-ui-suite.sh "$RUNNER_TEMP/android-app/app-debug.apk" ${{ matrix.shard }} 4
 
       - name: Upload Android UI artifacts
         if: always()
@@ -302,7 +302,7 @@ jobs:
             ${{ runner.temp }}/metro-android.log
 
   ui-test-ios:
-    name: ui-test-ios (shard ${{ matrix.shard }} of 2)
+    name: ui-test-ios (shard ${{ matrix.shard }} of 3)
     needs: build-ios
     runs-on: macos-latest
     timeout-minutes: 45
@@ -310,7 +310,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1]
+        shard: [0, 1, 2]
 
     env:
       MAESTRO_DRIVER_STARTUP_TIMEOUT: '300000'
@@ -366,9 +366,9 @@ jobs:
           bundle_url="$(curl --fail --silent -H 'expo-platform: ios' http://127.0.0.1:8081/ \
             | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>console.log(JSON.parse(d).launchAsset.url))')"
           echo "Warming up $bundle_url"
-          curl --fail --silent --output /dev/null "$bundle_url"
+          curl --fail --silent --output /dev/null --max-time 600 "$bundle_url"
           mkdir -p example/.maestro/artifacts
-          flows="$(node example/.maestro/shard.mjs ${{ matrix.shard }} 2)"
+          flows="$(node example/.maestro/shard.mjs ${{ matrix.shard }} 3)"
           echo "Flows in this shard: $flows"
           # shellcheck disable=SC2086 # the shard is a space-separated list of files
           maestro test --device "$device_id" $flows \

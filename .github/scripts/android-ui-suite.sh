@@ -28,7 +28,7 @@ echo
 bundle_url="$(curl --fail --silent -H 'expo-platform: android' http://127.0.0.1:8081/ \
   | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>console.log(JSON.parse(d).launchAsset.url))')"
 echo "Warming up $bundle_url"
-curl --fail --silent --output /dev/null "$bundle_url"
+curl --fail --silent --output /dev/null --max-time 600 "$bundle_url"
 
 mkdir -p example/.maestro/artifacts
 flows="$(node example/.maestro/shard.mjs "$shard" "$shards")"
