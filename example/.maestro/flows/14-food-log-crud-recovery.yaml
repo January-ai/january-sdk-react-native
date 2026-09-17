@@ -67,15 +67,23 @@ tags:
     notVisible:
       id: food-log-editor
     timeout: 15000
+# Saving closes the editor and pops back to the list. Let the pop finish: a tap
+# on the row while the detail screen is still sliding away is ignored.
+- waitForAnimationToEnd
 - scrollUntilVisible:
     element:
       id: food-log-0
     direction: DOWN
 - assertVisible: .*Retry meal.*
-- tapOn:
-    id: food-log-0
-- assertVisible:
-    id: food-log-detail
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn:
+          id: food-log-0
+      - extendedWaitUntil:
+          visible:
+            id: food-log-detail
+          timeout: 10000
 - assertVisible: Greek yogurt
 - tapOn:
     id: food-log-edit
@@ -95,13 +103,21 @@ tags:
     notVisible:
       id: food-log-editor
     timeout: 15000
+- waitForAnimationToEnd
 - scrollUntilVisible:
     element:
       id: food-log-0
     direction: DOWN
 - assertVisible: .*Updated meal.*
-- tapOn:
-    id: food-log-0
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn:
+          id: food-log-0
+      - extendedWaitUntil:
+          visible:
+            id: food-log-detail
+          timeout: 10000
 - scrollUntilVisible:
     element:
       id: food-log-delete
