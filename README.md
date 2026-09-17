@@ -11,9 +11,10 @@ React Native Web is not supported; use `@januaryai/web-sdk` in browsers.
 For an app that uses the SDK:
 
 - React Native 0.83 or later with the New Architecture enabled
-- React 19.2+
-- iOS 15.1+
-- Android 7.0+ (API 24); apps with `minSdkVersion` below 26 enable core library desugaring
+- React 19.2 or later
+- iOS 15.1 or later
+- Android 7.0 (API 24) or later; apps with `minSdkVersion` below 26 must enable
+  core library desugaring (see [Install](#1-install))
 
 To run the demo on your computer:
 
@@ -37,8 +38,8 @@ demo. The first run takes about ten minutes.
 ### Terminal 1: start the token relay
 
 1. Open a terminal.
-2. Download the relay and move into its folder. Install Node.js 22 or newer
-   first: this SDK's example needs 22, and the relay itself needs 20.12:
+2. Install Node.js 22 or newer, then download the relay and move into its
+   folder:
 
    ```bash
    git clone https://github.com/January-ai/january-token-relay.git
@@ -105,10 +106,9 @@ demo. The first run takes about ten minutes.
 
     `corepack yarn` runs the Yarn version this repository pins; it ships with
     Node.js. On iOS the command builds the app and opens it in a simulator. On
-    Android it finds the Android SDK and a JDK, starts an emulator you have
-    created if none is running (or uses a phone plugged in with USB debugging),
-    forwards the relay into it, then builds and opens the app. It works on
-    macOS, Linux, and Windows. The first build compiles the native
+    Android it finds the Android SDK and a JDK, starts an emulator if none is
+    running (or uses a phone connected with USB debugging), forwards the relay
+    into it, then builds and opens the app. The first build compiles the native
     SDKs and takes several minutes; later builds take seconds. The SDK contains
     native code, so the demo runs as a development build, not in Expo Go.
 
@@ -126,7 +126,7 @@ demo. The first run takes about ten minutes.
 | App shows a "Development servers" screen | The app lost Terminal 2 | Tap `http://127.0.0.1:8081` |
 | Red screen "Could not connect to development server" | Terminal 2 stopped | Run `corepack yarn example start`, then press `r` |
 
-#### Prefer Android Studio and no second terminal?
+#### Run from Android Studio without a second terminal
 
 Debug builds load their JavaScript from Terminal 2 (React Native's Metro
 server), which is what makes editing live. A release build bundles the
@@ -160,12 +160,10 @@ EXPO_PUBLIC_DEMO_SESSION_TOKEN=YOUR_RELAY_TOKEN
 EXPO_PUBLIC_DEMO_END_USER_ID=january-sdk-demo-user
 ```
 
-The hosted relay is also for development and testing only. Its relay token is
-not a substitute for authenticating your users.
-
-This relay is only for development. In production, keep the SDK token provider
-but point it to your authenticated backend, which verifies the app session and
-derives the end-user ID server-side.
+The hosted relay is for development and testing only; its relay token is not a
+substitute for authenticating your users. In production, keep the SDK token
+provider but point it to your authenticated backend, which verifies the app
+session and derives the end-user ID server-side.
 
 ## Add the SDK to your app
 
@@ -247,7 +245,7 @@ and returns `{ "token": "ct-…", "expiresIn": 1800 }`. See the
 [backend token endpoint guide](Documentation/GitBook/getting-started/backend-token-endpoint.md)
 for the complete contract.
 
-## Common tasks and documentation
+## Documentation
 
 The [complete React Native guide](Documentation/GitBook/README.md) covers
 installation, production authentication, resources, errors, testing, and
@@ -260,11 +258,10 @@ troubleshooting.
 - [Glucose prediction](Documentation/GitBook/guides/glucose-prediction.md)
 - [Voice capture](Documentation/GitBook/guides/voice-capture.md)
 
-For SDK development, testing, IDE setup, native dependency pins, and publishing,
-see [CONTRIBUTING.md](CONTRIBUTING.md) and
-[the release guide](.github/RELEASING.md).
+To contribute to the SDK, see [CONTRIBUTING.md](CONTRIBUTING.md) and the
+[release guide](.github/RELEASING.md).
 
-## Optional: fastest debug-only shortcut
+## Optional: debug-only shortcut with a server API key
 
 If you only want to make a request immediately, the demo can use a server API
 key directly in a local development build. This bypasses the recommended
