@@ -1,9 +1,11 @@
 appId: ai.january.sdk.demo
-# URL-encoded Metro address for the dev-client deep link. Override to point the
-# dev client at another Metro, e.g. a fixture-mode one on another port while a
-# live one keeps serving a device: -e METRO_URL=http%3A%2F%2F127.0.0.1%3A8082
+# Metro address the dev client should load from. Override both to point at
+# another Metro, e.g. a fixture-mode one on another port while a live one keeps
+# serving a device:
+#   -e METRO_URL=http://127.0.0.1:8082 -e METRO_URL_ENCODED=http%3A%2F%2F127.0.0.1%3A8082
 env:
-  METRO_URL: http%3A%2F%2F127.0.0.1%3A8081
+  METRO_URL: http://127.0.0.1:8081
+  METRO_URL_ENCODED: http%3A%2F%2F127.0.0.1%3A8081
 ---
 - retry:
     maxRetries: 2
@@ -12,12 +14,15 @@ env:
           when:
             platform: iOS
           commands:
+            # A cold start with --initialUrl loads straight from Metro. Do not use
+            # the dev-client deep link here: reloading an already running app
+            # crashes expo-modules-core 55 on iOS (JSI object freed after the
+            # runtime is torn down).
             - launchApp:
                 clearState: false
                 stopApp: true
-            # The dev client reconnects to its last server, so point it explicitly.
-            - openLink: exp+january-sdk-demo://expo-development-client/?url=${METRO_URL}
-            - waitForAnimationToEnd
+                arguments:
+                  --initialUrl: ${METRO_URL}
       - runFlow:
           when:
             platform: Android
@@ -30,9 +35,9 @@ env:
             - extendedWaitUntil:
                 visible: "(?i).*development server.*"
                 timeout: 30000
-            - openLink: exp+january-sdk-demo://expo-development-client/?url=${METRO_URL}
+            - openLink: exp+january-sdk-demo://expo-development-client/?url=${METRO_URL_ENCODED}
             - waitForAnimationToEnd
-            - openLink: exp+january-sdk-demo://expo-development-client/?url=${METRO_URL}
+            - openLink: exp+january-sdk-demo://expo-development-client/?url=${METRO_URL_ENCODED}
             - waitForAnimationToEnd
             # react-native-screens can throw "runtime not ready" on a warm
             # relaunch of the dev build; RELOAD on the red screen recovers it.
