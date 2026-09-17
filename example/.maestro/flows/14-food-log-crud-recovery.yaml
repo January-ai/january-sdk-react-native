@@ -118,11 +118,10 @@ tags:
           visible:
             id: food-log-detail
           timeout: 10000
-- scrollUntilVisible:
-    element:
-      id: food-log-delete
-    direction: DOWN
-    centerElement: true
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: food-log-delete
 - tapOn:
     id: food-log-delete
 - takeScreenshot: example/.maestro/artifacts/react-native-log-delete-confirmation

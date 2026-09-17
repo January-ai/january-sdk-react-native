@@ -49,22 +49,18 @@ tags:
     timeout: 15000
 - takeScreenshot: example/.maestro/artifacts/react-native-food-glucose-result
 - tapOn: Close Glucose response
-- scrollUntilVisible:
-    element:
-      id: food-alternatives
-    direction: DOWN
-    centerElement: true
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: food-alternatives
 - tapOn:
     id: food-alternatives
 - assertVisible: Food alternatives
 - takeScreenshot: example/.maestro/artifacts/react-native-alternatives-initial
-# Center the button: at the bottom of the sheet it sits under the emulator's
-# navigation bar and a tap on the visible sliver does not register.
-- scrollUntilVisible:
-    element:
-      id: alternatives-refresh
-    direction: DOWN
-    centerElement: true
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: alternatives-refresh
 - tapOn:
     id: alternatives-refresh
 - extendedWaitUntil:

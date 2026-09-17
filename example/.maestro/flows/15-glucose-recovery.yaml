@@ -47,14 +47,10 @@ tags:
     id: food-serving-add
 - tapOn: Increase Greek yogurt quantity
 - assertVisible: '1.25'
-# Scroll by the label the user sees: after the result sheet closes, the iOS
-# accessibility snapshot has lagged behind and reported the button's id missing
-# while the button was plainly on screen.
-- scrollUntilVisible:
-    element:
-      text: Estimate glucose response
-    direction: DOWN
-    centerElement: true
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: glucose-predict
 - waitForAnimationToEnd
 - tapOn:
     text: Estimate glucose response
@@ -99,14 +95,10 @@ tags:
     direction: UP
 - assertVisible:
     id: glucose-age
-# Scroll by the label the user sees: after the result sheet closes, the iOS
-# accessibility snapshot has lagged behind and reported the button's id missing
-# while the button was plainly on screen.
-- scrollUntilVisible:
-    element:
-      text: Estimate glucose response
-    direction: DOWN
-    centerElement: true
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: glucose-predict
 - waitForAnimationToEnd
 - tapOn:
     text: Estimate glucose response

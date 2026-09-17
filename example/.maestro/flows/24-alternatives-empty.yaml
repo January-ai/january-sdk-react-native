@@ -30,13 +30,10 @@ tags:
     direction: DOWN
 - tapOn:
     id: food-alternatives
-# Center the button: at the bottom of the sheet it sits under the emulator's
-# navigation bar and a tap on the visible sliver does not register.
-- scrollUntilVisible:
-    element:
-      id: alternatives-refresh
-    direction: DOWN
-    centerElement: true
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: alternatives-refresh
 - tapOn:
     id: alternatives-refresh
 - extendedWaitUntil:
