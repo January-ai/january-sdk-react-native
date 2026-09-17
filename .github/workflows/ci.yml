@@ -353,9 +353,12 @@ jobs:
             sleep 2
           done
           curl --fail --silent http://127.0.0.1:8081/status
-          # Warm Metro's transform cache before the first flow launches the app.
-          curl --fail --silent --output /dev/null \
-            'http://127.0.0.1:8081/index.bundle?platform=ios&dev=true&minify=false&lazy=true&transform.engine=hermes'
+          # Warm Metro before the first flow launches the app: request the exact
+          # bundle the dev client will ask for, taken from the manifest.
+          bundle_url="$(curl --fail --silent -H 'expo-platform: ios' http://127.0.0.1:8081/ \
+            | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>console.log(JSON.parse(d).launchAsset.url))')"
+          echo "Warming up $bundle_url"
+          curl --fail --silent --output /dev/null "$bundle_url"
           mkdir -p example/.maestro/artifacts
           flows="$(node example/.maestro/shard.mjs ${{ matrix.shard }} 2)"
           echo "Flows in this shard: $flows"

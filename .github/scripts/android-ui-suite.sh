@@ -25,8 +25,10 @@ echo
 # Bundle once before the first flow launches the app. Bundling 1,200 modules
 # while the emulator boots the app starved the runner enough for the launcher
 # to hang; warming Metro's transform cache first keeps the first flow honest.
-curl --fail --silent --output /dev/null \
-  'http://127.0.0.1:8081/index.bundle?platform=android&dev=true&minify=false&lazy=true&transform.engine=hermes'
+bundle_url="$(curl --fail --silent -H 'expo-platform: android' http://127.0.0.1:8081/ \
+  | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>console.log(JSON.parse(d).launchAsset.url))')"
+echo "Warming up $bundle_url"
+curl --fail --silent --output /dev/null "$bundle_url"
 
 mkdir -p example/.maestro/artifacts
 flows="$(node example/.maestro/shard.mjs "$shard" "$shards")"
