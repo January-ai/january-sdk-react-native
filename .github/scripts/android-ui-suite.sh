@@ -22,6 +22,11 @@ for _ in $(seq 1 60); do
 done
 curl --fail --silent http://127.0.0.1:8081/status
 echo
+# Bundle once before the first flow launches the app. Bundling 1,200 modules
+# while the emulator boots the app starved the runner enough for the launcher
+# to hang; warming Metro's transform cache first keeps the first flow honest.
+curl --fail --silent --output /dev/null \
+  'http://127.0.0.1:8081/index.bundle?platform=android&dev=true&minify=false'
 
 mkdir -p example/.maestro/artifacts
 flows="$(node example/.maestro/shard.mjs "$shard" "$shards")"

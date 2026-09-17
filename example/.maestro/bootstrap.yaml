@@ -30,8 +30,14 @@ env:
             - launchApp:
                 clearState: false
                 stopApp: true
-            # expo-dev-launcher 57 shows "Development servers" (no "New development
-            # server" card any more); match either wording, any case.
+            # A freshly booted hosted emulator sometimes shows a "<launcher>
+            # isn't responding" dialog over the app. Dismiss it so the
+            # dev-launcher screen below is reachable.
+            - tapOn:
+                text: "Close app"
+                optional: true
+            # The dev launcher shows "Development servers"; match any wording
+            # that contains it, any case.
             - extendedWaitUntil:
                 visible: "(?i).*development server.*"
                 timeout: 30000

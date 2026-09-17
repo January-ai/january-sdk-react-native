@@ -353,6 +353,9 @@ jobs:
             sleep 2
           done
           curl --fail --silent http://127.0.0.1:8081/status
+          # Warm Metro's transform cache before the first flow launches the app.
+          curl --fail --silent --output /dev/null \
+            'http://127.0.0.1:8081/index.bundle?platform=ios&dev=true&minify=false'
           mkdir -p example/.maestro/artifacts
           flows="$(node example/.maestro/shard.mjs ${{ matrix.shard }} 2)"
           echo "Flows in this shard: $flows"
