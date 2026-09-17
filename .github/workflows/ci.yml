@@ -71,6 +71,7 @@ jobs:
 
     env:
       TURBO_CACHE_DIR: .turbo/android
+      APK: example/android/app/build/outputs/apk/debug/app-debug.apk
 
     steps:
       - name: Checkout
@@ -87,33 +88,21 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-turborepo-android-
 
-      - name: Check turborepo cache for Android
-        run: |
-          TURBO_CACHE_STATUS=$(node -p "($(yarn turbo run build:android --cache-dir="${{ env.TURBO_CACHE_DIR }}" --dry=json)).tasks.find(t => t.task === 'build:android').cache.status")
-
-          if [[ $TURBO_CACHE_STATUS == "HIT" ]]; then
-            echo "turbo_cache_hit=1" >> $GITHUB_ENV
-          fi
-
       - name: Install JDK
-        if: env.turbo_cache_hit != 1
         uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
         with:
           distribution: 'zulu'
           java-version: '17'
 
       - name: Finalize Android SDK
-        if: env.turbo_cache_hit != 1
         run: |
           /bin/bash -c "yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null"
 
       - name: Prebuild expo app for Android
-        if: env.turbo_cache_hit != 1
         run: |
           yarn example expo prebuild --platform android
 
       - name: Cache Gradle
-        if: env.turbo_cache_hit != 1
         uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
           path: |
@@ -124,10 +113,25 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Build example for Android
+        # Turborepo skips the build and restores the APK when nothing relevant
+        # changed. A cache entry written before the APK was a declared output
+        # restores nothing, so build again in that case.
         env:
           JAVA_OPTS: "-XX:MaxHeapSize=6g"
         run: |
           yarn turbo run build:android --cache-dir="${{ env.TURBO_CACHE_DIR }}"
+          if [[ ! -f "$APK" ]]; then
+            yarn turbo run build:android --cache-dir="${{ env.TURBO_CACHE_DIR }}" --force
+          fi
+          test -f "$APK"
+
+      - name: Upload the Android app for the UI suite
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: android-app
+          path: ${{ env.APK }}
+          if-no-files-found: error
+          retention-days: 1
 
   build-ios:
     runs-on: macos-latest
@@ -137,6 +141,7 @@ jobs:
       TURBO_CACHE_DIR: .turbo/ios
       RCT_USE_RN_DEP: 1
       RCT_USE_PREBUILT_RNCORE: 1
+      APP: example/ios/build/Build/Products/Debug-iphonesimulator/JanuarySDKDemo.app
 
     steps:
       - name: Checkout
@@ -158,7 +163,17 @@ jobs:
           TURBO_CACHE_STATUS=$(node -p "($(yarn turbo run build:ios --cache-dir="${{ env.TURBO_CACHE_DIR }}" --dry=json)).tasks.find(t => t.task === 'build:ios').cache.status")
 
           if [[ $TURBO_CACHE_STATUS == "HIT" ]]; then
-            echo "turbo_cache_hit=1" >> $GITHUB_ENV
+            echo "turbo_cache_hit=1" >> "$GITHUB_ENV"
+          fi
+
+      - name: Restore the cached app
+        if: env.turbo_cache_hit == 1
+        run: |
+          yarn turbo run build:ios --cache-dir="${{ env.TURBO_CACHE_DIR }}"
+          # A cache entry written before the app was a declared output restores
+          # nothing; fall through to a real build in that case.
+          if [[ ! -d "$APP" ]]; then
+            echo "turbo_cache_hit=0" >> "$GITHUB_ENV"
           fi
 
       - name: Use appropriate Xcode version
@@ -179,8 +194,22 @@ jobs:
           pod install --repo-update
 
       - name: Build example for iOS
+        if: env.turbo_cache_hit != 1
         run: |
-          yarn turbo run build:ios --cache-dir="${{ env.TURBO_CACHE_DIR }}"
+          yarn turbo run build:ios --cache-dir="${{ env.TURBO_CACHE_DIR }}" --force
+          test -d "$APP"
+
+      - name: Pack the iOS app for the UI suite
+        # tar keeps the executable bits that upload-artifact would drop.
+        run: tar -czf "$RUNNER_TEMP/ios-app.tgz" -C "$(dirname "$APP")" "$(basename "$APP")"
+
+      - name: Upload the iOS app for the UI suite
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ios-app
+          path: ${{ runner.temp }}/ios-app.tgz
+          if-no-files-found: error
+          retention-days: 1
 
   build-web:
     runs-on: ubuntu-latest
@@ -196,148 +225,176 @@ jobs:
         run: |
           yarn example build:web
 
-  # The Maestro UI suites (ui-test-android, ui-test-ios) are disabled for now:
-  # they fail on the hosted emulator and simulator for reasons unrelated to the
-  # code under test and block every pull request. Run them locally with
-  # `yarn ui:start` and `yarn ui:test` until they are fixed and re-enabled.
-  #   ui-test-android:
-  #     runs-on: ubuntu-latest
-  #     timeout-minutes: 60
-  #
-  #     steps:
-  #       - name: Checkout
-  #         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-  #
-  #       - name: Setup
-  #         uses: ./.github/actions/setup
-  #
-  #       - name: Install JDK
-  #         uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
-  #         with:
-  #           distribution: 'zulu'
-  #           java-version: '17'
-  #
-  #       - name: Install Maestro
-  #         run: |
-  #           archive="$RUNNER_TEMP/maestro.zip"
-  #           curl --fail --location --silent --show-error --retry 3 \
-  #             "https://github.com/mobile-dev-inc/Maestro/releases/download/cli-${MAESTRO_VERSION}/maestro.zip" \
-  #             --output "$archive"
-  #           echo "${MAESTRO_SHA256}  ${archive}" | shasum -a 256 --check
-  #           unzip -q "$archive" -d "$RUNNER_TEMP/maestro"
-  #           "$RUNNER_TEMP/maestro/maestro/bin/maestro" --version
-  #           echo "$RUNNER_TEMP/maestro/maestro/bin" >> "$GITHUB_PATH"
-  #
-  #       - name: Prebuild example for Android
-  #         run: yarn example expo prebuild --platform android
-  #
-  #       - name: Build Android UI APK
-  #         run: yarn example build:android
-  #
-  #       - name: Reclaim build disk for Android emulator
-  #         run: |
-  #           rm -rf /home/runner/.gradle/caches
-  #           rm -rf example/android/.gradle
-  #           rm -rf example/android/app/build/intermediates
-  #           sudo rm -rf /usr/local/lib/android/sdk/ndk
-  #
-  #       - name: Enable KVM group permissions
-  #         run: |
-  #           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-  #           sudo udevadm control --reload-rules
-  #           sudo udevadm trigger --name-match=kvm
-  #
-  #       - name: Run Android device suite
-  #         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
-  #         with:
-  #           api-level: 35
-  #           arch: x86_64
-  #           profile: pixel_6
-  #           script: |
-  #             adb install -r example/android/app/build/outputs/apk/debug/app-debug.apk
-  #             adb reverse tcp:8081 tcp:8081
-  #             CI=1 yarn ui:start > "$RUNNER_TEMP/metro-android.log" 2>&1 &
-  #             for attempt in $(seq 1 60); do curl --fail --silent http://127.0.0.1:8081/status >/dev/null && break; sleep 2; done
-  #             curl --fail --silent http://127.0.0.1:8081/status
-  #             mkdir -p example/.maestro/artifacts
-  #             maestro test --device emulator-5554 example/.maestro/flows --include-tags fixture,parity --shard-split 1 --format JUNIT --output example/.maestro/artifacts/android-results.xml
-  #
-  #       - name: Upload Android UI artifacts
-  #         if: always()
-  #         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-  #         with:
-  #           name: maestro-android
-  #           path: |
-  #             example/.maestro/artifacts
-  #             ${{ runner.temp }}/metro-android.log
-  #
-  #   ui-test-ios:
-  #     runs-on: macos-latest
-  #     timeout-minutes: 60
-  #
-  #     env:
-  #       RCT_USE_RN_DEP: 1
-  #       RCT_USE_PREBUILT_RNCORE: 1
-  #       MAESTRO_DRIVER_STARTUP_TIMEOUT: '300000'
-  #
-  #     steps:
-  #       - name: Checkout
-  #         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-  #
-  #       - name: Setup
-  #         uses: ./.github/actions/setup
-  #
-  #       - name: Use Xcode 26
-  #         uses: maxim-lobanov/setup-xcode@60606e260d2fc5762a71e64e74b2174e8ea3c8bd # v1.6.0
-  #         with:
-  #           xcode-version: 26
-  #
-  #       - name: Install Maestro
-  #         run: |
-  #           archive="$RUNNER_TEMP/maestro.zip"
-  #           curl --fail --location --silent --show-error --retry 3 \
-  #             "https://github.com/mobile-dev-inc/Maestro/releases/download/cli-${MAESTRO_VERSION}/maestro.zip" \
-  #             --output "$archive"
-  #           echo "${MAESTRO_SHA256}  ${archive}" | shasum -a 256 --check
-  #           unzip -q "$archive" -d "$RUNNER_TEMP/maestro"
-  #           "$RUNNER_TEMP/maestro/maestro/bin/maestro" --version
-  #           echo "$RUNNER_TEMP/maestro/maestro/bin" >> "$GITHUB_PATH"
-  #
-  #       - name: Build iOS example
-  #         run: |
-  #           yarn example expo prebuild --platform ios
-  #           cd example/ios
-  #           pod install --repo-update
-  #           cd ../..
-  #           yarn example build:ios
-  #
-  #       - name: Run iOS device suite
-  #         run: |
-  #           device_id="$(xcrun simctl list devices available | sed -nE 's/.*iPhone[^()]* \(([0-9A-F-]+)\) \(Shutdown\).*/\1/p' | head -1)"
-  #           test -n "$device_id"
-  #           xcrun simctl boot "$device_id"
-  #           xcrun simctl bootstatus "$device_id" -b
-  #           xcrun simctl install "$device_id" example/ios/build/Build/Products/Debug-iphonesimulator/JanuarySDKDemo.app
-  #           CI=1 yarn ui:start > "$RUNNER_TEMP/metro-ios.log" 2>&1 &
-  #           metro_pid=$!
-  #           trap 'kill "$metro_pid" 2>/dev/null || true' EXIT
-  #           for attempt in {1..60}; do
-  #             curl --fail --silent http://127.0.0.1:8081/status >/dev/null && break
-  #             sleep 2
-  #           done
-  #           curl --fail --silent http://127.0.0.1:8081/status
-  #           mkdir -p example/.maestro/artifacts
-  #           maestro test --device "$device_id" example/.maestro/flows \
-  #             --include-tags fixture,parity \
-  #             --shard-split 1 \
-  #             --format JUNIT \
-  #             --output example/.maestro/artifacts/ios-results.xml
-  #
-  #       - name: Upload iOS UI artifacts
-  #         if: always()
-  #         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-  #         with:
-  #           name: maestro-ios
-  #           path: |
-  #             example/.maestro/artifacts
-  #             ${{ runner.temp }}/metro-ios.log
+  # The Maestro suites reuse the apps the build jobs produced and split the
+  # flows across several emulators and simulators, so each job stays well
+  # under its time limit. Maestro's failure screenshots and view hierarchies
+  # are uploaded with the JUnit results.
+  ui-test-android:
+    name: ui-test-android (shard ${{ matrix.shard }} of 3)
+    needs: build-android
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Install JDK
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Install Maestro
+        run: |
+          archive="$RUNNER_TEMP/maestro.zip"
+          curl --fail --location --silent --show-error --retry 3 \
+            "https://github.com/mobile-dev-inc/Maestro/releases/download/cli-${MAESTRO_VERSION}/maestro.zip" \
+            --output "$archive"
+          echo "${MAESTRO_SHA256}  ${archive}" | shasum -a 256 --check
+          unzip -q "$archive" -d "$RUNNER_TEMP/maestro"
+          "$RUNNER_TEMP/maestro/maestro/bin/maestro" --version
+          echo "$RUNNER_TEMP/maestro/maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Download the Android app
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: android-app
+          path: ${{ runner.temp }}/android-app
+
+      - name: Enable KVM group permissions
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run Android device suite
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          script: |
+            adb install -r "$RUNNER_TEMP/android-app/app-debug.apk"
+            adb reverse tcp:8081 tcp:8081
+            CI=1 yarn ui:start > "$RUNNER_TEMP/metro-android.log" 2>&1 &
+            for attempt in $(seq 1 60); do curl --fail --silent http://127.0.0.1:8081/status >/dev/null && break; sleep 2; done
+            curl --fail --silent http://127.0.0.1:8081/status
+            mkdir -p example/.maestro/artifacts
+            flows="$(node example/.maestro/shard.mjs ${{ matrix.shard }} 3)"
+            echo "Flows in this shard: $flows"
+            # shellcheck disable=SC2086 # the shard is a space-separated list of files
+            maestro test --device emulator-5554 $flows \
+              --include-tags fixture,parity \
+              --debug-output example/.maestro/artifacts/debug --flatten-debug-output \
+              --format JUNIT --output example/.maestro/artifacts/android-results.xml
+
+      - name: Upload Android UI artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: maestro-android-${{ matrix.shard }}
+          path: |
+            example/.maestro/artifacts
+            ${{ runner.temp }}/metro-android.log
+
+  ui-test-ios:
+    name: ui-test-ios (shard ${{ matrix.shard }} of 2)
+    needs: build-ios
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1]
+
+    env:
+      MAESTRO_DRIVER_STARTUP_TIMEOUT: '300000'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Use Xcode 26
+        uses: maxim-lobanov/setup-xcode@60606e260d2fc5762a71e64e74b2174e8ea3c8bd # v1.6.0
+        with:
+          xcode-version: 26
+
+      - name: Install Maestro
+        run: |
+          archive="$RUNNER_TEMP/maestro.zip"
+          curl --fail --location --silent --show-error --retry 3 \
+            "https://github.com/mobile-dev-inc/Maestro/releases/download/cli-${MAESTRO_VERSION}/maestro.zip" \
+            --output "$archive"
+          echo "${MAESTRO_SHA256}  ${archive}" | shasum -a 256 --check
+          unzip -q "$archive" -d "$RUNNER_TEMP/maestro"
+          "$RUNNER_TEMP/maestro/maestro/bin/maestro" --version
+          echo "$RUNNER_TEMP/maestro/maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Download the iOS app
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: ios-app
+          path: ${{ runner.temp }}
+
+      - name: Run iOS device suite
+        run: |
+          mkdir -p "$RUNNER_TEMP/ios-app"
+          tar -xzf "$RUNNER_TEMP/ios-app.tgz" -C "$RUNNER_TEMP/ios-app"
+          device_id="$(xcrun simctl list devices available | sed -nE 's/.*iPhone[^()]* \(([0-9A-F-]+)\) \(Shutdown\).*/\1/p' | head -1)"
+          test -n "$device_id"
+          xcrun simctl boot "$device_id"
+          xcrun simctl bootstatus "$device_id" -b
+          xcrun simctl install "$device_id" "$RUNNER_TEMP/ios-app/JanuarySDKDemo.app"
+          CI=1 yarn ui:start > "$RUNNER_TEMP/metro-ios.log" 2>&1 &
+          metro_pid=$!
+          trap 'kill "$metro_pid" 2>/dev/null || true' EXIT
+          for _ in {1..60}; do
+            curl --fail --silent http://127.0.0.1:8081/status >/dev/null && break
+            sleep 2
+          done
+          curl --fail --silent http://127.0.0.1:8081/status
+          mkdir -p example/.maestro/artifacts
+          flows="$(node example/.maestro/shard.mjs ${{ matrix.shard }} 2)"
+          echo "Flows in this shard: $flows"
+          # shellcheck disable=SC2086 # the shard is a space-separated list of files
+          maestro test --device "$device_id" $flows \
+            --include-tags fixture,parity \
+            --debug-output example/.maestro/artifacts/debug --flatten-debug-output \
+            --format JUNIT --output example/.maestro/artifacts/ios-results.xml
+
+      - name: Upload iOS UI artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: maestro-ios-${{ matrix.shard }}
+          path: |
+            example/.maestro/artifacts
+            ${{ runner.temp }}/metro-ios.log
+
+  # One check that summarizes every shard, so branch protection can require a
+  # single stable name.
+  ui-tests:
+    needs: [ui-test-android, ui-test-ios]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every UI shard passed
+        env:
+          ANDROID: ${{ needs.ui-test-android.result }}
+          IOS: ${{ needs.ui-test-ios.result }}
+        run: |
+          echo "android=$ANDROID ios=$IOS"
+          test "$ANDROID" = "success" && test "$IOS" = "success"

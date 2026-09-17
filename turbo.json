@@ -17,7 +17,7 @@
         "!example/android/build",
         "!example/android/app/build"
       ],
-      "outputs": []
+      "outputs": ["android/app/build/outputs/apk/debug/app-debug.apk"]
     },
     "build:ios": {
       "env": [
@@ -37,7 +37,7 @@
         "!example/ios/build",
         "!example/ios/Pods"
       ],
-      "outputs": []
+      "outputs": ["ios/build/Build/Products/Debug-iphonesimulator/JanuarySDKDemo.app/**"]
     }
   }
 }

@@ -65,7 +65,7 @@ tags:
     id: food-log-save-retry
 - extendedWaitUntil:
     notVisible:
-      id: food-log-save
+      id: food-log-editor
     timeout: 15000
 - scrollUntilVisible:
     element:
@@ -93,7 +93,7 @@ tags:
     id: food-log-save
 - extendedWaitUntil:
     notVisible:
-      id: food-log-save
+      id: food-log-editor
     timeout: 15000
 - scrollUntilVisible:
     element:
