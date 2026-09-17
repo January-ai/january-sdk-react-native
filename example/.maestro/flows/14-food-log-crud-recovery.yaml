@@ -133,6 +133,11 @@ tags:
     timeout: 15000
 - assertVisible: Temporary fixture deletion failure.
 - takeScreenshot: example/.maestro/artifacts/react-native-log-delete-error
+# The retry button is the last thing in the error card, below the fold.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: food-logs-retry
 - tapOn:
     id: food-logs-retry
 - extendedWaitUntil:
