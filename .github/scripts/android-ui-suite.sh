@@ -26,7 +26,7 @@ echo
 # while the emulator boots the app starved the runner enough for the launcher
 # to hang; warming Metro's transform cache first keeps the first flow honest.
 curl --fail --silent --output /dev/null \
-  'http://127.0.0.1:8081/index.bundle?platform=android&dev=true&minify=false'
+  'http://127.0.0.1:8081/index.bundle?platform=android&dev=true&minify=false&lazy=true&transform.engine=hermes'
 
 mkdir -p example/.maestro/artifacts
 flows="$(node example/.maestro/shard.mjs "$shard" "$shards")"

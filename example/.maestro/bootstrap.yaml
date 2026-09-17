@@ -60,7 +60,9 @@ env:
       - tapOn:
           text: Close
           optional: true
+      # The first launch on a hosted runner waits for Metro's first bundle,
+      # which has taken close to two minutes there.
       - extendedWaitUntil:
           visible:
             id: search-screen
-          timeout: 45000
+          timeout: 120000
