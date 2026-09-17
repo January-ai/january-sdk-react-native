@@ -375,14 +375,11 @@ jobs:
             | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>console.log(JSON.parse(d).launchAsset.url))')"
           echo "Warming up $bundle_url"
           curl --fail --silent --output /dev/null --max-time 600 "$bundle_url"
-          mkdir -p example/.maestro/artifacts
           flows="$(node example/.maestro/shard.mjs ${{ matrix.shard }} 3)"
           echo "Flows in this shard: $flows"
+          test -n "$flows"
           # shellcheck disable=SC2086 # the shard is a space-separated list of files
-          maestro test --device "$device_id" $flows \
-            --include-tags fixture,parity \
-            --debug-output example/.maestro/artifacts/debug --flatten-debug-output \
-            --format JUNIT --output example/.maestro/artifacts/ios-results.xml
+          .github/scripts/run-maestro-shard.sh "$device_id" ios-results $flows
 
       - name: Upload iOS UI artifacts
         if: always()

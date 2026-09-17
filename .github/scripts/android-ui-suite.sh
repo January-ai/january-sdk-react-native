@@ -30,13 +30,9 @@ bundle_url="$(curl --fail --silent -H 'expo-platform: android' http://127.0.0.1:
 echo "Warming up $bundle_url"
 curl --fail --silent --output /dev/null --max-time 600 "$bundle_url"
 
-mkdir -p example/.maestro/artifacts
 flows="$(node example/.maestro/shard.mjs "$shard" "$shards")"
 echo "Flows in shard $shard of $shards: $flows"
 test -n "$flows"
 
 # shellcheck disable=SC2086 # the shard is a space-separated list of files
-maestro test --device emulator-5554 $flows \
-  --include-tags fixture,parity \
-  --debug-output example/.maestro/artifacts/debug --flatten-debug-output \
-  --format JUNIT --output example/.maestro/artifacts/android-results.xml
+.github/scripts/run-maestro-shard.sh emulator-5554 android-results $flows
