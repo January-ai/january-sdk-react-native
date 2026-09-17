@@ -39,8 +39,8 @@ maestro test --device <device-id> example/.maestro/flows \
   --shard-split 1
 ```
 
-CI builds the app and runs these same Maestro flows independently on both
-platforms.
+Continuous integration runs the package checks and builds the example app for
+iOS, Android, and web on every change.
 
 For application tests, mock the module at your integration boundary or wrap the
 `JanuaryClient` instance in a small service that can be replaced in unit tests.
