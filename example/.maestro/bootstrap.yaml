@@ -32,6 +32,11 @@ env:
           when:
             platform: Android
           commands:
+            # Kill the previous flow's app before anything else talks to the
+            # device. Twice on the hosted emulator the app was left frozen
+            # (frames taking twenty seconds) and Maestro's next launch stalled
+            # for nineteen minutes on it.
+            - stopApp
             - launchApp:
                 clearState: false
                 stopApp: true

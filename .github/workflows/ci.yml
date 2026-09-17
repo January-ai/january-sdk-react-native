@@ -180,6 +180,12 @@ jobs:
           cd example/ios
           pod install
 
+      - name: Show the inputs Turborepo hashes for iOS
+        # Printed so two runs can be compared when the cache unexpectedly misses.
+        run: |
+          yarn turbo run build:ios --cache-dir="${{ env.TURBO_CACHE_DIR }}" --dry=json \
+            | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const t=JSON.parse(d).tasks[0];console.log("task hash",t.hash);for(const [f,h] of Object.entries(t.inputs).sort())console.log(h.slice(0,12),f)})'
+
       - name: Build example for iOS
         # Turborepo skips the build and restores the app when nothing relevant
         # changed. The generated example/ios is among the inputs, so the hash
@@ -349,7 +355,7 @@ jobs:
           for key in EXDevMenuShowsAtLaunch EXDevMenuShowFloatingActionButton; do
             xcrun simctl spawn "$device_id" defaults write ai.january.sdk.demo "$key" -bool false
           done
-          CI=1 yarn ui:start > "$RUNNER_TEMP/metro-ios.log" 2>&1 &
+          CI=1 EXPO_NO_METRO_LAZY=1 yarn ui:start > "$RUNNER_TEMP/metro-ios.log" 2>&1 &
           metro_pid=$!
           trap 'kill "$metro_pid" 2>/dev/null || true' EXIT
           for _ in {1..60}; do
