@@ -180,6 +180,12 @@ jobs:
           cd example/ios
           pod install
 
+      - name: Show the inputs Turborepo hashes for iOS
+        # Printed so two runs can be compared when the cache unexpectedly misses.
+        run: |
+          yarn turbo run build:ios --cache-dir="${{ env.TURBO_CACHE_DIR }}" --dry=json \
+            | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const t=JSON.parse(d).tasks[0];console.log("task hash",t.hash);for(const [f,h] of Object.entries(t.inputs).sort())console.log(h.slice(0,12),f)})'
+
       - name: Build example for iOS
         # Turborepo skips the build and restores the app when nothing relevant
         # changed. The generated example/ios is among the inputs, so the hash
