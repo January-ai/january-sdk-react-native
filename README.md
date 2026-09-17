@@ -10,7 +10,7 @@ React Native Web is not supported; use `@januaryai/web-sdk` in browsers.
 
 For an app that uses the SDK:
 
-- React Native 0.83+ with the New Architecture (the example app and this repository build with 0.83; 0.86 is also verified)
+- React Native 0.83 or later with the New Architecture enabled
 - React 19.2+
 - iOS 15.1+
 - Android 7.0+ (API 24); apps with `minSdkVersion` below 26 enable core library desugaring
@@ -229,9 +229,9 @@ console.log(`Found ${foods.items.length} foods`);
 
 `session` stands for your app's own login state: the signed-in user's stable ID
 and the credential your backend already accepts. A successful request prints a
-result count; an empty result is still a successful connection. Create one client for the signed-in user, reuse it, and call
-`dispose()` when that user signs out. Token caching and refresh happen inside
-the native SDK.
+result count; an empty result is still a successful connection. Create one
+client for the signed-in user, reuse it, and call `dispose()` when that user
+signs out. Token caching and refresh happen inside the native SDK.
 
 Run the consuming application normally:
 
