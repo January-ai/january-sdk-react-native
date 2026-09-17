@@ -166,45 +166,30 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-turborepo-ios-${{ hashFiles('yarn.lock', 'turbo.json') }}-
 
-      - name: Check turborepo cache for iOS
-        run: |
-          TURBO_CACHE_STATUS=$(node -p "($(yarn turbo run build:ios --cache-dir="${{ env.TURBO_CACHE_DIR }}" --dry=json)).tasks.find(t => t.task === 'build:ios').cache.status")
-
-          if [[ $TURBO_CACHE_STATUS == "HIT" ]]; then
-            echo "turbo_cache_hit=1" >> "$GITHUB_ENV"
-          fi
-
-      - name: Restore the cached app
-        if: env.turbo_cache_hit == 1
-        run: |
-          yarn turbo run build:ios --cache-dir="${{ env.TURBO_CACHE_DIR }}"
-          # A cache entry written before the app was a declared output restores
-          # nothing; fall through to a real build in that case.
-          if [[ ! -d "$APP" ]]; then
-            echo "turbo_cache_hit=0" >> "$GITHUB_ENV"
-          fi
-
       - name: Use appropriate Xcode version
-        if: env.turbo_cache_hit != 1
         uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
         with:
           xcode-version: ${{ env.XCODE_VERSION }}
 
       - name: Prebuild expo app for iOS
-        if: env.turbo_cache_hit != 1
         run: |
           yarn example expo prebuild --platform ios
 
       - name: Install iOS pods
-        if: env.turbo_cache_hit != 1
         run: |
           cd example/ios
-          pod install --repo-update
+          pod install
 
       - name: Build example for iOS
-        if: env.turbo_cache_hit != 1
+        # Turborepo skips the build and restores the app when nothing relevant
+        # changed. The generated example/ios is among the inputs, so the hash
+        # is only meaningful after prebuild; a cache entry written before the
+        # app was a declared output restores nothing, so build again then.
         run: |
-          yarn turbo run build:ios --cache-dir="${{ env.TURBO_CACHE_DIR }}" --force
+          yarn turbo run build:ios --cache-dir="${{ env.TURBO_CACHE_DIR }}"
+          if [[ ! -d "$APP" ]]; then
+            yarn turbo run build:ios --cache-dir="${{ env.TURBO_CACHE_DIR }}" --force
+          fi
           test -d "$APP"
 
       - name: Pack the iOS app for the UI suite
