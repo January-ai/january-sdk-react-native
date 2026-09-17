@@ -13,7 +13,9 @@ shards="$3"
 adb install -r "$apk"
 adb reverse tcp:8081 tcp:8081
 
-CI=1 yarn ui:start > "$RUNNER_TEMP/metro-android.log" 2>&1 &
+# Lazy bundling served a broken bundle to relaunches under load (the app
+# crashed with "runtime not ready" and the bootstrap retried for minutes).
+CI=1 EXPO_NO_METRO_LAZY=1 yarn ui:start > "$RUNNER_TEMP/metro-android.log" 2>&1 &
 metro_pid=$!
 trap 'kill "$metro_pid" 2>/dev/null || true' EXIT
 for _ in $(seq 1 60); do

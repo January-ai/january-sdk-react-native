@@ -355,7 +355,7 @@ jobs:
           for key in EXDevMenuShowsAtLaunch EXDevMenuShowFloatingActionButton; do
             xcrun simctl spawn "$device_id" defaults write ai.january.sdk.demo "$key" -bool false
           done
-          CI=1 yarn ui:start > "$RUNNER_TEMP/metro-ios.log" 2>&1 &
+          CI=1 EXPO_NO_METRO_LAZY=1 yarn ui:start > "$RUNNER_TEMP/metro-ios.log" 2>&1 &
           metro_pid=$!
           trap 'kill "$metro_pid" 2>/dev/null || true' EXIT
           for _ in {1..60}; do
