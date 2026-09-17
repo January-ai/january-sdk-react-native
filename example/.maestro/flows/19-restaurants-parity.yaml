@@ -45,13 +45,13 @@ tags:
     id: menu-item-detail-screen
 - takeScreenshot: example/.maestro/artifacts/react-native-menu-detail
 - tapOn:
-    point: "9%,11%"
+    id: menu-item-detail-back
 - extendedWaitUntil:
     visible:
       id: restaurant-detail-screen
     timeout: 15000
 - tapOn:
-    point: "9%,11%"
+    id: restaurant-detail-back
 - extendedWaitUntil:
     visible:
       id: restaurant-search-screen
