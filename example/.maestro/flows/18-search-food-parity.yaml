@@ -58,10 +58,13 @@ tags:
     id: food-alternatives
 - assertVisible: Food alternatives
 - takeScreenshot: example/.maestro/artifacts/react-native-alternatives-initial
+# Center the button: at the bottom of the sheet it sits under the emulator's
+# navigation bar and a tap on the visible sliver does not register.
 - scrollUntilVisible:
     element:
       id: alternatives-refresh
     direction: DOWN
+    centerElement: true
 - tapOn:
     id: alternatives-refresh
 - extendedWaitUntil:
