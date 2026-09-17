@@ -23,6 +23,11 @@ env:
                 stopApp: true
                 arguments:
                   --initialUrl: ${METRO_URL}
+                  # Read by expo-dev-menu through UserDefaults (the argument
+                  # domain), so the "This is the developer menu" onboarding
+                  # sheet never covers the app on a fresh simulator.
+                  -EXDevMenuIsOnboardingFinished: "1"
+                  -EXDevMenuShowFloatingActionButton: "0"
       - runFlow:
           when:
             platform: Android
