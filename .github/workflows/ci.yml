@@ -282,20 +282,7 @@ jobs:
           api-level: 35
           arch: x86_64
           profile: pixel_6
-          script: |
-            adb install -r "$RUNNER_TEMP/android-app/app-debug.apk"
-            adb reverse tcp:8081 tcp:8081
-            CI=1 yarn ui:start > "$RUNNER_TEMP/metro-android.log" 2>&1 &
-            for attempt in $(seq 1 60); do curl --fail --silent http://127.0.0.1:8081/status >/dev/null && break; sleep 2; done
-            curl --fail --silent http://127.0.0.1:8081/status
-            mkdir -p example/.maestro/artifacts
-            flows="$(node example/.maestro/shard.mjs ${{ matrix.shard }} 3)"
-            echo "Flows in this shard: $flows"
-            # shellcheck disable=SC2086 # the shard is a space-separated list of files
-            maestro test --device emulator-5554 $flows \
-              --include-tags fixture,parity \
-              --debug-output example/.maestro/artifacts/debug --flatten-debug-output \
-              --format JUNIT --output example/.maestro/artifacts/android-results.xml
+          script: .github/scripts/android-ui-suite.sh "$RUNNER_TEMP/android-app/app-debug.apk" ${{ matrix.shard }} 3
 
       - name: Upload Android UI artifacts
         if: always()
