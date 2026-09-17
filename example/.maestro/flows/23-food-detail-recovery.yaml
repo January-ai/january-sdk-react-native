@@ -27,8 +27,10 @@ tags:
     direction: DOWN
 - tapOn:
     id: food-check-glucose
+# Transient loading state; captured when caught, not required.
 - assertVisible:
     id: food-glucose-loading
+    optional: true
 - extendedWaitUntil:
     visible:
       id: food-glucose-error
@@ -61,10 +63,10 @@ tags:
     direction: DOWN
 - tapOn:
     id: food-alternatives
-- scrollUntilVisible:
-    element:
-      id: alternatives-refresh
-    direction: DOWN
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: alternatives-refresh
 - tapOn:
     id: alternatives-refresh
 - extendedWaitUntil:

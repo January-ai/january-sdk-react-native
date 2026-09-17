@@ -1,43 +1,52 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalDependencies": [".nvmrc", ".yarnrc.yml"],
+  "globalDependencies": [".nvmrc", ".yarnrc.yml", "yarn.lock"],
   "globalEnv": ["NODE_ENV"],
   "tasks": {
     "build:android": {
       "env": ["ANDROID_HOME", "ORG_GRADLE_PROJECT_newArchEnabled"],
       "inputs": [
+        "$TURBO_ROOT$/package.json",
+        "$TURBO_ROOT$/app.plugin.js",
+        "$TURBO_ROOT$/android/**",
+        "!$TURBO_ROOT$/android/build/**",
+        "!$TURBO_ROOT$/android/.gradle/**",
+        "$TURBO_ROOT$/src/**",
         "package.json",
-        "android",
-        "!android/build",
-        "src/*.ts",
-        "src/*.tsx",
-        "example/package.json",
-        "example/android",
-        "!example/android/.gradle",
-        "!example/android/build",
-        "!example/android/app/build"
+        "app.json",
+        "assets/**",
+        "plugins/**",
+        "android/**",
+        "!android/.gradle/**",
+        "!android/build/**",
+        "!android/app/build/**",
+        "!android/app/.cxx/**"
       ],
-      "outputs": []
+      "outputs": ["android/app/build/outputs/apk/debug/app-debug.apk"]
     },
     "build:ios": {
       "env": [
         "RCT_NEW_ARCH_ENABLED",
         "RCT_REMOVE_LEGACY_ARCH",
         "RCT_USE_RN_DEP",
-        "RCT_USE_PREBUILT_RNCORE"
+        "RCT_USE_PREBUILT_RNCORE",
+        "XCODE_VERSION"
       ],
       "inputs": [
+        "$TURBO_ROOT$/package.json",
+        "$TURBO_ROOT$/app.plugin.js",
+        "$TURBO_ROOT$/*.podspec",
+        "$TURBO_ROOT$/ios/**",
+        "$TURBO_ROOT$/src/**",
         "package.json",
-        "*.podspec",
-        "ios",
-        "src/*.ts",
-        "src/*.tsx",
-        "example/package.json",
-        "example/ios",
-        "!example/ios/build",
-        "!example/ios/Pods"
+        "app.json",
+        "assets/**",
+        "plugins/**",
+        "ios/**",
+        "!ios/build/**",
+        "!ios/Pods/**"
       ],
-      "outputs": []
+      "outputs": ["ios/build/Build/Products/Debug-iphonesimulator/JanuarySDKDemo.app/**"]
     }
   }
 }

@@ -47,11 +47,10 @@ tags:
     id: food-serving-add
 - tapOn: Increase Greek yogurt quantity
 - assertVisible: '1.25'
-- scrollUntilVisible:
-    element:
-      id: glucose-predict
-    direction: DOWN
-    centerElement: true
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: glucose-predict
 - waitForAnimationToEnd
 - tapOn:
     text: Estimate glucose response
@@ -96,11 +95,10 @@ tags:
     direction: UP
 - assertVisible:
     id: glucose-age
-- scrollUntilVisible:
-    element:
-      id: glucose-predict
-    direction: DOWN
-    centerElement: true
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: glucose-predict
 - waitForAnimationToEnd
 - tapOn:
     text: Estimate glucose response

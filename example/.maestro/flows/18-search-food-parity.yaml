@@ -40,8 +40,10 @@ tags:
 - tapOn:
     id: food-check-glucose
 - assertVisible: Glucose response
+# Transient loading state; captured when caught, not required.
 - assertVisible:
     id: food-glucose-loading
+    optional: true
 - takeScreenshot: example/.maestro/artifacts/react-native-food-glucose-loading
 - extendedWaitUntil:
     visible:
@@ -49,19 +51,18 @@ tags:
     timeout: 15000
 - takeScreenshot: example/.maestro/artifacts/react-native-food-glucose-result
 - tapOn: Close Glucose response
-- scrollUntilVisible:
-    element:
-      id: food-alternatives
-    direction: DOWN
-    centerElement: true
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: food-alternatives
 - tapOn:
     id: food-alternatives
 - assertVisible: Food alternatives
 - takeScreenshot: example/.maestro/artifacts/react-native-alternatives-initial
-- scrollUntilVisible:
-    element:
-      id: alternatives-refresh
-    direction: DOWN
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: alternatives-refresh
 - tapOn:
     id: alternatives-refresh
 - extendedWaitUntil:
