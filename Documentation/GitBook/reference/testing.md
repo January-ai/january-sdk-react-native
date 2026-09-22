@@ -39,11 +39,6 @@ maestro test --device <device-id> example/.maestro/flows \
   --shard-split 1
 ```
 
-Continuous integration builds the example app once per platform, then runs
-these flows on hosted emulators and simulators, split across several jobs.
-Each job uploads Maestro's JUnit report and, for failures, the screenshot and
-view hierarchy of the failing step.
-
 For application tests, mock the module at your integration boundary or wrap the
 `JanuaryClient` instance in a small service that can be replaced in unit tests.
 Use a real development build for linking and end-to-end verification.

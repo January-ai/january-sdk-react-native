@@ -24,7 +24,8 @@ tags:
     id: tab-food-logs
 - assertVisible:
     id: food-logs-screen
-- assertVisible: Logs
+# "Logs" alone also matches the tab label; this heading is only on the screen.
+- assertVisible: Build one complete meal
 - tapOn:
     id: tab-glucose
 - assertVisible:
