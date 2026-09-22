@@ -520,6 +520,7 @@ function WaterCard({
         items={[
           { id: 'fl_oz', label: 'fl oz' },
           { id: 'ml', label: 'ml' },
+          { id: 'cup', label: 'cup' },
         ]}
         onSelect={setUnit}
         selected={unit}
@@ -532,7 +533,7 @@ function WaterCard({
           onSubmitEditing={Keyboard.dismiss}
           returnKeyType="done"
           onChangeText={setAmount}
-          placeholder={unit === 'ml' ? 'e.g. 250' : 'e.g. 8'}
+          placeholder={waterPlaceholder[unit]}
           placeholderTextColor={palette.subdued}
           style={[sharedStyles.input, styles.measureInput]}
           testID="water-amount"
@@ -755,8 +756,17 @@ function WeightCard({
   );
 }
 
+const waterPlaceholder: Record<VolumeUnit, string> = {
+  cup: 'e.g. 1.5',
+  fl_oz: 'e.g. 8',
+  ml: 'e.g. 250',
+};
+
+// Cups are logged in eighths (0.125), so keep three decimals for them; the
+// API's daily totals already come rounded to one.
 function formatVolume(value: number, unit: string): string {
-  const rounded = Math.round(value * 10) / 10;
+  const scale = unit === 'cup' ? 1000 : 10;
+  const rounded = Math.round(value * scale) / scale;
   return `${rounded} ${unit === 'fl_oz' ? 'fl oz' : unit}`;
 }
 

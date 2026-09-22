@@ -41,7 +41,7 @@ import type {
   WeightUnit,
 } from './types';
 
-const VOLUME_UNITS: readonly VolumeUnit[] = ['fl_oz', 'ml'];
+const VOLUME_UNITS: readonly VolumeUnit[] = ['fl_oz', 'ml', 'cup'];
 const WEIGHT_UNITS: readonly WeightUnit[] = ['lb', 'kg'];
 
 let nextClientId = 0;
@@ -351,7 +351,7 @@ export class JanuaryClient {
         assertDates(request);
         const unit = request.unit ?? 'fl_oz';
         if (!VOLUME_UNITS.includes(unit)) {
-          throw new Error('unit must be fl_oz or ml.');
+          throw new Error(`unit must be ${describeUnits(VOLUME_UNITS)}.`);
         }
         return parseNativeJson<ListWaterLogsResponse>(
           await native.waterLogsList(
@@ -520,8 +520,14 @@ function assertMeasurement(
     throw new Error(`${name}.value must be a positive number.`);
   }
   if (!units.includes(measurement.unit)) {
-    throw new Error(`${name}.unit must be ${units.join(' or ')}.`);
+    throw new Error(`${name}.unit must be ${describeUnits(units)}.`);
   }
+}
+
+/** "lb or kg", or "fl_oz, ml, or cup" for three or more units. */
+function describeUnits(units: readonly string[]): string {
+  if (units.length <= 2) return units.join(' or ');
+  return `${units.slice(0, -1).join(', ')}, or ${units[units.length - 1]}`;
 }
 
 function parseNativeJson<T>(json: string): T {

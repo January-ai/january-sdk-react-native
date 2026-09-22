@@ -439,7 +439,7 @@ public final class JanuaryNativeBridge: NSObject, @unchecked Sendable {
         completion: @escaping (NSString?, NSError?) -> Void
     ) {
         guard let volumeUnit = VolumeUnit(rawValue: unit) else {
-            completion(nil, bridgeError("unit must be fl_oz or ml."))
+            completion(nil, bridgeError("unit must be fl_oz, ml, or cup."))
             return
         }
         perform(clientID, completion: completion) { client in
@@ -459,7 +459,7 @@ public final class JanuaryNativeBridge: NSObject, @unchecked Sendable {
         completion: @escaping (NSString?, NSError?) -> Void
     ) {
         guard let volumeUnit = VolumeUnit(rawValue: unit) else {
-            completion(nil, bridgeError("unit must be fl_oz or ml."))
+            completion(nil, bridgeError("unit must be fl_oz, ml, or cup."))
             return
         }
         perform(clientID, completion: completion) { client in

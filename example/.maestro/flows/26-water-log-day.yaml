@@ -45,6 +45,16 @@ tags:
 - extendedWaitUntil:
     visible: .*236.6 ml.*
     timeout: 15000
+# And in US cups of 8 fl oz.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-unit-cup
+- tapOn:
+    id: water-unit-cup
+- extendedWaitUntil:
+    visible: .*1 cup.*
+    timeout: 15000
 - runFlow:
     file: ../scroll-to.yaml
     env:

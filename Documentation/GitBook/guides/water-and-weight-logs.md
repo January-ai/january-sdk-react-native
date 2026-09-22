@@ -6,7 +6,8 @@ request with the same `start` and `end` reads back exactly one day.
 
 ## Water
 
-Log an amount in fluid ounces or millilitres. An end user’s total is capped at
+Log an amount in fluid ounces (`fl_oz`), millilitres (`ml`), or US cups of
+8 fl oz (`cup`). An end user’s total is capped at
 24 L per day; a log that would pass it is rejected with a `validation` error
 whose code is `daily_water_limit_exceeded`.
 
@@ -18,14 +19,15 @@ const log = await january.waterLogs.create({
 });
 ```
 
-Read daily totals back in the unit you display. Only days with water logged
-are present, oldest first, and a total is rounded to one decimal place:
+Read daily totals back in the unit you display, whichever units the logs were
+made in. Only days with water logged are present, oldest first, and a total is
+rounded to one decimal place:
 
 ```ts
 const { items } = await january.waterLogs.list({
   start: '2026-09-01',
   end: '2026-09-07',
-  unit: 'ml',
+  unit: 'cup',
 });
 items.forEach((day) => console.log(day.date, day.total.value, day.total.unit));
 ```
@@ -60,8 +62,8 @@ items.forEach((day) => console.log(day.date, day.weight.value, day.weight.unit))
 ## Ranges and validation
 
 `create` rejects a non-positive value or an unknown unit before the request is
-sent. The API accepts 1–811.5 fl_oz or 30–24000 ml of water and 10–1000 lb or
-4.5–453.6 kg of weight per log. A range whose `start` is more than five years
+sent. The API accepts 1–811.5 fl_oz, 30–24000 ml, or 0.125–101.4 cup of water
+and 10–1000 lb or 4.5–453.6 kg of weight per log. A range whose `start` is more than five years
 ago is refused with the code `date_range_too_large`; at most 100 days are
 returned, the most recent when more match.
 

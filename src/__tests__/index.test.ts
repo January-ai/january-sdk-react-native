@@ -324,6 +324,49 @@ describe('January React Native SDK', () => {
     expect(weights.items[0]?.weight).toEqual({ value: 150, unit: 'lb' });
   });
 
+  it('logs and totals water in US cups', async () => {
+    const client = new JanuaryClient({
+      clientTokenProvider: async () => ({ token: 'ct-test', expiresIn: 1_800 }),
+      endUserId: 'demo-user',
+    });
+    mockNativeModule.waterLogsCreate.mockResolvedValueOnce(
+      JSON.stringify({
+        id: 'water-2',
+        amount: { value: 0.125, unit: 'cup' },
+        consumed_at: '2026-09-10T14:30:15.123Z',
+      })
+    );
+    mockNativeModule.waterLogsList.mockResolvedValueOnce(
+      JSON.stringify({
+        items: [{ date: '2026-09-10', total: { value: 8, unit: 'cup' } }],
+      })
+    );
+
+    const water = await client.waterLogs.create({
+      amount: { value: 0.125, unit: 'cup' },
+    });
+    expect(mockNativeModule.waterLogsCreate).toHaveBeenLastCalledWith(
+      expect.any(String),
+      0.125,
+      'cup',
+      null
+    );
+    expect(water.amount).toEqual({ value: 0.125, unit: 'cup' });
+
+    const totals = await client.waterLogs.list({
+      start: '2026-09-10',
+      end: '2026-09-10',
+      unit: 'cup',
+    });
+    expect(mockNativeModule.waterLogsList).toHaveBeenLastCalledWith(
+      expect.any(String),
+      '2026-09-10',
+      '2026-09-10',
+      'cup'
+    );
+    expect(totals.items[0]?.total).toEqual({ value: 8, unit: 'cup' });
+  });
+
   it('validates water, weight, and food-log updates before crossing the bridge', async () => {
     const client = new JanuaryClient({
       clientTokenProvider: async () => ({ token: 'ct-test', expiresIn: 1_800 }),
@@ -335,9 +378,16 @@ describe('January React Native SDK', () => {
     ).rejects.toThrow('amount.value must be a positive number.');
     await expect(
       client.waterLogs.create({
-        amount: { value: 8, unit: 'cup' as 'ml' },
+        amount: { value: 8, unit: 'cups' as 'ml' },
       })
-    ).rejects.toThrow('amount.unit must be fl_oz or ml.');
+    ).rejects.toThrow('amount.unit must be fl_oz, ml, or cup.');
+    await expect(
+      client.waterLogs.list({
+        start: '2026-09-01',
+        end: '2026-09-10',
+        unit: 'gallon' as 'ml',
+      })
+    ).rejects.toThrow('unit must be fl_oz, ml, or cup.');
     await expect(
       client.waterLogs.list({ start: '', end: '2026-09-10' })
     ).rejects.toThrow('start and end are required.');

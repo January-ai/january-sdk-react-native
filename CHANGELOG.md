@@ -9,6 +9,8 @@ This project uses Semantic Versioning.
   `list`) with the `WaterAmount`, `Volume`, `WaterLog`, `DailyWaterTotal`,
   `Weight`, `WeightLog`, and `DailyWeight` models. Client tokens need the
   `water_logs:*` and `weight_logs:*` scopes for them.
+- `VolumeUnit` includes `cup`, a US cup of 8 fl oz: log 0.125–101.4 cups at a
+  time, or read daily water totals in cups.
 - `foodLogs.update` rejects an update that changes nothing before sending it;
   the API now refuses empty patches and unknown fields.
 - `ServingDetails.weightGrams` is documented as the weight of one catalog

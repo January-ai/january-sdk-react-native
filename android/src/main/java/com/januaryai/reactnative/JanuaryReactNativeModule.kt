@@ -423,7 +423,7 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
   ) {
     val volumeUnit = VolumeUnit.fromValue(unit)
     if (volumeUnit == null) {
-      promise.reject("bridge_error", "unit must be fl_oz or ml.")
+      promise.reject("bridge_error", "unit must be fl_oz, ml, or cup.")
       return
     }
     withClient(clientId, promise) { client ->
@@ -434,7 +434,7 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
   override fun waterLogsList(clientId: String, start: String, end: String, unit: String, promise: Promise) {
     val volumeUnit = VolumeUnit.fromValue(unit)
     if (volumeUnit == null) {
-      promise.reject("bridge_error", "unit must be fl_oz or ml.")
+      promise.reject("bridge_error", "unit must be fl_oz, ml, or cup.")
       return
     }
     withClient(clientId, promise) { client ->

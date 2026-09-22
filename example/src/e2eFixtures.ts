@@ -335,6 +335,24 @@ export function resetFixtureAttempts(): void {
 // every bootstrap clears them. Amounts are kept in fluid ounces and converted
 // on the way out, like the API's daily totals.
 const ML_PER_FL_OZ = 29.5735;
+const FL_OZ_PER_CUP = 8;
+const fixtureWaterCap: Record<VolumeUnit, number> = {
+  cup: 101.4,
+  fl_oz: 811.5,
+  ml: 24_000,
+};
+
+function toFluidOunces(amount: WaterAmount): number {
+  if (amount.unit === 'ml') return amount.value / ML_PER_FL_OZ;
+  if (amount.unit === 'cup') return amount.value * FL_OZ_PER_CUP;
+  return amount.value;
+}
+
+function fromFluidOunces(fluidOunces: number, unit: VolumeUnit): number {
+  if (unit === 'ml') return fluidOunces * ML_PER_FL_OZ;
+  if (unit === 'cup') return fluidOunces / FL_OZ_PER_CUP;
+  return fluidOunces;
+}
 const fixtureWaterLogs: WaterLog[] = [];
 const fixtureWeightLogs: WeightLog[] = [];
 
@@ -343,8 +361,7 @@ export async function createFixtureWaterLog(
   consumedAt: string
 ): Promise<WaterLog> {
   await fixtureDelay();
-  const cap = amount.unit === 'ml' ? 24_000 : 811.5;
-  if (amount.value > cap) {
+  if (amount.value > fixtureWaterCap[amount.unit]) {
     throw fixtureError(
       'This log would take the day past the 24 L daily cap.',
       'daily_water_limit_exceeded',
@@ -367,16 +384,9 @@ export async function listFixtureWaterLogs(
   await fixtureDelay(300);
   const fluidOunces = fixtureWaterLogs
     .filter((log) => log.consumedAt.slice(0, 10) === day)
-    .reduce(
-      (total, log) =>
-        total +
-        (log.amount.unit === 'ml'
-          ? log.amount.value / ML_PER_FL_OZ
-          : log.amount.value),
-      0
-    );
+    .reduce((total, log) => total + toFluidOunces(log.amount), 0);
   if (fluidOunces === 0) return [];
-  const value = unit === 'ml' ? fluidOunces * ML_PER_FL_OZ : fluidOunces;
+  const value = fromFluidOunces(fluidOunces, unit);
   return [{ date: day, total: { unit, value: Math.round(value * 10) / 10 } }];
 }
 

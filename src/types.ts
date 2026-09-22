@@ -443,9 +443,12 @@ export interface GlucosePredictionProfile {
 }
 
 /** Volume units the API accepts. Responses may carry a unit newer than this SDK. */
-export type VolumeUnit = 'fl_oz' | 'ml';
+export type VolumeUnit = 'fl_oz' | 'ml' | 'cup';
 
-/** An amount of water to log: 1–811.5 fl_oz or 30–24000 ml. */
+/**
+ * An amount of water to log: 1–811.5 fl_oz, 30–24000 ml, or 0.125–101.4 cup
+ * (a US cup of 8 fl oz).
+ */
 export interface WaterAmount {
   unit: VolumeUnit;
   value: number;
