@@ -18,7 +18,7 @@ tags:
 - tapOn:
     id: water-amount
 - inputText: "8"
-- hideKeyboard
+- pressKey: Enter
 - runFlow:
     file: ../scroll-to.yaml
     env:

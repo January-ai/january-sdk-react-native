@@ -1,11 +1,10 @@
 appId: ai.january.sdk.demo
-# Metro address the dev client should load from. Override both to point at
-# another Metro, e.g. a fixture-mode one on another port while a live one keeps
-# serving a device:
+# Metro address the dev client should load from: 8081 unless the run passes
+# both of these, e.g. for a fixture-mode Metro on another port while a live one
+# keeps serving a device:
 #   -e METRO_URL=http://127.0.0.1:8082 -e METRO_URL_ENCODED=http%3A%2F%2F127.0.0.1%3A8082
-env:
-  METRO_URL: http://127.0.0.1:8081
-  METRO_URL_ENCODED: http%3A%2F%2F127.0.0.1%3A8081
+# The defaults live in the expressions below rather than an `env:` block,
+# because a subflow's own env replaces the value passed on the command line.
 ---
 - retry:
     maxRetries: 2
@@ -22,7 +21,7 @@ env:
                 clearState: false
                 stopApp: true
                 arguments:
-                  --initialUrl: ${METRO_URL}
+                  --initialUrl: "${typeof METRO_URL === 'undefined' ? 'http://127.0.0.1:8081' : METRO_URL}"
                   # Read by expo-dev-menu through UserDefaults (the argument
                   # domain), so the "This is the developer menu" onboarding
                   # sheet never covers the app on a fresh simulator.
@@ -51,9 +50,9 @@ env:
             - extendedWaitUntil:
                 visible: "(?i).*development server.*"
                 timeout: 30000
-            - openLink: exp+january-sdk-demo://expo-development-client/?url=${METRO_URL_ENCODED}
+            - openLink: "exp+january-sdk-demo://expo-development-client/?url=${typeof METRO_URL_ENCODED === 'undefined' ? 'http%3A%2F%2F127.0.0.1%3A8081' : METRO_URL_ENCODED}"
             - waitForAnimationToEnd
-            - openLink: exp+january-sdk-demo://expo-development-client/?url=${METRO_URL_ENCODED}
+            - openLink: "exp+january-sdk-demo://expo-development-client/?url=${typeof METRO_URL_ENCODED === 'undefined' ? 'http%3A%2F%2F127.0.0.1%3A8081' : METRO_URL_ENCODED}"
             - waitForAnimationToEnd
             # react-native-screens can throw "runtime not ready" on a warm
             # relaunch of the dev build; RELOAD on the red screen recovers it.

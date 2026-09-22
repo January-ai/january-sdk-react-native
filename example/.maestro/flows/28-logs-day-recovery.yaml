@@ -19,7 +19,7 @@ tags:
 - tapOn:
     id: water-amount
 - inputText: "900"
-- hideKeyboard
+- pressKey: Enter
 - runFlow:
     file: ../scroll-to.yaml
     env:
@@ -30,6 +30,12 @@ tags:
     visible:
       id: water-error
     timeout: 15000
+# The error card opens under the floating tab bar; bring its message clear of
+# it before reading it.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-retry
 - assertVisible: .*24 L daily cap.*
 - takeScreenshot: example/.maestro/artifacts/react-native-water-error
 - runFlow:
@@ -40,7 +46,7 @@ tags:
     id: water-amount
 - eraseText: 5
 - inputText: "8"
-- hideKeyboard
+- pressKey: Enter
 - runFlow:
     file: ../scroll-to.yaml
     env:
@@ -61,7 +67,7 @@ tags:
 - tapOn:
     id: weight-value
 - inputText: "999"
-- hideKeyboard
+- pressKey: Enter
 - runFlow:
     file: ../scroll-to.yaml
     env:
@@ -72,6 +78,12 @@ tags:
     visible:
       id: weight-error
     timeout: 15000
+# The error card opens under the floating tab bar; bring its message clear of
+# it before reading it.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-retry
 - assertVisible: Temporary fixture weight log failure.
 - takeScreenshot: example/.maestro/artifacts/react-native-weight-error
 - runFlow:

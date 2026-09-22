@@ -2,6 +2,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -44,6 +46,11 @@ import {
   fixtureSummaryFor,
   formatDate,
 } from './FoodLogsScreen';
+
+// The iOS decimal pad has no return key, so it could never be dismissed; the
+// numbers-and-punctuation keyboard has one and still opens on digits.
+const numericKeyboard =
+  Platform.OS === 'ios' ? 'numbers-and-punctuation' : 'decimal-pad';
 
 interface TrackingScreenProps {
   client: JanuaryClient;
@@ -149,8 +156,15 @@ export function TrackingScreen({
         </Text>
       </View>
 
+      {/* The day picker stays under the title so every section below can be
+          read against the day it belongs to. */}
+      <View style={styles.dayBar}>
+        <DayNavigator day={day} onChange={changeDay} />
+      </View>
+
       <ScrollView
         contentContainerStyle={styles.logsContent}
+        keyboardShouldPersistTaps="handled"
         style={sharedStyles.scroll}
       >
         <WorkflowGuideCard
@@ -163,8 +177,6 @@ export function TrackingScreen({
           ]}
           title="Track one day at a time"
         />
-
-        <DayNavigator day={day} onChange={changeDay} />
 
         <SectionLabel>Food</SectionLabel>
         {shownSummary && shownSummary.totals.logsCount > 0 ? (
@@ -424,9 +436,14 @@ function WaterCard({
     }
   }, [client, configured, day, fixtures, unit]);
 
+  // A new day starts without a last log to undo; switching the unit only
+  // re-reads the same day's total, so the last log stays deletable.
   useEffect(() => {
     setLastLogId(undefined);
     setLogged(undefined);
+  }, [day]);
+
+  useEffect(() => {
     load().catch(() => undefined);
   }, [load]);
 
@@ -511,7 +528,9 @@ function WaterCard({
       <View style={styles.measureRow}>
         <TextInput
           accessibilityLabel="Water amount"
-          keyboardType="decimal-pad"
+          keyboardType={numericKeyboard}
+          onSubmitEditing={Keyboard.dismiss}
+          returnKeyType="done"
           onChangeText={setAmount}
           placeholder={unit === 'ml' ? 'e.g. 250' : 'e.g. 8'}
           placeholderTextColor={palette.subdued}
@@ -681,7 +700,9 @@ function WeightCard({
       <View style={styles.measureRow}>
         <TextInput
           accessibilityLabel="Weight"
-          keyboardType="decimal-pad"
+          keyboardType={numericKeyboard}
+          onSubmitEditing={Keyboard.dismiss}
+          returnKeyType="done"
           onChangeText={setValue}
           placeholder={unit === 'kg' ? 'e.g. 70' : 'e.g. 150'}
           placeholderTextColor={palette.subdued}
@@ -784,6 +805,7 @@ function isoDate(value: Date): string {
 }
 
 const styles = StyleSheet.create({
+  dayBar: { paddingHorizontal: 16, paddingBottom: 8 },
   flex: { flex: 1 },
   logsHeader: { height: 112 },
   headerActions: {

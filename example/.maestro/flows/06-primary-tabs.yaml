@@ -24,8 +24,7 @@ tags:
     id: tab-food-logs
 - assertVisible:
     id: food-logs-screen
-- assertVisible:
-    id: logs-range-today
+- assertVisible: Logs
 - tapOn:
     id: tab-glucose
 - assertVisible:

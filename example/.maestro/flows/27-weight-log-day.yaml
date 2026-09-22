@@ -24,7 +24,7 @@ tags:
 - tapOn:
     id: weight-value
 - inputText: "70"
-- hideKeyboard
+- pressKey: Enter
 - runFlow:
     file: ../scroll-to.yaml
     env:
@@ -57,6 +57,12 @@ tags:
     direction: UP
 - tapOn:
     id: logs-day-today
+# Today's meals load after the weight card renders and push it down; scroll to
+# it only once they are on screen.
+- extendedWaitUntil:
+    visible:
+      id: tracking-totals
+    timeout: 15000
 - runFlow:
     file: ../scroll-to.yaml
     env:

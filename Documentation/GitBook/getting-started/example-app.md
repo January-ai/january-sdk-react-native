@@ -5,11 +5,12 @@ foods, restaurants, meal analysis, food, water, and weight logs, glucose
 prediction, and profile unit selection on both iOS and Android.
 
 The Tracking tab shows one day at a time: the day’s totals from
-`foodLogs.getSummary`, the meals logged that day, the water logged (with a unit
-switch and delete of the last entry), and the latest weight. Move between days
-to browse history; water or a weight logged for a past day is dated noon on
-that day. The Logs tab lists food logs over a range and creates, edits, and
-deletes them.
+`foodLogs.getSummary`, the meals logged that day, the day’s water total (in
+fluid ounces or millilitres, with delete of the last entry), and the day’s
+latest weight (in pounds or kilograms). Move between days to browse history;
+water or a weight logged for a past day is dated noon UTC on that day. The Logs
+tab lists food logs for today, this week, or the last month, with their
+summary, and creates, edits, and deletes them.
 
 ## Run locally
 
