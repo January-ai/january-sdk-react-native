@@ -423,13 +423,103 @@ export type ActivityLevel =
   'sedentary' | 'lightly_active' | 'moderately_active' | 'very_active';
 export type MedicalCondition = 'type_2_diabetes' | 'prediabetes';
 
+/** Weight units the API accepts. Responses may carry a unit newer than this SDK. */
+export type WeightUnit = 'lb' | 'kg';
+
+/** A body weight with its unit; 10–1000 lb or 4.5–453.6 kg when logging. */
+export interface Weight {
+  unit: WeightUnit;
+  value: number;
+}
+
 export interface GlucosePredictionProfile {
   activityLevel?: ActivityLevel;
+  /** Whole years; the API rejects fractions. */
   age: number;
   healthConditions?: MedicalCondition[];
   height: { unit: 'in' | 'cm'; value: number };
   sex: Sex;
-  weight: { unit: 'lb' | 'kg'; value: number };
+  weight: Weight;
+}
+
+/** Volume units the API accepts. Responses may carry a unit newer than this SDK. */
+export type VolumeUnit = 'fl_oz' | 'ml';
+
+/** An amount of water to log: 1–811.5 fl_oz or 30–24000 ml. */
+export interface WaterAmount {
+  unit: VolumeUnit;
+  value: number;
+}
+
+/** A total volume as the API reports it, rounded to one decimal place. */
+export interface Volume {
+  unit: VolumeUnit;
+  value: number;
+}
+
+export interface WaterLog {
+  /** The amount as logged, in the unit it was sent in. */
+  amount: WaterAmount;
+  /** When the water was consumed, in UTC. */
+  consumedAt: string;
+  /** Keep this to delete the log later. */
+  id: string;
+}
+
+/** Everything logged on one local calendar day, in the unit the request asked for. */
+export interface DailyWaterTotal {
+  /** Local calendar date (YYYY-MM-DD) in the client's timezone. */
+  date: string;
+  total: Volume;
+}
+
+export interface ListWaterLogsResponse {
+  /** One entry per day with water logged, oldest first; days with nothing logged are absent. */
+  items: DailyWaterTotal[];
+}
+
+export interface CreateWaterLogRequest {
+  amount: WaterAmount;
+  /** ISO-8601 with an offset; omitted means now. Its day counts toward the daily cap. */
+  consumedAt?: string;
+}
+
+/** Inclusive calendar dates (YYYY-MM-DD) in the client's timezone; at most 100 days are returned. */
+export interface ListWaterLogsRequest {
+  end: string;
+  start: string;
+  /** The unit every daily total is returned in. Defaults to fl_oz. */
+  unit?: VolumeUnit;
+}
+
+export interface WeightLog {
+  /** When the weight was measured, in UTC. */
+  measuredAt: string;
+  weight: Weight;
+}
+
+/** The latest weight measured on one local calendar day. */
+export interface DailyWeight {
+  /** Local calendar date (YYYY-MM-DD) in the client's timezone. */
+  date: string;
+  weight: Weight;
+}
+
+export interface ListWeightLogsResponse {
+  /** One entry per day with a weight, oldest first; days without one are absent. */
+  items: DailyWeight[];
+}
+
+export interface CreateWeightLogRequest {
+  /** ISO-8601 with an offset; omitted means now. */
+  measuredAt?: string;
+  weight: Weight;
+}
+
+/** Inclusive calendar dates (YYYY-MM-DD) in the client's timezone; at most 100 days are returned. */
+export interface ListWeightLogsRequest {
+  end: string;
+  start: string;
 }
 
 export interface PredictGlucoseRequest {

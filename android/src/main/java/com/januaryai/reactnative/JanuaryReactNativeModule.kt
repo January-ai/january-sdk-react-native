@@ -60,6 +60,15 @@ import ai.january.partner.restaurants.RestaurantMenuItem
 import ai.january.partner.restaurants.SearchRestaurantMenuItemsResponse
 import ai.january.partner.restaurants.SearchRestaurantsRequest
 import ai.january.partner.restaurants.SearchRestaurantsResponse
+import ai.january.partner.waterlogs.DailyWaterTotal
+import ai.january.partner.waterlogs.ListWaterLogsResponse
+import ai.january.partner.waterlogs.Volume
+import ai.january.partner.waterlogs.VolumeUnit
+import ai.january.partner.waterlogs.WaterAmount
+import ai.january.partner.waterlogs.WaterLog
+import ai.january.partner.weightlogs.DailyWeight
+import ai.january.partner.weightlogs.ListWeightLogsResponse
+import ai.january.partner.weightlogs.WeightLog
 import ai.january.partner.voice.VoiceCaptureErrorCode
 import ai.january.partner.voice.VoiceCaptureException
 import ai.january.partner.voice.VoiceCaptureResult
@@ -402,6 +411,64 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
     withClient(clientId, promise) { client ->
       client.foodLogs.delete(id)
       JSONObject()
+    }
+  }
+
+  override fun waterLogsCreate(
+    clientId: String,
+    value: Double,
+    unit: String,
+    consumedAt: String?,
+    promise: Promise,
+  ) {
+    val volumeUnit = VolumeUnit.fromValue(unit)
+    if (volumeUnit == null) {
+      promise.reject("bridge_error", "unit must be fl_oz or ml.")
+      return
+    }
+    withClient(clientId, promise) { client ->
+      client.waterLogs.create(WaterAmount(value, volumeUnit), consumedAt).toJsonObject()
+    }
+  }
+
+  override fun waterLogsList(clientId: String, start: String, end: String, unit: String, promise: Promise) {
+    val volumeUnit = VolumeUnit.fromValue(unit)
+    if (volumeUnit == null) {
+      promise.reject("bridge_error", "unit must be fl_oz or ml.")
+      return
+    }
+    withClient(clientId, promise) { client ->
+      client.waterLogs.list(start, end, volumeUnit).toJsonObject()
+    }
+  }
+
+  override fun waterLogsDelete(clientId: String, id: String, promise: Promise) {
+    withClient(clientId, promise) { client ->
+      client.waterLogs.delete(id)
+      JSONObject()
+    }
+  }
+
+  override fun weightLogsCreate(
+    clientId: String,
+    value: Double,
+    unit: String,
+    measuredAt: String?,
+    promise: Promise,
+  ) {
+    val weightUnit = WeightUnit.entries.firstOrNull { it.value == unit }
+    if (weightUnit == null) {
+      promise.reject("bridge_error", "unit must be lb or kg.")
+      return
+    }
+    withClient(clientId, promise) { client ->
+      client.weightLogs.create(Weight(value, weightUnit), measuredAt).toJsonObject()
+    }
+  }
+
+  override fun weightLogsList(clientId: String, start: String, end: String, promise: Promise) {
+    withClient(clientId, promise) { client ->
+      client.weightLogs.list(start, end).toJsonObject()
     }
   }
 
@@ -872,6 +939,41 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
       .put("daysWithLogs", totals.daysWithLogs)
       .put("nutrients", totals.nutrients.toJsonObject()))
     .put("averagePerLoggedDay", JSONObject().put("nutrients", averagePerLoggedDay.nutrients.toJsonObject()))
+
+  private fun WaterAmount.toJsonObject(): JSONObject = JSONObject()
+    .put("value", value)
+    .put("unit", unit.value)
+
+  private fun Volume.toJsonObject(): JSONObject = JSONObject()
+    .put("value", value)
+    .put("unit", unit.value)
+
+  private fun WaterLog.toJsonObject(): JSONObject = JSONObject()
+    .put("id", id)
+    .put("amount", amount.toJsonObject())
+    .put("consumedAt", consumedAt)
+
+  private fun DailyWaterTotal.toJsonObject(): JSONObject = JSONObject()
+    .put("date", date)
+    .put("total", total.toJsonObject())
+
+  private fun ListWaterLogsResponse.toJsonObject(): JSONObject = JSONObject()
+    .put("items", JSONArray(items.map { it.toJsonObject() }))
+
+  private fun Weight.toJsonObject(): JSONObject = JSONObject()
+    .put("value", value)
+    .put("unit", unit.value)
+
+  private fun WeightLog.toJsonObject(): JSONObject = JSONObject()
+    .put("weight", weight.toJsonObject())
+    .put("measuredAt", measuredAt)
+
+  private fun DailyWeight.toJsonObject(): JSONObject = JSONObject()
+    .put("date", date)
+    .put("weight", weight.toJsonObject())
+
+  private fun ListWeightLogsResponse.toJsonObject(): JSONObject = JSONObject()
+    .put("items", JSONArray(items.map { it.toJsonObject() }))
 
   private fun ListFoodLogsResponse.toJsonObject(): JSONObject = JSONObject()
     .put("totalCount", totalCount)

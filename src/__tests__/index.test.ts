@@ -71,6 +71,30 @@ jest.mock('../NativeJanuaryReactNative', () => ({
       JSON.stringify({ items: [], total_count: 0 })
     ),
     resolveTokenRequest: jest.fn(),
+    waterLogsCreate: jest.fn(async () =>
+      JSON.stringify({
+        id: 'water-1',
+        amount: { value: 8, unit: 'fl_oz' },
+        consumed_at: '2026-09-10T14:30:15.123Z',
+      })
+    ),
+    waterLogsDelete: jest.fn(async () => '{}'),
+    waterLogsList: jest.fn(async () =>
+      JSON.stringify({
+        items: [{ date: '2026-09-10', total: { value: 64, unit: 'fl_oz' } }],
+      })
+    ),
+    weightLogsCreate: jest.fn(async () =>
+      JSON.stringify({
+        weight: { value: 150, unit: 'lb' },
+        measured_at: '2026-09-10T14:30:15.123Z',
+      })
+    ),
+    weightLogsList: jest.fn(async () =>
+      JSON.stringify({
+        items: [{ date: '2026-09-10', weight: { value: 150, unit: 'lb' } }],
+      })
+    ),
   },
 }));
 
@@ -236,6 +260,97 @@ describe('January React Native SDK', () => {
       '["high_protein"]'
     );
     expect(mockNativeModule.foodAnalysisAnalyzeDescription).toHaveBeenCalled();
+  });
+
+  it('exposes water and weight logs through the native SDKs', async () => {
+    const client = new JanuaryClient({
+      clientTokenProvider: async () => ({ token: 'ct-test', expiresIn: 1_800 }),
+      endUserId: 'demo-user',
+    });
+
+    const water = await client.waterLogs.create({
+      amount: { value: 8, unit: 'fl_oz' },
+      consumedAt: '2026-09-10T07:30:15-07:00',
+    });
+    expect(mockNativeModule.waterLogsCreate).toHaveBeenCalledWith(
+      expect.any(String),
+      8,
+      'fl_oz',
+      '2026-09-10T07:30:15-07:00'
+    );
+    expect(water).toEqual({
+      id: 'water-1',
+      amount: { value: 8, unit: 'fl_oz' },
+      consumedAt: '2026-09-10T14:30:15.123Z',
+    });
+
+    const totals = await client.waterLogs.list({
+      start: '2026-09-10',
+      end: '2026-09-10',
+      unit: 'ml',
+    });
+    expect(mockNativeModule.waterLogsList).toHaveBeenCalledWith(
+      expect.any(String),
+      '2026-09-10',
+      '2026-09-10',
+      'ml'
+    );
+    expect(totals.items[0]?.total.value).toBe(64);
+    await client.waterLogs.delete('water-1');
+    expect(mockNativeModule.waterLogsDelete).toHaveBeenCalledWith(
+      expect.any(String),
+      'water-1'
+    );
+
+    const weight = await client.weightLogs.create({
+      weight: { value: 150, unit: 'lb' },
+    });
+    expect(mockNativeModule.weightLogsCreate).toHaveBeenCalledWith(
+      expect.any(String),
+      150,
+      'lb',
+      null
+    );
+    expect(weight.measuredAt).toBe('2026-09-10T14:30:15.123Z');
+    const weights = await client.weightLogs.list({
+      start: '2026-09-01',
+      end: '2026-09-10',
+    });
+    expect(mockNativeModule.weightLogsList).toHaveBeenCalledWith(
+      expect.any(String),
+      '2026-09-01',
+      '2026-09-10'
+    );
+    expect(weights.items[0]?.weight).toEqual({ value: 150, unit: 'lb' });
+  });
+
+  it('validates water, weight, and food-log updates before crossing the bridge', async () => {
+    const client = new JanuaryClient({
+      clientTokenProvider: async () => ({ token: 'ct-test', expiresIn: 1_800 }),
+      endUserId: 'demo-user',
+    });
+
+    await expect(
+      client.waterLogs.create({ amount: { value: 0, unit: 'ml' } })
+    ).rejects.toThrow('amount.value must be a positive number.');
+    await expect(
+      client.waterLogs.create({
+        amount: { value: 8, unit: 'cup' as 'ml' },
+      })
+    ).rejects.toThrow('amount.unit must be fl_oz or ml.');
+    await expect(
+      client.waterLogs.list({ start: '', end: '2026-09-10' })
+    ).rejects.toThrow('start and end are required.');
+    await expect(client.waterLogs.delete(' ')).rejects.toThrow(
+      'id is required.'
+    );
+    await expect(
+      client.weightLogs.create({ weight: { value: 150, unit: 'st' as 'kg' } })
+    ).rejects.toThrow('weight.unit must be lb or kg.');
+    await expect(client.foodLogs.update({ id: 'log-1' })).rejects.toThrow(
+      'An update needs at least one of foods, timestampUTC, or name.'
+    );
+    expect(mockNativeModule.foodLogsUpdate).toHaveBeenCalledTimes(1);
   });
 
   it('validates restaurant requests before crossing the native bridge', async () => {

@@ -29,7 +29,20 @@ import type {
   SuggestFoodAlternativesRequest,
   SuggestFoodAlternativesResponse,
   UpdateFoodLogRequest,
+  CreateWaterLogRequest,
+  CreateWeightLogRequest,
+  ListWaterLogsRequest,
+  ListWaterLogsResponse,
+  ListWeightLogsRequest,
+  ListWeightLogsResponse,
+  VolumeUnit,
+  WaterLog,
+  WeightLog,
+  WeightUnit,
 } from './types';
+
+const VOLUME_UNITS: readonly VolumeUnit[] = ['fl_oz', 'ml'];
+const WEIGHT_UNITS: readonly WeightUnit[] = ['lb', 'kg'];
 
 let nextClientId = 0;
 
@@ -74,6 +87,15 @@ export class JanuaryClient {
   };
   readonly glucose: {
     predict: (request: PredictGlucoseRequest) => Promise<GlucosePrediction>;
+  };
+  readonly waterLogs: {
+    create: (request: CreateWaterLogRequest) => Promise<WaterLog>;
+    delete: (id: string) => Promise<void>;
+    list: (request: ListWaterLogsRequest) => Promise<ListWaterLogsResponse>;
+  };
+  readonly weightLogs: {
+    create: (request: CreateWeightLogRequest) => Promise<WeightLog>;
+    list: (request: ListWeightLogsRequest) => Promise<ListWeightLogsResponse>;
   };
   readonly restaurants: {
     search: (
@@ -273,6 +295,15 @@ export class JanuaryClient {
         this.assertActive();
         if (!request.id.trim()) throw new Error('id is required.');
         if (request.foods) assertSelections(request.foods);
+        if (
+          request.foods == null &&
+          request.timestampUTC == null &&
+          request.name == null
+        ) {
+          throw new Error(
+            'An update needs at least one of foods, timestampUTC, or name.'
+          );
+        }
         return parseNativeJson<FoodLog>(
           await native.foodLogsUpdate(
             this.clientId,
@@ -293,6 +324,64 @@ export class JanuaryClient {
           throw new Error('startTime is required.');
         return parseNativeJson<GlucosePrediction>(
           await native.glucosePredict(this.clientId, JSON.stringify(request))
+        );
+      },
+    };
+
+    this.waterLogs = {
+      create: async (request) => {
+        this.assertActive();
+        assertMeasurement(request.amount, VOLUME_UNITS, 'amount');
+        return parseNativeJson<WaterLog>(
+          await native.waterLogsCreate(
+            this.clientId,
+            request.amount.value,
+            request.amount.unit,
+            request.consumedAt ?? null
+          )
+        );
+      },
+      delete: async (id) => {
+        this.assertActive();
+        if (!id.trim()) throw new Error('id is required.');
+        await native.waterLogsDelete(this.clientId, id);
+      },
+      list: async (request) => {
+        this.assertActive();
+        assertDates(request);
+        const unit = request.unit ?? 'fl_oz';
+        if (!VOLUME_UNITS.includes(unit)) {
+          throw new Error('unit must be fl_oz or ml.');
+        }
+        return parseNativeJson<ListWaterLogsResponse>(
+          await native.waterLogsList(
+            this.clientId,
+            request.start,
+            request.end,
+            unit
+          )
+        );
+      },
+    };
+
+    this.weightLogs = {
+      create: async (request) => {
+        this.assertActive();
+        assertMeasurement(request.weight, WEIGHT_UNITS, 'weight');
+        return parseNativeJson<WeightLog>(
+          await native.weightLogsCreate(
+            this.clientId,
+            request.weight.value,
+            request.weight.unit,
+            request.measuredAt ?? null
+          )
+        );
+      },
+      list: async (request) => {
+        this.assertActive();
+        assertDates(request);
+        return parseNativeJson<ListWeightLogsResponse>(
+          await native.weightLogsList(this.clientId, request.start, request.end)
         );
       },
     };
@@ -413,6 +502,25 @@ function assertSelections(
     ) {
       throw new Error('Serving quantity must be greater than zero.');
     }
+  }
+}
+
+function assertDates(request: { start: string; end: string }): void {
+  if (!request.start.trim() || !request.end.trim()) {
+    throw new Error('start and end are required.');
+  }
+}
+
+function assertMeasurement(
+  measurement: { unit: string; value: number },
+  units: readonly string[],
+  name: string
+): void {
+  if (!Number.isFinite(measurement.value) || measurement.value <= 0) {
+    throw new Error(`${name}.value must be a positive number.`);
+  }
+  if (!units.includes(measurement.unit)) {
+    throw new Error(`${name}.unit must be ${units.join(' or ')}.`);
   }
 }
 
