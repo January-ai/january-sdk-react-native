@@ -58,10 +58,12 @@ tags:
 - tapOn:
     id: logs-day-today
 # Today's meals load after the weight card renders and push it down; scroll to
-# it only once they are on screen.
-- extendedWaitUntil:
-    visible:
+# it only once they are on screen. They sit at the top, above the charts the
+# screen is scrolled to.
+- scrollUntilVisible:
+    element:
       id: tracking-totals
+    direction: UP
     timeout: 15000
 - runFlow:
     file: ../scroll-to.yaml

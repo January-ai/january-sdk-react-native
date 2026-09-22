@@ -41,6 +41,7 @@ import {
   listFixtureWeightLogs,
 } from './e2eFixtures';
 import { localIsoDate, shiftIsoDate, timestampForDay } from './localDate';
+import { WaterChart, WeightChart } from './TrackingCharts';
 import {
   copyFoodLog,
   FoodLogDetail,
@@ -417,6 +418,7 @@ function WaterCard({
   const [saving, setSaving] = useState(false);
   const [lastLogId, setLastLogId] = useState<string>();
   const [logged, setLogged] = useState<string>();
+  const [chartRefresh, setChartRefresh] = useState(0);
   const ticket = useRef(0);
 
   const load = useCallback(async () => {
@@ -425,7 +427,7 @@ function WaterCard({
     setState({ loading: true });
     try {
       const items = fixtures
-        ? await listFixtureWaterLogs(day, unit)
+        ? await listFixtureWaterLogs(day, day, unit)
         : (await client.waterLogs.list({ start: day, end: day, unit })).items;
       if (current !== ticket.current) return;
       setState({ loading: false, value: items[0] ?? null });
@@ -466,6 +468,7 @@ function WaterCard({
       setLastLogId(created.id);
       setLogged(`Logged ${formatVolume(created.amount.value, unit)}`);
       setAmount('');
+      setChartRefresh((count) => count + 1);
       await load();
     } catch (caught) {
       setState((current) => ({
@@ -486,6 +489,7 @@ function WaterCard({
       else await client.waterLogs.delete(lastLogId);
       setLastLogId(undefined);
       setLogged('Deleted the last water log');
+      setChartRefresh((count) => count + 1);
       await load();
     } catch (caught) {
       setState((current) => ({
@@ -594,6 +598,13 @@ function WaterCard({
           </Pressable>
         </View>
       ) : null}
+      <WaterChart
+        client={client}
+        configured={configured}
+        fixtures={fixtures}
+        refreshKey={chartRefresh}
+        unit={unit}
+      />
     </View>
   );
 }
@@ -616,6 +627,7 @@ function WeightCard({
   });
   const [saving, setSaving] = useState(false);
   const [logged, setLogged] = useState<string>();
+  const [chartRefresh, setChartRefresh] = useState(0);
   const ticket = useRef(0);
 
   const load = useCallback(async () => {
@@ -624,7 +636,7 @@ function WeightCard({
     setState({ loading: true });
     try {
       const items = fixtures
-        ? await listFixtureWeightLogs(day)
+        ? await listFixtureWeightLogs(day, day)
         : (await client.weightLogs.list({ start: day, end: day })).items;
       if (current !== ticket.current) return;
       setState({ loading: false, value: items[0] ?? null });
@@ -658,6 +670,7 @@ function WeightCard({
           });
       setLogged(`Logged ${formatWeight(created.weight.value, unit)}`);
       setValue('');
+      setChartRefresh((count) => count + 1);
       await load();
     } catch (caught) {
       setState((current) => ({
@@ -755,6 +768,13 @@ function WeightCard({
           </Pressable>
         </View>
       ) : null}
+      <WeightChart
+        client={client}
+        configured={configured}
+        fixtures={fixtures}
+        refreshKey={chartRefresh}
+        unit={unit}
+      />
     </View>
   );
 }

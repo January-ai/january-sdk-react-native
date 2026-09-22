@@ -17,7 +17,7 @@ import type {
   WeightLog,
 } from '@januaryai/react-native';
 
-import { localDayOf } from './localDate';
+import { localDayOf, localIsoDate, shiftIsoDate } from './localDate';
 
 export async function autocompleteFixtureFoods(
   query: string
@@ -379,17 +379,44 @@ export async function createFixtureWaterLog(
   return log;
 }
 
+/**
+ * Daily water totals from `start` through `end` in `unit`, like the API: one
+ * entry per day with water, oldest first, and at most the latest 100 days.
+ * Each day is the seeded history plus whatever this session logged on it.
+ * `emptyHistory` answers as for an end user who never logged anything.
+ */
 export async function listFixtureWaterLogs(
-  day: string,
-  unit: VolumeUnit
+  start: string,
+  end: string,
+  unit: VolumeUnit,
+  options: { emptyHistory?: boolean } = {}
 ): Promise<DailyWaterTotal[]> {
   await fixtureDelay(300);
-  const fluidOunces = fixtureWaterLogs
-    .filter((log) => localDayOf(log.consumedAt) === day)
-    .reduce((total, log) => total + toFluidOunces(log.amount), 0);
-  if (fluidOunces === 0) return [];
-  const value = fromFluidOunces(fluidOunces, unit);
-  return [{ date: day, total: { unit, value: Math.round(value * 10) / 10 } }];
+  if (options.emptyHistory) return [];
+  const fluidOunces = new Map<string, number>();
+  for (const [day, value] of historyDays(start, end)) {
+    const seeded = seededWaterFluidOunces(value);
+    if (seeded > 0) fluidOunces.set(day, seeded);
+  }
+  for (const log of fixtureWaterLogs) {
+    const day = localDayOf(log.consumedAt);
+    if (day < start || day > end) continue;
+    fluidOunces.set(
+      day,
+      (fluidOunces.get(day) ?? 0) + toFluidOunces(log.amount)
+    );
+  }
+  return [...fluidOunces.entries()]
+    .filter(([, total]) => total > 0)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .slice(-100)
+    .map(([date, total]) => ({
+      date,
+      total: {
+        unit,
+        value: Math.round(fromFluidOunces(total, unit) * 10) / 10,
+      },
+    }));
 }
 
 export async function deleteFixtureWaterLog(id: string): Promise<void> {
@@ -414,15 +441,65 @@ export async function createFixtureWeightLog(
   return log;
 }
 
+/**
+ * The latest weight of each day from `start` through `end`, in the unit it was
+ * logged in, like the API: oldest first, at most the latest 100 days. A weight
+ * logged this session replaces that day's seeded one.
+ */
 export async function listFixtureWeightLogs(
-  day: string
+  start: string,
+  end: string,
+  options: { emptyHistory?: boolean } = {}
 ): Promise<DailyWeight[]> {
   await fixtureDelay(300);
-  const latest = fixtureWeightLogs
-    .filter((log) => localDayOf(log.measuredAt) === day)
-    .sort((left, right) => left.measuredAt.localeCompare(right.measuredAt))
-    .at(-1);
-  return latest ? [{ date: day, weight: latest.weight }] : [];
+  if (options.emptyHistory) return [];
+  const byDay = new Map<string, Weight>();
+  for (const [day, offset] of historyDays(start, end)) {
+    const seeded = seededWeight(offset);
+    if (seeded) byDay.set(day, seeded);
+  }
+  const logged = fixtureWeightLogs
+    .filter((log) => {
+      const day = localDayOf(log.measuredAt);
+      return day >= start && day <= end;
+    })
+    .sort((left, right) => left.measuredAt.localeCompare(right.measuredAt));
+  for (const log of logged) byDay.set(localDayOf(log.measuredAt), log.weight);
+  return [...byDay.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .slice(-100)
+    .map(([date, weight]) => ({ date, weight }));
+}
+
+// A year of seeded history so the Tracking charts have something to draw. It
+// starts two days ago, so today and yesterday begin empty for the flows that
+// log on them, and it has gaps, like a real user's. Water is 48–80 fl oz a
+// day; weight drifts down from about 166 lb, logged in lb on odd days back and
+// in kg on even ones, so the chart has to convert.
+const HISTORY_DAYS = 400;
+
+/** Each date in `start`…`end` that the seeded history covers, with its days-ago. */
+function historyDays(start: string, end: string): [string, number][] {
+  const today = localIsoDate();
+  const days: [string, number][] = [];
+  for (let offset = 2; offset <= HISTORY_DAYS; offset += 1) {
+    const day = shiftIsoDate(today, -offset);
+    if (day >= start && day <= end) days.push([day, offset]);
+  }
+  return days;
+}
+
+function seededWaterFluidOunces(offset: number): number {
+  if (offset % 6 === 4) return 0;
+  return 48 + ((offset * 37) % 5) * 8;
+}
+
+function seededWeight(offset: number): Weight | undefined {
+  if (offset % 3 === 1) return undefined;
+  const pounds = 150 + offset * 0.04 + Math.sin(offset / 4) * 0.8;
+  return offset % 2 === 0
+    ? { unit: 'kg', value: Math.round(pounds * 0.45359237 * 10) / 10 }
+    : { unit: 'lb', value: Math.round(pounds * 10) / 10 };
 }
 
 export async function analyzeFixturePhoto(image: string): Promise<FoodScan> {

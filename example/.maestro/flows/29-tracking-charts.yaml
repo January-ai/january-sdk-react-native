@@ -1,0 +1,115 @@
+appId: ai.january.sdk.demo
+name: Tracking - weight and water charts for a week, a month, and a year
+tags:
+  - fixture
+---
+- runFlow: ../bootstrap.yaml
+- extendedWaitUntil:
+    visible:
+      id: tab-tracking
+    timeout: 15000
+- tapOn:
+    id: tab-tracking
+# Let today's meals load first: they push everything below them down, which
+# can carry a card past a scroll that is already under way.
+- extendedWaitUntil:
+    visible:
+      id: tracking-totals
+    timeout: 15000
+# Fixture mode seeds a year of history, starting two days ago, so every range
+# has water and weight to draw.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-chart
+- assertVisible:
+    id: water-chart-range-week
+- takeScreenshot: example/.maestro/artifacts/react-native-water-chart-week
+- tapOn:
+    id: water-chart-range-month
+- extendedWaitUntil:
+    visible:
+      id: water-chart
+    timeout: 15000
+- takeScreenshot: example/.maestro/artifacts/react-native-water-chart-month
+# A year is five requests of at most 90 days, merged into 12 monthly bars.
+- tapOn:
+    id: water-chart-range-year
+- extendedWaitUntil:
+    visible:
+      id: water-chart
+    timeout: 15000
+- takeScreenshot: example/.maestro/artifacts/react-native-water-chart-year
+# Totals are requested in the card's unit; switching it reads the range again.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-unit-cup
+- tapOn:
+    id: water-unit-cup
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-chart
+# In fixture mode a long press shows the range as an end user with no logs
+# sees it.
+- longPressOn:
+    id: water-chart-range-week
+- extendedWaitUntil:
+    visible:
+      id: water-chart-empty
+    timeout: 15000
+- assertVisible: No water logged in this range
+- takeScreenshot: example/.maestro/artifacts/react-native-water-chart-empty
+- tapOn:
+    id: water-chart-range-week
+- extendedWaitUntil:
+    visible:
+      id: water-chart
+    timeout: 15000
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-chart
+- assertVisible:
+    id: weight-chart-range-week
+- takeScreenshot: example/.maestro/artifacts/react-native-weight-chart-week
+- tapOn:
+    id: weight-chart-range-month
+- extendedWaitUntil:
+    visible:
+      id: weight-chart
+    timeout: 15000
+- takeScreenshot: example/.maestro/artifacts/react-native-weight-chart-month
+- tapOn:
+    id: weight-chart-range-year
+- extendedWaitUntil:
+    visible:
+      id: weight-chart
+    timeout: 15000
+- takeScreenshot: example/.maestro/artifacts/react-native-weight-chart-year
+# Weights logged in lb and kg are drawn in the card's unit.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-unit-kg
+- tapOn:
+    id: weight-unit-kg
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-chart
+- longPressOn:
+    id: weight-chart-range-month
+- extendedWaitUntil:
+    visible:
+      id: weight-chart-empty
+    timeout: 15000
+- assertVisible: No weight logged in this range
+- takeScreenshot: example/.maestro/artifacts/react-native-weight-chart-empty
+- tapOn:
+    id: weight-chart-range-week
+- extendedWaitUntil:
+    visible:
+      id: weight-chart
+    timeout: 15000
