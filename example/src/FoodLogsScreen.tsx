@@ -23,6 +23,7 @@ import type {
 } from '@januaryai/react-native';
 
 import { palette, sharedStyles } from './demoTheme';
+import { deviceTimeZone, localDayOf, localIsoDate } from './localDate';
 import {
   goBack,
   isOnScreen,
@@ -278,7 +279,7 @@ export function FoodLogsScreen({
           </View>
           <View style={styles.userIdentity}>
             <Text style={styles.userId}>{endUserId}</Text>
-            <Text style={styles.userTimezone}>America/New_York</Text>
+            <Text style={styles.userTimezone}>{deviceTimeZone()}</Text>
           </View>
           <Pressable onPress={onSettings} style={styles.userActionButton}>
             <Text style={styles.userAction}>Change user or timezone</Text>
@@ -508,7 +509,7 @@ export function FoodLogsScreen({
             // A new log belongs on screen only if its date is in the selected
             // range ("Last month" is a past window; today's log is not in it).
             const dates = dateRange(range);
-            const day = saved.timestampUTC.slice(0, 10);
+            const day = localDayOf(saved.timestampUTC);
             return day >= dates.start && day <= dates.end
               ? [saved, ...current]
               : current;
@@ -1091,7 +1092,7 @@ function dateRange(range: Range): { start: string; end: string } {
     start.setMonth(now.getMonth() - 1, 1);
     end.setDate(0);
   }
-  return { start: isoDate(start), end: isoDate(end) };
+  return { start: localIsoDate(start), end: localIsoDate(end) };
 }
 
 // Fixture mode has no server to total the logs, so the summary is computed
@@ -1103,13 +1104,13 @@ export function fixtureSummaryFor(
   range: { start: string; end: string }
 ): FoodLogSummary | undefined {
   const inRange = logs.filter((log) => {
-    const day = log.timestampUTC.slice(0, 10);
+    const day = localDayOf(log.timestampUTC);
     return day >= range.start && day <= range.end;
   });
   if (inRange.length === 0) return undefined;
   const byDay = new Map<string, FoodLog[]>();
   for (const log of inRange) {
-    const day = log.timestampUTC.slice(0, 10);
+    const day = localDayOf(log.timestampUTC);
     byDay.set(day, [...(byDay.get(day) ?? []), log]);
   }
   const buckets: FoodLogSummary['buckets'] = [];
@@ -1190,10 +1191,6 @@ function formatRange(range: Range): string {
       year: 'numeric',
     });
   return `${format(dates.start)} – ${format(dates.end)}`;
-}
-
-function isoDate(value: Date): string {
-  return value.toISOString().slice(0, 10);
 }
 
 export function formatDate(value: string): string {

@@ -132,6 +132,7 @@
   },
   "jest": {
     "preset": "react-native",
+    "globalSetup": "<rootDir>/scripts/jest-timezone.js",
     "testEnvironmentOptions": {
       "customExportConditions": [
         "require",

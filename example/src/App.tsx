@@ -39,6 +39,7 @@ import {
   resetFixtureAttempts,
   searchFixtureFoods,
 } from './e2eFixtures';
+import { deviceTimeZone } from './localDate';
 import { goBack, navigateTo, ScreenStack, useScreenStack } from './navigation';
 import { FoodDetailScreen } from './FoodDetailScreen';
 import { FoodLogsScreen } from './FoodLogsScreen';
@@ -121,11 +122,11 @@ function DemoScreen() {
           ? {
               developmentApiKey,
               endUserId,
-              timezone: 'America/New_York',
+              timezone: deviceTimeZone(),
             }
           : {
               endUserId,
-              timezone: 'America/New_York',
+              timezone: deviceTimeZone(),
               clientTokenProvider: fetchClientToken,
             }
       ),
@@ -1330,7 +1331,7 @@ function SettingsSheet({
             <View style={styles.timezoneCard}>
               <View style={styles.promptCopy}>
                 <Text style={styles.settingsFieldLabel}>Timezone</Text>
-                <Text style={styles.connectionDetail}>America/New York</Text>
+                <Text style={styles.connectionDetail}>{deviceTimeZone()}</Text>
               </View>
               <MaterialCommunityIcons
                 color={palette.green}

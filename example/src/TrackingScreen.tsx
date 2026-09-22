@@ -40,6 +40,7 @@ import {
   listFixtureWaterLogs,
   listFixtureWeightLogs,
 } from './e2eFixtures';
+import { localIsoDate, shiftIsoDate, timestampForDay } from './localDate';
 import {
   copyFoodLog,
   FoodLogDetail,
@@ -65,6 +66,8 @@ interface TrackingScreenProps {
  * day's weight. Every request uses the day as both start and end, so the API
  * answers with exactly one summary bucket, one water total, and one weight.
  * Meals are created and edited on the Logs tab; here a meal opens read-only.
+ * Days are the device's calendar dates, the calendar the client's timezone
+ * (the device's) reads request dates in.
  */
 export function TrackingScreen({
   client,
@@ -72,7 +75,7 @@ export function TrackingScreen({
   fixtures,
   onSettings,
 }: TrackingScreenProps) {
-  const [day, setDay] = useState(todayIso);
+  const [day, setDay] = useState(() => localIsoDate());
   const [logs, setLogs] = useState<FoodLog[]>([]);
   const [summary, setSummary] = useState<FoodLogSummary>();
   const [loading, setLoading] = useState(false);
@@ -92,7 +95,7 @@ export function TrackingScreen({
       if (fixtures) {
         await fixtureDelay(800);
         if (ticket !== loadTicket.current) return;
-        setLogs(day === todayIso() ? fixtureFoodLogs.map(copyFoodLog) : []);
+        setLogs(day === localIsoDate() ? fixtureFoodLogs.map(copyFoodLog) : []);
         setSummary(undefined);
       } else {
         const range = { start: day, end: day };
@@ -127,7 +130,7 @@ export function TrackingScreen({
   );
 
   const changeDay = (next: string) => {
-    if (next === day || next > todayIso()) return;
+    if (next === day || next > localIsoDate()) return;
     loadTicket.current += 1;
     setLogs([]);
     setSummary(undefined);
@@ -340,7 +343,7 @@ function DayNavigator({
   day: string;
   onChange: (day: string) => void;
 }) {
-  const today = todayIso();
+  const today = localIsoDate();
   const isToday = day === today;
   return (
     <View style={styles.rangeCard} testID="logs-day-picker">
@@ -348,7 +351,7 @@ function DayNavigator({
         <Pressable
           accessibilityLabel="Previous day"
           accessibilityRole="button"
-          onPress={() => onChange(shiftDay(day, -1))}
+          onPress={() => onChange(shiftIsoDate(day, -1))}
           style={sharedStyles.iconButton}
           testID="logs-day-previous"
         >
@@ -368,7 +371,7 @@ function DayNavigator({
           accessibilityLabel="Next day"
           accessibilityRole="button"
           disabled={isToday}
-          onPress={() => onChange(shiftDay(day, 1))}
+          onPress={() => onChange(shiftIsoDate(day, 1))}
           style={[sharedStyles.iconButton, isToday && sharedStyles.disabled]}
           testID="logs-day-next"
         >
@@ -453,7 +456,7 @@ function WaterCard({
     setSaving(true);
     setState((current) => ({ ...current, error: undefined }));
     try {
-      const consumedAt = mealTimestamp(day);
+      const consumedAt = timestampForDay(day);
       const created = fixtures
         ? await createFixtureWaterLog({ unit, value }, consumedAt)
         : await client.waterLogs.create({
@@ -646,7 +649,7 @@ function WeightCard({
     setSaving(true);
     setState((current) => ({ ...current, error: undefined }));
     try {
-      const measuredAt = mealTimestamp(day);
+      const measuredAt = timestampForDay(day);
       const created = fixtures
         ? await createFixtureWeightLog({ unit, value: weight }, measuredAt)
         : await client.weightLogs.create({
@@ -774,22 +777,6 @@ function formatWeight(value: number, unit: string): string {
   return `${Math.round(value * 10) / 10} ${unit}`;
 }
 
-function todayIso(): string {
-  return isoDate(new Date());
-}
-
-function shiftDay(day: string, days: number): string {
-  const date = new Date(`${day}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + days);
-  return isoDate(date);
-}
-
-// A meal or measurement logged for another day is dated noon UTC on it, so it
-// lands on that day in any timezone the user's client may be configured for.
-function mealTimestamp(day: string): string {
-  return day === todayIso() ? new Date().toISOString() : `${day}T12:00:00.000Z`;
-}
-
 function formatSummary(summary: FoodLogSummary): string {
   const { logsCount, nutrients } = summary.totals;
   const parts = [`${logsCount} ${logsCount === 1 ? 'log' : 'logs'}`];
@@ -808,10 +795,6 @@ function formatDay(day: string): string {
     day: 'numeric',
     year: 'numeric',
   });
-}
-
-function isoDate(value: Date): string {
-  return value.toISOString().slice(0, 10);
 }
 
 const styles = StyleSheet.create({

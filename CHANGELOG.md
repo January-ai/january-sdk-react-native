@@ -18,6 +18,9 @@ This project uses Semantic Versioning.
 - The example gains a Tracking tab that shows one day at a time: the day’s
   food-log summary and meals, water total, and weight. The Food Logs tab is
   renamed Logs.
+- The example's client uses the device's IANA timezone, and "today" on the
+  Tracking and Logs tabs is the device's calendar date instead of the UTC date,
+  which in the Americas turned into tomorrow every evening.
 
 ## [0.2.1] - 2026-09-16
 

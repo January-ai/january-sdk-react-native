@@ -17,6 +17,8 @@ import type {
   WeightLog,
 } from '@januaryai/react-native';
 
+import { localDayOf } from './localDate';
+
 export async function autocompleteFixtureFoods(
   query: string
 ): Promise<AutocompleteFoodsResponse> {
@@ -257,8 +259,8 @@ export const fixtureFoodLogs: FoodLog[] = [
   {
     id: 'fixture-log-breakfast',
     name: 'Fixture breakfast',
-    // Today at noon UTC, so the log sits inside the default week range.
-    timestampUTC: `${new Date().toISOString().slice(0, 10)}T12:00:00Z`,
+    // Today at local noon, so the log sits inside the default week range.
+    timestampUTC: new Date(new Date().setHours(12, 0, 0, 0)).toISOString(),
     foods: [
       {
         id: 'fixture-oatmeal',
@@ -383,7 +385,7 @@ export async function listFixtureWaterLogs(
 ): Promise<DailyWaterTotal[]> {
   await fixtureDelay(300);
   const fluidOunces = fixtureWaterLogs
-    .filter((log) => log.consumedAt.slice(0, 10) === day)
+    .filter((log) => localDayOf(log.consumedAt) === day)
     .reduce((total, log) => total + toFluidOunces(log.amount), 0);
   if (fluidOunces === 0) return [];
   const value = fromFluidOunces(fluidOunces, unit);
@@ -417,7 +419,7 @@ export async function listFixtureWeightLogs(
 ): Promise<DailyWeight[]> {
   await fixtureDelay(300);
   const latest = fixtureWeightLogs
-    .filter((log) => log.measuredAt.slice(0, 10) === day)
+    .filter((log) => localDayOf(log.measuredAt) === day)
     .sort((left, right) => left.measuredAt.localeCompare(right.measuredAt))
     .at(-1);
   return latest ? [{ date: day, weight: latest.weight }] : [];

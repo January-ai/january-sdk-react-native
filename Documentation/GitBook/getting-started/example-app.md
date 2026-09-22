@@ -6,11 +6,12 @@ prediction, and profile unit selection on both iOS and Android.
 
 The Tracking tab shows one day at a time: the day’s totals from
 `foodLogs.getSummary`, the meals logged that day, the day’s water total (in
-fluid ounces, millilitres, or US cups, with delete of the last entry), and the day’s
-latest weight (in pounds or kilograms). Move between days to browse history;
-water or a weight logged for a past day is dated noon UTC on that day. The Logs
-tab lists food logs for today, this week, or the last month, with their
-summary, and creates, edits, and deletes them.
+fluid ounces, millilitres, or US cups, with delete of the last entry), and the
+day’s latest weight (in pounds or kilograms). Move between days to browse
+history; water or a weight logged for a past day is dated noon on that day. The
+demo’s client uses the device’s timezone, and “today” is the device’s calendar
+date. The Logs tab lists food logs for today, this week, or the last month,
+with their summary, and creates, edits, and deletes them.
 
 ## Run locally
 
