@@ -1,5 +1,7 @@
 import type {
   AutocompleteFoodsResponse,
+  DailyWaterTotal,
+  DailyWeight,
   FoodLog,
   FoodLogSummary,
   FoodScan,
@@ -8,6 +10,11 @@ import type {
   FoodSearchResults,
   GlucosePrediction,
   SuggestFoodAlternativesResponse,
+  VolumeUnit,
+  WaterAmount,
+  WaterLog,
+  Weight,
+  WeightLog,
 } from '@januaryai/react-native';
 
 export async function autocompleteFixtureFoods(
@@ -319,6 +326,91 @@ const attempts = new Set<string>();
 
 export function resetFixtureAttempts(): void {
   attempts.clear();
+  fixtureWaterLogs.length = 0;
+  fixtureWeightLogs.length = 0;
+}
+
+// Water and weight logs are the one stateful fixture: a flow logs, reads the
+// day's total back, and deletes, so the entries live for the app session and
+// every bootstrap clears them. Amounts are kept in fluid ounces and converted
+// on the way out, like the API's daily totals.
+const ML_PER_FL_OZ = 29.5735;
+const fixtureWaterLogs: WaterLog[] = [];
+const fixtureWeightLogs: WeightLog[] = [];
+
+export async function createFixtureWaterLog(
+  amount: WaterAmount,
+  consumedAt: string
+): Promise<WaterLog> {
+  await fixtureDelay();
+  const cap = amount.unit === 'ml' ? 24_000 : 811.5;
+  if (amount.value > cap) {
+    throw fixtureError(
+      'This log would take the day past the 24 L daily cap.',
+      'daily_water_limit_exceeded',
+      400
+    );
+  }
+  const log: WaterLog = {
+    id: `fixture-water-${Date.now()}-${fixtureWaterLogs.length}`,
+    amount,
+    consumedAt,
+  };
+  fixtureWaterLogs.push(log);
+  return log;
+}
+
+export async function listFixtureWaterLogs(
+  day: string,
+  unit: VolumeUnit
+): Promise<DailyWaterTotal[]> {
+  await fixtureDelay(300);
+  const fluidOunces = fixtureWaterLogs
+    .filter((log) => log.consumedAt.slice(0, 10) === day)
+    .reduce(
+      (total, log) =>
+        total +
+        (log.amount.unit === 'ml'
+          ? log.amount.value / ML_PER_FL_OZ
+          : log.amount.value),
+      0
+    );
+  if (fluidOunces === 0) return [];
+  const value = unit === 'ml' ? fluidOunces * ML_PER_FL_OZ : fluidOunces;
+  return [{ date: day, total: { unit, value: Math.round(value * 10) / 10 } }];
+}
+
+export async function deleteFixtureWaterLog(id: string): Promise<void> {
+  await fixtureDelay();
+  const index = fixtureWaterLogs.findIndex((log) => log.id === id);
+  // Deleting an unknown log succeeds, like the API.
+  if (index >= 0) fixtureWaterLogs.splice(index, 1);
+}
+
+export async function createFixtureWeightLog(
+  weight: Weight,
+  measuredAt: string
+): Promise<WeightLog> {
+  await fixtureDelay();
+  // A weight of 999 fails once, so a flow can exercise retry after a server
+  // failure without a special mode.
+  if (weight.value === 999 && takeFirstAttempt('weight-log')) {
+    throw fixtureError('Temporary fixture weight log failure.', 'server', 500);
+  }
+  const log: WeightLog = { weight, measuredAt };
+  fixtureWeightLogs.push(log);
+  return log;
+}
+
+export async function listFixtureWeightLogs(
+  day: string
+): Promise<DailyWeight[]> {
+  await fixtureDelay(300);
+  const latest = fixtureWeightLogs
+    .filter((log) => log.measuredAt.slice(0, 10) === day)
+    .sort((left, right) => left.measuredAt.localeCompare(right.measuredAt))
+    .at(-1);
+  return latest ? [{ date: day, weight: latest.weight }] : [];
 }
 
 export async function analyzeFixturePhoto(image: string): Promise<FoodScan> {

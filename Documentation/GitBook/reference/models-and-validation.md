@@ -18,6 +18,9 @@ bridge:
 | Menu offset | Non-negative integer |
 | Food selections | At least one item with food ID, serving ID, and quantity greater than zero |
 | Glucose start time | Required and non-empty |
+| Food log update | At least one of `foods`, `timestampUTC`, or `name` |
+| Water amount, weight | Positive value with a unit of `fl_oz`/`ml` or `lb`/`kg` |
+| Water and weight ranges | `start` and `end` required and non-empty |
 
 Response fields marked optional may legitimately be absent. Avoid non-null
 assertions in production UI and provide fallbacks for names, images, nutrition,

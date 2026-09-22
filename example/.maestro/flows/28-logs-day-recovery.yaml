@@ -1,0 +1,93 @@
+appId: ai.january.sdk.demo
+name: Tracking - water cap error and weight retry
+tags:
+  - fixture
+---
+- runFlow: ../bootstrap.yaml
+- extendedWaitUntil:
+    visible:
+      id: tab-tracking
+    timeout: 15000
+- tapOn:
+    id: tab-tracking
+# Over the daily cap: the API answers 400 daily_water_limit_exceeded, which the
+# SDK reports as a validation error; a corrected amount goes through on retry.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-amount
+- tapOn:
+    id: water-amount
+- inputText: "900"
+- hideKeyboard
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-log
+- tapOn:
+    id: water-log
+- extendedWaitUntil:
+    visible:
+      id: water-error
+    timeout: 15000
+- assertVisible: .*24 L daily cap.*
+- takeScreenshot: example/.maestro/artifacts/react-native-water-error
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-amount
+- tapOn:
+    id: water-amount
+- eraseText: 5
+- inputText: "8"
+- hideKeyboard
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-retry
+- tapOn:
+    id: water-retry
+- extendedWaitUntil:
+    visible:
+      id: water-logged
+    timeout: 15000
+- assertNotVisible:
+    id: water-error
+# A weight of 999 fails once in fixture mode; retrying saves it.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-value
+- tapOn:
+    id: weight-value
+- inputText: "999"
+- hideKeyboard
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-log
+- tapOn:
+    id: weight-log
+- extendedWaitUntil:
+    visible:
+      id: weight-error
+    timeout: 15000
+- assertVisible: Temporary fixture weight log failure.
+- takeScreenshot: example/.maestro/artifacts/react-native-weight-error
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-retry
+- tapOn:
+    id: weight-retry
+- extendedWaitUntil:
+    visible:
+      id: weight-logged
+    timeout: 15000
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-day
+- assertVisible: .*999 lb.*
+- assertNotVisible:
+    id: weight-error

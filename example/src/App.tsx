@@ -42,6 +42,7 @@ import {
 import { goBack, navigateTo, ScreenStack, useScreenStack } from './navigation';
 import { FoodDetailScreen } from './FoodDetailScreen';
 import { FoodLogsScreen } from './FoodLogsScreen';
+import { TrackingScreen } from './TrackingScreen';
 import { GlucoseScreen } from './GlucoseScreen';
 import { RestaurantScreens } from './RestaurantScreens';
 import { ScanScreen } from './ScanScreen';
@@ -504,6 +505,13 @@ function DemoScreen() {
         />
       ) : activeTab === 'scan' ? (
         <ScanScreen
+          client={client}
+          configured={configured}
+          fixtures={e2eFixturesEnabled}
+          onSettings={() => setShowSettings(true)}
+        />
+      ) : activeTab === 'tracking' ? (
+        <TrackingScreen
           client={client}
           configured={configured}
           fixtures={e2eFixturesEnabled}
@@ -1165,13 +1173,31 @@ function formatNumber(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
-type TabId = 'search' | 'scan' | 'foodLogs' | 'glucose';
+type TabId = 'search' | 'scan' | 'tracking' | 'foodLogs' | 'glucose';
 
+// Test IDs are fixed so the Maestro flows survive a label change; the Logs
+// tab kept `tab-food-logs` when it was renamed from Food Logs.
 const tabs = [
-  { id: 'search', label: 'Search', icon: 'search' },
-  { id: 'scan', label: 'Scan', icon: 'center-focus-weak' },
-  { id: 'foodLogs', label: 'Food Logs', icon: 'list-alt' },
-  { id: 'glucose', label: 'Glucose', icon: 'show-chart' },
+  { id: 'search', label: 'Search', icon: 'search', testID: 'tab-search' },
+  { id: 'scan', label: 'Scan', icon: 'center-focus-weak', testID: 'tab-scan' },
+  {
+    id: 'tracking',
+    label: 'Tracking',
+    icon: 'insights',
+    testID: 'tab-tracking',
+  },
+  {
+    id: 'foodLogs',
+    label: 'Logs',
+    icon: 'menu-book',
+    testID: 'tab-food-logs',
+  },
+  {
+    id: 'glucose',
+    label: 'Glucose',
+    icon: 'show-chart',
+    testID: 'tab-glucose',
+  },
 ] as const;
 
 function AppTabBar({
@@ -1197,7 +1223,7 @@ function AppTabBar({
             key={tab.label}
             onPress={() => onSelect(tab.id)}
             style={[styles.tab, tab.id === activeTab && styles.tabSelected]}
-            testID={`tab-${tab.label.toLowerCase().replace(' ', '-')}`}
+            testID={tab.testID}
           >
             <MaterialIcons color={palette.ink} name={tab.icon} size={25} />
             <Text style={styles.tabLabel}>{tab.label}</Text>

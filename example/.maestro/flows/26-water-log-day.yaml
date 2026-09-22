@@ -1,0 +1,76 @@
+appId: ai.january.sdk.demo
+name: Tracking - water total, unit switch, and delete
+tags:
+  - fixture
+---
+- runFlow: ../bootstrap.yaml
+- extendedWaitUntil:
+    visible:
+      id: tab-tracking
+    timeout: 15000
+- tapOn:
+    id: tab-tracking
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-empty
+- assertVisible: No water logged on this day
+- tapOn:
+    id: water-amount
+- inputText: "8"
+- hideKeyboard
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-log
+- tapOn:
+    id: water-log
+- extendedWaitUntil:
+    visible:
+      id: water-logged
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: water-total
+    timeout: 15000
+- assertVisible: .*8 fl oz.*
+- takeScreenshot: example/.maestro/artifacts/react-native-water-logged
+# The same total in millilitres: the API converts, the fixture mirrors it.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-unit-ml
+- tapOn:
+    id: water-unit-ml
+- extendedWaitUntil:
+    visible: .*236.6 ml.*
+    timeout: 15000
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-delete-last
+- tapOn:
+    id: water-delete-last
+- extendedWaitUntil:
+    visible:
+      id: water-empty
+    timeout: 15000
+- takeScreenshot: example/.maestro/artifacts/react-native-water-deleted
+# Another day has its own total.
+- scrollUntilVisible:
+    element:
+      id: logs-day-previous
+    direction: UP
+- tapOn:
+    id: logs-day-previous
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-empty
+- scrollUntilVisible:
+    element:
+      id: logs-day-today
+    direction: UP
+- tapOn:
+    id: logs-day-today
+- assertVisible: Today

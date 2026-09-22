@@ -18,7 +18,9 @@ These authentication modes are mutually exclusive in TypeScript.
 | `foods` | Autocomplete, search, hydration, barcode lookup, alternatives |
 | `restaurants` | Restaurant search, menu-item search, restaurant menus |
 | `foodAnalysis` | Description analysis, photo analysis, corrections |
-| `foodLogs` | Create, list, update, and delete food logs |
+| `foodLogs` | Create, list, summarize, update, and delete food logs |
+| `waterLogs` | Log water, read daily totals, delete a log |
+| `weightLogs` | Log a weight, read the latest weight per day |
 | `glucose` | Personalized glucose prediction |
 
 Call `dispose()` exactly once when the client’s user session ends. Repeated

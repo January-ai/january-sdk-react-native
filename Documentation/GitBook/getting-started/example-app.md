@@ -1,8 +1,15 @@
 # Example app
 
 The `example/` directory is an Expo development-build application covering
-foods, restaurants, meal analysis, food logs, glucose prediction, and profile
-unit selection on both iOS and Android.
+foods, restaurants, meal analysis, food, water, and weight logs, glucose
+prediction, and profile unit selection on both iOS and Android.
+
+The Tracking tab shows one day at a time: the day’s totals from
+`foodLogs.getSummary`, the meals logged that day, the water logged (with a unit
+switch and delete of the last entry), and the latest weight. Move between days
+to browse history; water or a weight logged for a past day is dated noon on
+that day. The Logs tab lists food logs over a range and creates, edits, and
+deletes them.
 
 ## Run locally
 

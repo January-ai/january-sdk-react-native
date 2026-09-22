@@ -27,6 +27,8 @@ tags:
 - assertVisible:
     id: tab-scan
 - assertVisible:
+    id: tab-tracking
+- assertVisible:
     id: tab-food-logs
 - assertVisible:
     id: tab-glucose

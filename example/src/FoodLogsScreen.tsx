@@ -242,7 +242,7 @@ export function FoodLogsScreen({
           </Pressable>
         </View>
         <Text accessibilityRole="header" style={styles.logsTitle}>
-          Food logs
+          Logs
         </Text>
       </View>
 
@@ -897,7 +897,7 @@ function EditorLoggedFood({ food }: { food: FoodLog['foods'][number] }) {
   );
 }
 
-function FoodLogDetail({
+export function FoodLogDetail({
   loading,
   log,
   onClose,
@@ -907,8 +907,9 @@ function FoodLogDetail({
   loading: boolean;
   log?: FoodLog;
   onClose: () => void;
-  onDelete: (log: FoodLog) => void;
-  onEdit: (log: FoodLog) => void;
+  /** Omitted on the Tracking tab, which shows a log without changing it. */
+  onDelete?: (log: FoodLog) => void;
+  onEdit?: (log: FoodLog) => void;
 }) {
   if (!log) return null;
   return (
@@ -930,13 +931,17 @@ function FoodLogDetail({
           />
         </Pressable>
         <Text style={styles.detailHeaderTitle}>Food log</Text>
-        <Pressable
-          accessibilityLabel="Edit food log"
-          onPress={() => onEdit(log)}
-          testID="food-log-edit"
-        >
-          <Text style={styles.editText}>Edit</Text>
-        </Pressable>
+        {onEdit ? (
+          <Pressable
+            accessibilityLabel="Edit food log"
+            onPress={() => onEdit(log)}
+            testID="food-log-edit"
+          >
+            <Text style={styles.editText}>Edit</Text>
+          </Pressable>
+        ) : (
+          <View style={styles.detailHeaderSpacer} />
+        )}
       </View>
       <ScrollView
         contentContainerStyle={sharedStyles.content}
@@ -1032,15 +1037,17 @@ function FoodLogDetail({
             size={20}
           />
         </View>
-        <Pressable
-          accessibilityRole="button"
-          disabled={loading}
-          onPress={() => onDelete(log)}
-          style={styles.deleteButton}
-          testID="food-log-delete"
-        >
-          <Text style={styles.deleteText}>Delete food log</Text>
-        </Pressable>
+        {onDelete ? (
+          <Pressable
+            accessibilityRole="button"
+            disabled={loading}
+            onPress={() => onDelete(log)}
+            style={styles.deleteButton}
+            testID="food-log-delete"
+          >
+            <Text style={styles.deleteText}>Delete food log</Text>
+          </Pressable>
+        ) : null}
       </ScrollView>
     </View>
   );
@@ -1091,7 +1098,7 @@ function dateRange(range: Range): { start: string; end: string } {
 // from the logs on screen the way the API would for the selected range: one
 // bucket per day of the range, only logs inside it, sparse nutrient totals,
 // and an average per logged day.
-function fixtureSummaryFor(
+export function fixtureSummaryFor(
   logs: FoodLog[],
   range: { start: string; end: string }
 ): FoodLogSummary | undefined {
@@ -1189,7 +1196,7 @@ function isoDate(value: Date): string {
   return value.toISOString().slice(0, 10);
 }
 
-function formatDate(value: string): string {
+export function formatDate(value: string): string {
   const date = new Date(value);
   return Number.isNaN(date.valueOf())
     ? value
@@ -1228,7 +1235,7 @@ function sumNutrient(
   );
 }
 
-function copyFoodLog(log: FoodLog): FoodLog {
+export function copyFoodLog(log: FoodLog): FoodLog {
   return { ...log, foods: log.foods.map((food) => ({ ...food })) };
 }
 
@@ -1534,6 +1541,7 @@ const styles = StyleSheet.create({
     backgroundColor: palette.paper,
   },
   detailHeaderTitle: { color: palette.ink, fontSize: 17, fontWeight: '800' },
+  detailHeaderSpacer: { width: 32 },
   editText: { color: palette.goldText, fontSize: 15, fontWeight: '600' },
   detailTitle: {
     color: palette.ink,

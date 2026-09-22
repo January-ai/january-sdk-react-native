@@ -5,6 +5,18 @@ This project uses Semantic Versioning.
 
 ## [Unreleased]
 
+- Add `waterLogs` (`create`, `list`, `delete`) and `weightLogs` (`create`,
+  `list`) with the `WaterAmount`, `Volume`, `WaterLog`, `DailyWaterTotal`,
+  `Weight`, `WeightLog`, and `DailyWeight` models. Client tokens need the
+  `water_logs:*` and `weight_logs:*` scopes for them.
+- `foodLogs.update` rejects an update that changes nothing before sending it;
+  the API now refuses empty patches and unknown fields.
+- `ServingDetails.weightGrams` is documented as the weight of one catalog
+  serving.
+- The example gains a Tracking tab that shows one day at a time: the day’s
+  food-log summary and meals, water total, and weight. The Food Logs tab is
+  renamed Logs.
+
 ## [0.2.1] - 2026-09-16
 
 - The example app and the repository toolchain now run React Native 0.83.10

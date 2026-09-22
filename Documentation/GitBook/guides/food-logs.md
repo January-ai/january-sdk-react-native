@@ -46,5 +46,9 @@ await january.foodLogs.update({
 await january.foodLogs.delete(created.id!);
 ```
 
-Treat log IDs as optional in response models and guard them before update or
-delete operations.
+An update must change at least one field; the SDK rejects an empty update
+before sending it, and the API rejects unknown fields. Treat log IDs as
+optional in response models and guard them before update or delete operations.
+
+Each logged food carries `servingDetails.weightGrams`, the weight of one
+catalog serving; the grams eaten are `consumedServing.quantity` times it.
