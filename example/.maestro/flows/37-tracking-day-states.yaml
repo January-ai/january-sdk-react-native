@@ -51,9 +51,22 @@ tags:
     id: tracking-logs-error
 - assertVisible: Temporary fixture failure. Try again.
 - takeScreenshot: example/.maestro/artifacts/react-native-tracking-error
+# The day loads under its Food heading; bring that into view first.
+- scrollUntilVisible:
+    element:
+      text: FOOD
+    direction: UP
+    centerElement: true
+    timeout: 8000
+    optional: true
+- scrollUntilVisible:
+    element:
+      text: FOOD
+    direction: DOWN
+    centerElement: true
+    timeout: 8000
 - tapOn:
     id: tracking-logs-retry
-# The day loads where the meal was, which is still on screen.
 - extendedWaitUntil:
     visible:
       id: tracking-loading
