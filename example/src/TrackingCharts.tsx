@@ -25,7 +25,11 @@ import type {
 } from '@januaryai/react-native';
 
 import { palette, sharedStyles } from './demoTheme';
-import { listFixtureWaterLogs, listFixtureWeightLogs } from './e2eFixtures';
+import {
+  failFixtureRequestsOnce,
+  listFixtureWaterLogs,
+  listFixtureWeightLogs,
+} from './e2eFixtures';
 import {
   axisLabelIndexes,
   chartRanges,
@@ -72,7 +76,10 @@ export function WeightChart({
   const fetchChunk = useCallback(
     async (chunk: DateRange, emptyHistory: boolean) =>
       fixtures
-        ? listFixtureWeightLogs(chunk.start, chunk.end, { emptyHistory })
+        ? listFixtureWeightLogs(chunk.start, chunk.end, {
+            emptyHistory,
+            failure: 'weight-chart',
+          })
         : (await client.weightLogs.list(chunk)).items,
     [client, fixtures]
   );
@@ -93,6 +100,9 @@ export function WeightChart({
       chart={chart}
       emptyMessage="No weight logged in this range"
       hasData={points.length > 0}
+      onLongPress={
+        fixtures ? failOnceAndReload(chart, 'weight-chart') : undefined
+      }
       summary={weightSummary(points, chart.range, unit)}
       testIDPrefix="weight-chart"
       title="Weight trend"
@@ -122,7 +132,10 @@ export function WaterChart({
   const fetchChunk = useCallback(
     async (chunk: DateRange, emptyHistory: boolean) =>
       fixtures
-        ? listFixtureWaterLogs(chunk.start, chunk.end, unit, { emptyHistory })
+        ? listFixtureWaterLogs(chunk.start, chunk.end, unit, {
+            emptyHistory,
+            failure: 'water-chart',
+          })
         : (await client.waterLogs.list({ ...chunk, unit })).items,
     [client, fixtures, unit]
   );
@@ -142,6 +155,9 @@ export function WaterChart({
       chart={chart}
       emptyMessage="No water logged in this range"
       hasData={bars.some((bar) => bar.logged)}
+      onLongPress={
+        fixtures ? failOnceAndReload(chart, 'water-chart') : undefined
+      }
       summary={waterSummary(bars, chart.range, label)}
       testIDPrefix="water-chart"
       title="Water by day"
@@ -149,6 +165,18 @@ export function WaterChart({
       <WaterBars bars={bars} range={chart.range} unitLabel={label} />
     </ChartFrame>
   );
+}
+
+/**
+ * Fixture mode only: a long press on a drawn chart reloads it with its first
+ * request failing, so a flow can reach the chart's loading, error, and retry
+ * states.
+ */
+function failOnceAndReload<T>(chart: RangeData<T>, request: string) {
+  return () => {
+    failFixtureRequestsOnce(request);
+    chart.retry();
+  };
 }
 
 interface RangeData<T> {
@@ -227,6 +255,7 @@ function ChartFrame<T>({
   children,
   emptyMessage,
   hasData,
+  onLongPress,
   summary,
   testIDPrefix,
   title,
@@ -235,10 +264,17 @@ function ChartFrame<T>({
   children: ReactNode;
   emptyMessage: string;
   hasData: boolean;
+  onLongPress?: () => void;
   summary: string;
   testIDPrefix: string;
   title: string;
 }) {
+  const chartProps = {
+    accessibilityLabel: summary,
+    accessibilityRole: 'image' as const,
+    accessible: true,
+    testID: testIDPrefix,
+  };
   return (
     <View style={styles.frame}>
       <View style={styles.frameHeader}>
@@ -275,15 +311,16 @@ function ChartFrame<T>({
         <View style={styles.placeholder} testID={`${testIDPrefix}-empty`}>
           <Text style={styles.placeholderText}>{emptyMessage}</Text>
         </View>
-      ) : chart.items ? (
-        <View
-          accessibilityLabel={summary}
-          accessibilityRole="image"
-          accessible
-          testID={testIDPrefix}
+      ) : chart.items && onLongPress ? (
+        <Pressable
+          delayLongPress={350}
+          onLongPress={onLongPress}
+          {...chartProps}
         >
           {children}
-        </View>
+        </Pressable>
+      ) : chart.items ? (
+        <View {...chartProps}>{children}</View>
       ) : null}
     </View>
   );

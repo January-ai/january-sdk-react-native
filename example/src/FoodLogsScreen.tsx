@@ -40,8 +40,10 @@ import {
 } from './designSystem';
 import {
   fixtureDelay,
-  fixtureFoodLogs,
+  fixtureFoodLogsForUser,
   fixtureFoodLogSummary,
+  isSlow,
+  SLOW_FIXTURE_DELAY,
 } from './e2eFixtures';
 import { FoodPickerSheet, type SelectedFood } from './FoodPickerSheet';
 
@@ -101,7 +103,9 @@ export function FoodLogsScreen({
           if (forceFixtureFailure) {
             throw new Error('Temporary fixture food logs failure.');
           }
-          setLogs(range === 'month' ? [] : fixtureFoodLogs.map(copyFoodLog));
+          setLogs(
+            range === 'month' ? [] : fixtureFoodLogsForUser().map(copyFoodLog)
+          );
         } else {
           const dates = dateRange(range);
           // The list is the screen; the summary is a bonus row, so its failure
@@ -234,6 +238,7 @@ export function FoodLogsScreen({
             accessibilityRole="button"
             onPress={onSettings}
             style={sharedStyles.iconButton}
+            testID="settings-button"
           >
             <MaterialCommunityIcons
               color={palette.ink}
@@ -278,8 +283,12 @@ export function FoodLogsScreen({
             </View>
           </View>
           <View style={styles.userIdentity}>
-            <Text style={styles.userId}>{endUserId}</Text>
-            <Text style={styles.userTimezone}>{deviceTimeZone()}</Text>
+            <Text style={styles.userId} testID="food-log-user-id">
+              {endUserId}
+            </Text>
+            <Text style={styles.userTimezone} testID="food-log-user-timezone">
+              {deviceTimeZone()}
+            </Text>
           </View>
           <Pressable onPress={onSettings} style={styles.userActionButton}>
             <Text style={styles.userAction}>Change user or timezone</Text>
@@ -564,7 +573,7 @@ function FoodLogEditor({
     try {
       let saved: FoodLog;
       if (fixtures) {
-        await fixtureDelay();
+        await fixtureDelay(isSlow(name) ? SLOW_FIXTURE_DELAY : undefined);
         if (name.toLowerCase().includes('retry') && !fixtureSaveFailed) {
           setFixtureSaveFailed(true);
           throw new Error('Temporary fixture food log save failure.');

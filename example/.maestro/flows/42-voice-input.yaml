@@ -1,0 +1,64 @@
+appId: ai.january.sdk.demo
+name: Voice input - recording level and a capture with no speech, where a recognizer exists
+tags:
+  - fixture
+---
+- runFlow: ../bootstrap.yaml
+- extendedWaitUntil:
+    visible:
+      id: search-input
+    timeout: 15000
+# The microphone shows only where the device has a speech recognizer (not on
+# every emulator image). Silence is recorded, so the capture ends with a
+# message rather than a search.
+- runFlow:
+    when:
+      visible:
+        id: search-voice
+    commands:
+      - tapOn:
+          id: search-voice
+      - tapOn:
+          text: (?i)(ok|allow|while using the app)
+          optional: true
+      - tapOn:
+          text: (?i)(ok|allow|while using the app)
+          optional: true
+      - extendedWaitUntil:
+          visible:
+            id: search-voice-meter
+          timeout: 15000
+      - takeScreenshot: example/.maestro/artifacts/react-native-voice-recording
+      - tapOn:
+          id: search-voice
+      - extendedWaitUntil:
+          visible:
+            id: search-error
+          timeout: 30000
+      - assertVisible: Voice input
+- tapOn:
+    id: tab-glucose
+- scrollUntilVisible:
+    element:
+      id: glucose-add-food
+    direction: DOWN
+- tapOn:
+    id: glucose-add-food
+- runFlow:
+    when:
+      visible:
+        id: food-picker-voice
+    commands:
+      - tapOn:
+          id: food-picker-voice
+      - extendedWaitUntil:
+          visible:
+            id: food-picker-voice-meter
+          timeout: 15000
+      - tapOn:
+          id: food-picker-voice
+      # The recognizer words the empty capture its own way.
+      - extendedWaitUntil:
+          visible:
+            id: food-picker-error
+          timeout: 30000

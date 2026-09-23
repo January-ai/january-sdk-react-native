@@ -1,12 +1,12 @@
 appId: ai.january.sdk.demo
-# Bring a control near the end of a scrolling screen into view and clear of the
-# floating tab bar and the Android navigation bar.
+# Bring a control into view, clear of the floating tab bar and the Android
+# navigation bar, whether it is below or above what is on screen.
 #
 # Centering does that when the content is long enough. When it is not, Maestro
 # keeps scrolling to center an element that cannot move and then reports it as
 # not found (seen on iOS with the food-log delete and glucose estimate buttons,
-# both already fully on screen). So the centering pass is optional and bounded,
-# and a plain scroll settles the result.
+# both already fully on screen). So the centering passes are optional and
+# bounded, down first and then up, and a plain scroll settles the result.
 #
 #   - runFlow:
 #       file: ../scroll-to.yaml
@@ -17,6 +17,13 @@ appId: ai.january.sdk.demo
     element:
       id: ${TARGET_ID}
     direction: DOWN
+    centerElement: true
+    timeout: 8000
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: ${TARGET_ID}
+    direction: UP
     centerElement: true
     timeout: 8000
     optional: true

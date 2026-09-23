@@ -35,8 +35,10 @@ import {
   createFixtureWaterLog,
   createFixtureWeightLog,
   deleteFixtureWaterLog,
+  failFixtureRequestsOnce,
+  failIfArmed,
   fixtureDelay,
-  fixtureFoodLogs,
+  fixtureFoodLogsForUser,
   listFixtureWaterLogs,
   listFixtureWeightLogs,
 } from './e2eFixtures';
@@ -94,9 +96,14 @@ export function TrackingScreen({
     setError(undefined);
     try {
       if (fixtures) {
+        await failIfArmed(`meals:${day}`);
         await fixtureDelay(800);
         if (ticket !== loadTicket.current) return;
-        setLogs(day === localIsoDate() ? fixtureFoodLogs.map(copyFoodLog) : []);
+        setLogs(
+          day === localIsoDate()
+            ? fixtureFoodLogsForUser().map(copyFoodLog)
+            : []
+        );
         setSummary(undefined);
       } else {
         const range = { start: day, end: day };
@@ -138,6 +145,21 @@ export function TrackingScreen({
     setDay(next);
   };
 
+  // Fixture mode only: a long press on Previous day opens that day with its
+  // meals, water, and weight requests failing once, so a flow can reach the
+  // loading, error, and retry states of each.
+  const previousDayWithFailures = fixtures
+    ? () => {
+        const previous = shiftIsoDate(day, -1);
+        failFixtureRequestsOnce(
+          `meals:${previous}`,
+          `water:${previous}`,
+          `weight:${previous}`
+        );
+        changeDay(previous);
+      }
+    : undefined;
+
   const root = (
     <View style={sharedStyles.screen} testID="tracking-screen">
       <View style={styles.logsHeader}>
@@ -147,6 +169,7 @@ export function TrackingScreen({
             accessibilityRole="button"
             onPress={onSettings}
             style={sharedStyles.iconButton}
+            testID="settings-button"
           >
             <MaterialCommunityIcons
               color={palette.ink}
@@ -163,7 +186,11 @@ export function TrackingScreen({
       {/* The day picker stays under the title so every section below can be
           read against the day it belongs to. */}
       <View style={styles.dayBar}>
-        <DayNavigator day={day} onChange={changeDay} />
+        <DayNavigator
+          day={day}
+          onChange={changeDay}
+          onPreviousLongPress={previousDayWithFailures}
+        />
       </View>
 
       <ScrollView
@@ -340,19 +367,38 @@ export function TrackingScreen({
 function DayNavigator({
   day,
   onChange,
+  onPreviousLongPress,
 }: {
   day: string;
   onChange: (day: string) => void;
+  onPreviousLongPress?: () => void;
 }) {
   const today = localIsoDate();
   const isToday = day === today;
+  // A long press may or may not be followed by onPress, depending on the
+  // platform; each new touch starts clean.
+  const handledLongPress = useRef(false);
   return (
     <View style={styles.rangeCard} testID="logs-day-picker">
       <View style={styles.dayRow}>
         <Pressable
           accessibilityLabel="Previous day"
           accessibilityRole="button"
-          onPress={() => onChange(shiftIsoDate(day, -1))}
+          delayLongPress={350}
+          onLongPress={
+            onPreviousLongPress
+              ? () => {
+                  handledLongPress.current = true;
+                  onPreviousLongPress();
+                }
+              : undefined
+          }
+          onPress={() => {
+            if (!handledLongPress.current) onChange(shiftIsoDate(day, -1));
+          }}
+          onPressIn={() => {
+            handledLongPress.current = false;
+          }}
           style={sharedStyles.iconButton}
           testID="logs-day-previous"
         >
@@ -427,7 +473,9 @@ function WaterCard({
     setState({ loading: true });
     try {
       const items = fixtures
-        ? await listFixtureWaterLogs(day, day, unit)
+        ? await listFixtureWaterLogs(day, day, unit, {
+            failure: `water:${day}`,
+          })
         : (await client.waterLogs.list({ start: day, end: day, unit })).items;
       if (current !== ticket.current) return;
       setState({ loading: false, value: items[0] ?? null });
@@ -452,25 +500,37 @@ function WaterCard({
     load().catch(() => undefined);
   }, [load]);
 
+  // A log or a delete can finish after the user moved to another day. It must
+  // not offer that day an undo for a log it does not have, report on it, or
+  // reload with the old day's request; see dayOnScreen.
+  const dayOnScreen = useRef(day);
+  dayOnScreen.current = day;
+  const latestLoad = useRef(load);
+  latestLoad.current = load;
+
   async function log() {
     const value = Number(amount);
     if (!Number.isFinite(value) || value <= 0) return;
+    const loggedDay = day;
     setSaving(true);
     setState((current) => ({ ...current, error: undefined }));
     try {
-      const consumedAt = timestampForDay(day);
+      const consumedAt = timestampForDay(loggedDay);
       const created = fixtures
         ? await createFixtureWaterLog({ unit, value }, consumedAt)
         : await client.waterLogs.create({
             amount: { unit, value },
             consumedAt,
           });
+      // The charts end today, whatever the day on screen.
+      setChartRefresh((count) => count + 1);
+      if (dayOnScreen.current !== loggedDay) return;
       setLastLogId(created.id);
       setLogged(`Logged ${formatVolume(created.amount.value, unit)}`);
       setAmount('');
-      setChartRefresh((count) => count + 1);
-      await load();
+      await latestLoad.current();
     } catch (caught) {
+      if (dayOnScreen.current !== loggedDay) return;
       setState((current) => ({
         ...current,
         error: caught instanceof Error ? caught.message : 'Water log failed.',
@@ -482,16 +542,19 @@ function WaterCard({
 
   async function deleteLast() {
     if (!lastLogId) return;
+    const deletedDay = day;
     setSaving(true);
     setState((current) => ({ ...current, error: undefined }));
     try {
       if (fixtures) await deleteFixtureWaterLog(lastLogId);
       else await client.waterLogs.delete(lastLogId);
+      setChartRefresh((count) => count + 1);
+      if (dayOnScreen.current !== deletedDay) return;
       setLastLogId(undefined);
       setLogged('Deleted the last water log');
-      setChartRefresh((count) => count + 1);
-      await load();
+      await latestLoad.current();
     } catch (caught) {
+      if (dayOnScreen.current !== deletedDay) return;
       setState((current) => ({
         ...current,
         error:
@@ -636,7 +699,7 @@ function WeightCard({
     setState({ loading: true });
     try {
       const items = fixtures
-        ? await listFixtureWeightLogs(day, day)
+        ? await listFixtureWeightLogs(day, day, { failure: `weight:${day}` })
         : (await client.weightLogs.list({ start: day, end: day })).items;
       if (current !== ticket.current) return;
       setState({ loading: false, value: items[0] ?? null });
@@ -655,24 +718,34 @@ function WeightCard({
     load().catch(() => undefined);
   }, [load]);
 
+  // As on the water card: a log that finishes after the user moved to another
+  // day leaves that day alone.
+  const dayOnScreen = useRef(day);
+  dayOnScreen.current = day;
+  const latestLoad = useRef(load);
+  latestLoad.current = load;
+
   async function log() {
     const weight = Number(value);
     if (!Number.isFinite(weight) || weight <= 0) return;
+    const loggedDay = day;
     setSaving(true);
     setState((current) => ({ ...current, error: undefined }));
     try {
-      const measuredAt = timestampForDay(day);
+      const measuredAt = timestampForDay(loggedDay);
       const created = fixtures
         ? await createFixtureWeightLog({ unit, value: weight }, measuredAt)
         : await client.weightLogs.create({
             measuredAt,
             weight: { unit, value: weight },
           });
+      setChartRefresh((count) => count + 1);
+      if (dayOnScreen.current !== loggedDay) return;
       setLogged(`Logged ${formatWeight(created.weight.value, unit)}`);
       setValue('');
-      setChartRefresh((count) => count + 1);
-      await load();
+      await latestLoad.current();
     } catch (caught) {
+      if (dayOnScreen.current !== loggedDay) return;
       setState((current) => ({
         ...current,
         error: caught instanceof Error ? caught.message : 'Weight log failed.',

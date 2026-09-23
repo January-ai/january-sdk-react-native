@@ -10,15 +10,34 @@ tags:
     timeout: 15000
 - tapOn:
     id: tab-tracking
-# Over the daily cap: the API answers 400 daily_water_limit_exceeded, which the
-# SDK reports as a validation error; a corrected amount goes through on retry.
+# Over the daily cap: 800 fl oz is fine, but 20 more would take the day past
+# 24 L (811.5 fl oz), and the API answers 400 daily_water_limit_exceeded; a
+# smaller amount goes through on retry.
 - runFlow:
     file: ../scroll-to.yaml
     env:
       TARGET_ID: water-amount
 - tapOn:
     id: water-amount
-- inputText: "900"
+- inputText: "800"
+- pressKey: Enter
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-log
+- tapOn:
+    id: water-log
+- extendedWaitUntil:
+    visible:
+      id: water-logged
+    timeout: 15000
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-amount
+- tapOn:
+    id: water-amount
+- inputText: "20"
 - pressKey: Enter
 - runFlow:
     file: ../scroll-to.yaml

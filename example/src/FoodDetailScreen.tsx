@@ -23,7 +23,9 @@ import type {
 } from '@januaryai/react-native';
 
 import { palette, serifFont, sharedStyles } from './demoTheme';
+import { nutrientAmount } from './foodNutrients';
 import {
+  getFixtureFood,
   predictFixtureGlucose,
   suggestFixtureAlternatives,
 } from './e2eFixtures';
@@ -46,11 +48,13 @@ export function FoodDetailScreen({
   const [detailLoadFailed, setDetailLoadFailed] = useState(false);
   const [selectedServingId, setSelectedServingId] = useState<string>();
   const [showServings, setShowServings] = useState(false);
+  // Search returns a food's primary serving; the food itself has all of them.
   useEffect(() => {
-    if (fixtures) return;
     let active = true;
-    client.foods
-      .get({ foodId: initialFood.id })
+    (fixtures
+      ? getFixtureFood(initialFood)
+      : client.foods.get({ foodId: initialFood.id })
+    )
       .then((result) => {
         if (active) {
           setFood(result);
@@ -181,20 +185,30 @@ export function FoodDetailScreen({
           </View>
         </View>
 
+        {/* Only what January returned: a nutrient it did not report shows a
+            dash, never a made-up amount. */}
         <View style={styles.macroCard} testID="food-macros">
           <Macro
             label="Calories"
             unit="cal"
-            value={(food.calories ?? 100) * scale}
+            value={scaled(nutrientAmount(food, 'calories'), scale)}
           />
-          <Macro label="Protein" unit="g" value={(food.protein ?? 4) * scale} />
+          <Macro
+            label="Protein"
+            unit="g"
+            value={scaled(nutrientAmount(food, 'protein'), scale)}
+          />
           <View style={styles.fullDivider} />
           <Macro
             label="Carbs"
             unit="g"
-            value={(food.carbohydrates ?? 20) * scale}
+            value={scaled(nutrientAmount(food, 'carbohydrates'), scale)}
           />
-          <Macro label="Fat" unit="g" value={(food.totalFat ?? 2) * scale} />
+          <Macro
+            label="Fat"
+            unit="g"
+            value={scaled(nutrientAmount(food, 'totalFat'), scale)}
+          />
         </View>
 
         <View style={styles.card} testID="food-nutrition">
@@ -202,13 +216,13 @@ export function FoodDetailScreen({
           <NutritionRow
             label="Fiber"
             unit="g"
-            value={(food.fiber ?? 3) * scale}
+            value={scaled(nutrientAmount(food, 'fiber'), scale)}
           />
           <View style={styles.fullDivider} />
           <NutritionRow
             label="Sodium"
             unit="mg"
-            value={(food.sodium ?? 10) * scale}
+            value={scaled(nutrientAmount(food, 'sodium'), scale)}
           />
         </View>
 
@@ -230,7 +244,7 @@ export function FoodDetailScreen({
         </Pressable>
         <Text style={styles.disclosure}>Technical details　›</Text>
         {detailLoadFailed ? (
-          <Text style={styles.detailWarning}>
+          <Text style={styles.detailWarning} testID="food-detail-warning">
             Complete serving details could not be loaded. Showing the serving
             returned by search.
           </Text>
@@ -289,13 +303,15 @@ function Macro({
 }: {
   label: string;
   unit: string;
-  value: number;
+  value?: number;
 }) {
   return (
     <View style={styles.macro}>
       <Text style={styles.label}>{label.toUpperCase()}</Text>
       <View style={styles.metricRow}>
-        <Text style={styles.metricValue}>{formatNumber(value)}</Text>
+        <Text style={styles.metricValue}>
+          {value == null ? '—' : formatNumber(value)}
+        </Text>
         <Text style={styles.metricUnit}>{unit}</Text>
       </View>
     </View>
@@ -309,13 +325,13 @@ function NutritionRow({
 }: {
   label: string;
   unit: string;
-  value: number;
+  value?: number;
 }) {
   return (
     <View style={styles.nutritionRow}>
       <Text style={styles.nutritionLabel}>{label}</Text>
       <Text style={styles.nutritionValue}>
-        {formatNumber(value)} {unit}
+        {value == null ? '—' : `${formatNumber(value)} ${unit}`}
       </Text>
     </View>
   );
@@ -370,7 +386,7 @@ function FullSheet({
   );
 }
 
-function FoodGlucoseSheet({
+export function FoodGlucoseSheet({
   client,
   fixtures,
   food,
@@ -853,6 +869,10 @@ function ChoiceSection({
 
 function formatNumber(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function scaled(value: number | undefined, scale: number): number | undefined {
+  return value == null ? undefined : value * scale;
 }
 
 const styles = StyleSheet.create({

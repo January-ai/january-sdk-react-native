@@ -1,0 +1,90 @@
+appId: ai.january.sdk.demo
+name: Restaurants - filters, loading, empty, error and retry, and both result lists
+tags:
+  - fixture
+---
+- runFlow: ../bootstrap.yaml
+- extendedWaitUntil:
+    visible:
+      id: search-scope-restaurants
+    timeout: 15000
+- tapOn:
+    id: search-scope-restaurants
+- assertVisible:
+    id: restaurant-search-content
+- assertVisible:
+    id: restaurants-initial
+- tapOn:
+    id: restaurant-filters-button
+- assertVisible:
+    id: restaurant-filters
+- tapOn:
+    id: restaurant-filters-apply
+- assertNotVisible:
+    id: restaurant-filters
+# In fixture mode "search empty" finds nothing.
+- tapOn:
+    id: restaurant-search-input
+- inputText: search empty
+- tapOn:
+    id: restaurant-search-submit
+- extendedWaitUntil:
+    visible:
+      id: restaurants-loading
+    timeout: 3000
+- extendedWaitUntil:
+    visible:
+      id: restaurants-empty
+    timeout: 15000
+- assertVisible: No nearby matches
+- tapOn:
+    id: restaurant-search-clear
+- assertVisible:
+    id: restaurants-initial
+# "search error" fails once; Try again searches again and succeeds.
+- tapOn:
+    id: restaurant-search-input
+- inputText: search error
+- pressKey: Enter
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: restaurants-error-retry
+- assertVisible:
+    id: restaurants-error
+- assertVisible: The test request could not be completed.
+- takeScreenshot: example/.maestro/artifacts/react-native-restaurants-error
+- tapOn:
+    id: restaurants-error-retry
+- extendedWaitUntil:
+    visible:
+      id: restaurant-results
+    timeout: 15000
+- assertVisible:
+    id: restaurant-result-0
+# Menu items near the same place, then restaurants again.
+- scrollUntilVisible:
+    element:
+      id: restaurant-mode-menu
+    direction: UP
+- tapOn:
+    id: restaurant-mode-menu
+- tapOn:
+    id: restaurant-search-submit
+- extendedWaitUntil:
+    visible:
+      id: menu-results
+    timeout: 15000
+- assertVisible: .*Fixture Cafe · 100 cal.*
+- scrollUntilVisible:
+    element:
+      id: restaurant-mode-restaurants
+    direction: UP
+- tapOn:
+    id: restaurant-mode-restaurants
+- tapOn:
+    id: restaurant-search-submit
+- extendedWaitUntil:
+    visible:
+      id: restaurant-results
+    timeout: 15000

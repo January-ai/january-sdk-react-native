@@ -26,7 +26,8 @@ import type {
 
 import { palette, serifFont, sharedStyles } from './demoTheme';
 import { SectionLabel } from './designSystem';
-import { analyzeFixturePhoto, correctFixtureScan } from './e2eFixtures';
+import { analyzeFixturePhoto } from './e2eFixtures';
+import { correctScan } from './scanCorrection';
 
 const sampleMealURL =
   'https://raw.githubusercontent.com/January-ai/january-sdk-android/main/sdk/src/test/resources/fixtures/photo-scanning/burger-and-fries.png';
@@ -50,43 +51,61 @@ export function ScanScreen({
   const [error, setError] = useState<string>();
   const [showUrl, setShowUrl] = useState(false);
   const [showCorrection, setShowCorrection] = useState(false);
+  // Which source failed to open, so Try again reopens it rather than
+  // analyzing a photo that was never chosen.
+  const [failedSource, setFailedSource] = useState<'camera' | 'library'>();
 
   async function chooseImage(source: 'camera' | 'library') {
-    if (source === 'camera') {
-      const permission = await ImagePicker.requestCameraPermissionsAsync();
-      if (!permission.granted) {
-        setError('Camera permission is required to photograph a meal.');
-        return;
+    setFailedSource(undefined);
+    try {
+      if (source === 'camera') {
+        const permission = await ImagePicker.requestCameraPermissionsAsync();
+        if (!permission.granted) {
+          setError('Camera permission is required to photograph a meal.');
+          setFailedSource(source);
+          return;
+        }
       }
+      const response =
+        source === 'camera'
+          ? await ImagePicker.launchCameraAsync({
+              allowsEditing: false,
+              base64: true,
+              mediaTypes: ['images'],
+              quality: 0.82,
+            })
+          : await ImagePicker.launchImageLibraryAsync({
+              allowsEditing: false,
+              base64: true,
+              mediaTypes: ['images'],
+              quality: 0.82,
+            });
+      if (response.canceled) return;
+      const asset = response.assets[0];
+      if (!asset) return;
+      setImage(
+        asset.base64
+          ? `data:${asset.mimeType ?? 'image/jpeg'};base64,${asset.base64}`
+          : asset.uri
+      );
+      setResult(undefined);
+      setError(undefined);
+    } catch (caught) {
+      // A device without a camera (such as a simulator) ends up here.
+      setError(
+        caught instanceof Error && caught.message
+          ? caught.message
+          : source === 'camera'
+            ? 'The camera could not be opened.'
+            : 'The photo library could not be opened.'
+      );
+      setFailedSource(source);
     }
-    const response =
-      source === 'camera'
-        ? await ImagePicker.launchCameraAsync({
-            allowsEditing: false,
-            base64: true,
-            mediaTypes: ['images'],
-            quality: 0.82,
-          })
-        : await ImagePicker.launchImageLibraryAsync({
-            allowsEditing: false,
-            base64: true,
-            mediaTypes: ['images'],
-            quality: 0.82,
-          });
-    if (response.canceled) return;
-    const asset = response.assets[0];
-    if (!asset) return;
-    setImage(
-      asset.base64
-        ? `data:${asset.mimeType ?? 'image/jpeg'};base64,${asset.base64}`
-        : asset.uri
-    );
-    setResult(undefined);
-    setError(undefined);
   }
 
   async function analyze() {
     if (!image) return;
+    setFailedSource(undefined);
     setLoading(true);
     setError(undefined);
     try {
@@ -233,8 +252,19 @@ export function ScanScreen({
         {error ? (
           <RequestError
             message={error}
-            onRetry={() => analyze().catch(() => undefined)}
+            onRetry={() =>
+              (failedSource ? chooseImage(failedSource) : analyze()).catch(
+                () => undefined
+              )
+            }
             testID="scan-error"
+            title={
+              failedSource === 'camera'
+                ? 'Couldn’t open the camera'
+                : failedSource === 'library'
+                  ? 'Couldn’t open the photo library'
+                  : undefined
+            }
           />
         ) : null}
       </ScrollView>
@@ -259,6 +289,7 @@ export function ScanScreen({
         result={showCorrection ? undefined : result}
       />
       <CorrectionSheet
+        client={client}
         fixtures={fixtures}
         initial={result}
         onClose={() => setShowCorrection(false)}
@@ -480,11 +511,22 @@ function MealAnalysisSheet({
             <Text style={styles.analysisTitle}>
               {result.mealName ?? 'Meal analysis'}
             </Text>
-            <MacroGrid nutrients={result.totalNutrients} />
-            <NutritionCard nutrients={result.totalNutrients} />
-            {result.detections.length ? (
-              <Text style={styles.detectedHeading}>Detected foods</Text>
-            ) : null}
+            {result.detections.length === 0 ? (
+              <View style={styles.emptyCard} testID="scan-empty">
+                <MaterialIcons color={palette.green} name="no-food" size={25} />
+                <Text style={styles.emptyTitle}>No foods recognized</Text>
+                <Text style={styles.emptyBody}>
+                  January found no food in this photo. Try a clearer photo of
+                  the whole meal, or correct the result to describe it.
+                </Text>
+              </View>
+            ) : (
+              <>
+                <MacroGrid nutrients={result.totalNutrients} />
+                <NutritionCard nutrients={result.totalNutrients} />
+                <Text style={styles.detectedHeading}>Detected foods</Text>
+              </>
+            )}
             {result.detections.map((detection, index) => (
               <View
                 key={`${detection.food.id ?? index}`}
@@ -537,12 +579,14 @@ function MealAnalysisSheet({
 }
 
 function CorrectionSheet({
+  client,
   fixtures,
   initial,
   onClose,
   onCorrected,
   visible,
 }: {
+  client: JanuaryClient;
   fixtures: boolean;
   initial?: FoodScan;
   onClose: () => void;
@@ -563,9 +607,11 @@ function CorrectionSheet({
     setSubmitting(true);
     setLocalError(undefined);
     try {
-      const corrected = fixtures
-        ? await correctFixtureScan(instruction)
-        : { ...initial, mealName: mealName.trim() || 'Meal' };
+      const corrected = await correctScan(client, fixtures, {
+        analysis: initial,
+        instruction,
+        mealName,
+      });
       onCorrected(corrected);
       setInstruction('');
     } catch (caught) {
@@ -730,10 +776,12 @@ function RequestError({
   message,
   onRetry,
   testID,
+  title = 'January couldn’t complete the request',
 }: {
   message: string;
   onRetry: () => void;
   testID: string;
+  title?: string;
 }) {
   return (
     <View style={styles.errorCard} testID={testID}>
@@ -743,9 +791,7 @@ function RequestError({
           name="error-outline"
           size={21}
         />
-        <Text style={styles.errorTitle}>
-          January couldn’t complete the request
-        </Text>
+        <Text style={styles.errorTitle}>{title}</Text>
       </View>
       <Text style={styles.errorBody}>{message}</Text>
       <Text style={styles.technical}>Technical details　›</Text>
@@ -980,6 +1026,28 @@ const styles = StyleSheet.create({
     backgroundColor: palette.paper,
     fontSize: 16,
     textAlignVertical: 'top',
+  },
+  emptyCard: {
+    padding: 22,
+    borderWidth: 1.5,
+    borderColor: palette.border,
+    borderRadius: 24,
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: palette.surface,
+  },
+  emptyTitle: {
+    color: palette.ink,
+    fontFamily: serifFont,
+    fontSize: 22,
+    lineHeight: 28,
+    textAlign: 'center',
+  },
+  emptyBody: {
+    color: palette.body,
+    fontSize: 15,
+    lineHeight: 21,
+    textAlign: 'center',
   },
   errorCard: {
     padding: 20,

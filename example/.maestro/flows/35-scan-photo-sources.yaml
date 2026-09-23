@@ -1,0 +1,113 @@
+appId: ai.january.sdk.demo
+name: Scan - camera, photo library, an image URL, and a photo with no food
+tags:
+  - fixture
+---
+- runFlow: ../bootstrap.yaml
+- extendedWaitUntil:
+    visible:
+      id: tab-scan
+    timeout: 15000
+- tapOn:
+    id: tab-scan
+- assertVisible:
+    id: scan-guide
+# Take photo: a simulator, or an emulator without a camera, says it cannot
+# open one; an emulator's camera opens, and Back returns without a photo.
+- tapOn:
+    id: scan-camera
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: (Allow|OK)
+          optional: true
+      - runFlow:
+          file: ../scroll-to.yaml
+          env:
+            TARGET_ID: scan-error
+      - assertVisible: Couldn’t open the camera
+      - takeScreenshot: example/.maestro/artifacts/react-native-scan-camera-unavailable
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn:
+          text: (?i)(while using the app|allow)
+          optional: true
+      - extendedWaitUntil:
+          notVisible:
+            id: scan-camera
+          timeout: 8000
+          optional: true
+      - runFlow:
+          when:
+            notVisible:
+              id: scan-camera
+          commands:
+            - pressKey: back
+      - runFlow:
+          when:
+            visible:
+              id: scan-error
+          commands:
+            - assertVisible: Couldn’t open the camera
+      - extendedWaitUntil:
+          visible:
+            id: scan-guide
+          timeout: 10000
+# Choose from library, then cancel the system picker.
+- scrollUntilVisible:
+    element:
+      id: scan-library
+    direction: UP
+- tapOn:
+    id: scan-library
+- runFlow:
+    file: ../dismiss-photo-picker.yaml
+    env:
+      ANCHOR_ID: scan-library
+- assertVisible:
+    id: scan-guide
+# An image URL; in fixture mode one with "empty" in it is a photo of no food,
+# and "slow" keeps the analysis loading long enough to be seen.
+- tapOn:
+    id: scan-image-url
+- tapOn:
+    id: image-url-input
+- inputText: https://example.com/slow-empty-plate.jpg
+- tapOn:
+    id: image-url-use
+- assertVisible:
+    id: scan-preview
+- tapOn:
+    id: scan-analyze
+- extendedWaitUntil:
+    visible:
+      id: scan-loading
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: scan-results
+    timeout: 15000
+- assertVisible:
+    id: scan-empty
+- assertVisible: No foods recognized
+- takeScreenshot: example/.maestro/artifacts/react-native-scan-empty
+- tapOn: Close Meal analysis
+# Change photo opens the library; cancelling keeps the photo.
+- tapOn:
+    id: scan-change
+- runFlow:
+    file: ../dismiss-photo-picker.yaml
+    env:
+      ANCHOR_ID: scan-change
+- assertVisible:
+    id: scan-preview
+- tapOn:
+    id: scan-remove
+- assertVisible:
+    id: scan-guide
+- assertNotVisible:
+    id: scan-preview

@@ -1,0 +1,125 @@
+appId: ai.january.sdk.demo
+name: Tracking - switching the end user shows nothing of the previous user's
+tags:
+  - fixture
+---
+- runFlow: ../bootstrap.yaml
+- extendedWaitUntil:
+    visible:
+      id: tab-tracking
+    timeout: 15000
+- tapOn:
+    id: tab-tracking
+- extendedWaitUntil:
+    visible:
+      id: tracking-totals
+    timeout: 15000
+# The first user logs water and a weight today.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-amount
+- tapOn:
+    id: water-amount
+- inputText: "12"
+- pressKey: Enter
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-log
+- tapOn:
+    id: water-log
+- extendedWaitUntil:
+    visible:
+      id: water-delete-last
+    timeout: 15000
+- assertVisible: Logged 12 fl oz
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-value
+- tapOn:
+    id: weight-value
+- inputText: "150"
+- pressKey: Enter
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-log
+- tapOn:
+    id: weight-log
+- extendedWaitUntil:
+    visible:
+      id: weight-logged
+    timeout: 15000
+# Switch to another end user from the Tracking tab.
+- repeat:
+    times: 4
+    commands:
+      - swipe:
+          start: 50%, 40%
+          end: 50%, 90%
+          duration: 300
+- tapOn:
+    id: settings-button
+- tapOn:
+    id: settings-user-id
+- eraseText: 30
+- inputText: second-user
+- tapOn:
+    id: settings-close
+# Nothing of the first user's stays: not their meal or day totals, not the
+# water and weight they just logged, and no undo for their water log.
+- assertNotVisible:
+    id: tracking-totals
+- assertNotVisible:
+    id: tracking-log-0
+- assertNotVisible: Logged 12 fl oz
+- assertNotVisible:
+    id: weight-logged
+- assertNotVisible:
+    id: water-delete-last
+- extendedWaitUntil:
+    visible:
+      id: tracking-logs-empty
+    timeout: 15000
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-empty
+- assertNotVisible:
+    id: water-delete-last
+- assertVisible:
+    id: water-chart-empty
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-empty
+- assertVisible:
+    id: weight-chart-empty
+- takeScreenshot: example/.maestro/artifacts/react-native-switched-user
+# The new user's own log is theirs to undo.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-amount
+- tapOn:
+    id: water-amount
+- inputText: "6"
+- pressKey: Enter
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-log
+- tapOn:
+    id: water-log
+- extendedWaitUntil:
+    visible:
+      id: water-delete-last
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: water-total
+    direction: UP
+    timeout: 15000
+- assertVisible: .*6 fl oz.*

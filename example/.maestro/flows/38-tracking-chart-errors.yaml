@@ -1,0 +1,67 @@
+appId: ai.january.sdk.demo
+name: Tracking - chart loading, error, and retry for water and weight
+tags:
+  - fixture
+---
+- runFlow: ../bootstrap.yaml
+- extendedWaitUntil:
+    visible:
+      id: tab-tracking
+    timeout: 15000
+- tapOn:
+    id: tab-tracking
+- extendedWaitUntil:
+    visible:
+      id: tracking-totals
+    timeout: 15000
+# In fixture mode a long press on a drawn chart reloads it with its request
+# failing once.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-chart
+# Maestro's long press outlasts the failing request's loading state, which
+# is checked on the retry below instead.
+- longPressOn:
+    id: water-chart
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-chart-retry
+- assertVisible:
+    id: water-chart-error
+- assertVisible: Temporary fixture failure. Try again.
+- takeScreenshot: example/.maestro/artifacts/react-native-water-chart-error
+- tapOn:
+    id: water-chart-retry
+- extendedWaitUntil:
+    visible:
+      id: water-chart-loading
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: water-chart
+    timeout: 15000
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-chart
+- longPressOn:
+    id: weight-chart
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-chart-retry
+- assertVisible:
+    id: weight-chart-error
+- takeScreenshot: example/.maestro/artifacts/react-native-weight-chart-error
+- tapOn:
+    id: weight-chart-retry
+- extendedWaitUntil:
+    visible:
+      id: weight-chart-loading
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: weight-chart
+    timeout: 15000

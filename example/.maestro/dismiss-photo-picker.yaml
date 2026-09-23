@@ -1,0 +1,31 @@
+appId: ai.january.sdk.demo
+# Close the system photo picker without choosing a photo, back to the control
+# that opened it:
+#
+#   - runFlow:
+#       file: ../dismiss-photo-picker.yaml
+#       env:
+#         ANCHOR_ID: scan-library
+---
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible: Cancel
+          timeout: 15000
+      - tapOn: Cancel
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      # The picker covers the app; Back closes it once it is up.
+      - extendedWaitUntil:
+          notVisible:
+            id: ${ANCHOR_ID}
+          timeout: 15000
+      - pressKey: back
+- extendedWaitUntil:
+    visible:
+      id: ${ANCHOR_ID}
+    timeout: 15000

@@ -417,3 +417,81 @@ describe('January React Native SDK', () => {
     ).rejects.toThrow('restaurantId is required.');
   });
 });
+
+describe('client tokens when the end user changes', () => {
+  it('asks for a token for the new end user, and ignores the disposed client', async () => {
+    type Listener = (request: {
+      clientId: string;
+      endUserId: string;
+      requestId: string;
+    }) => void;
+    const listeners = new Set<Listener>();
+    mockNativeModule.onTokenRequested.mockImplementation(((
+      listener: Listener
+    ) => {
+      listeners.add(listener);
+      return { remove: () => listeners.delete(listener) };
+    }) as never);
+    const emit = (request: Parameters<Listener>[0]) => {
+      for (const listener of [...listeners]) listener(request);
+    };
+    const clientIdOf = (endUserId: string) =>
+      mockNativeModule.configureClient.mock.calls.find(
+        (call) => call[1] === endUserId
+      )![0];
+
+    const firstProvider = jest.fn(async (endUserId: string) => ({
+      token: `ct-for-${endUserId}`,
+      expiresIn: 1_800,
+    }));
+    const secondProvider = jest.fn(async (endUserId: string) => ({
+      token: `ct-for-${endUserId}`,
+      expiresIn: 1_800,
+    }));
+    // A demo switching users: the first user's client is disposed and a new
+    // one made for the second.
+    const first = new JanuaryClient({
+      clientTokenProvider: firstProvider,
+      endUserId: 'first-user',
+    });
+    const firstClientId = clientIdOf('first-user');
+    first.dispose();
+    const second = new JanuaryClient({
+      clientTokenProvider: secondProvider,
+      endUserId: 'second-user',
+    });
+    const secondClientId = clientIdOf('second-user');
+    expect(secondClientId).not.toBe(firstClientId);
+    expect(mockNativeModule.disposeClient).toHaveBeenCalledWith(firstClientId);
+
+    emit({
+      clientId: secondClientId,
+      endUserId: 'second-user',
+      requestId: 'request-2',
+    });
+    emit({
+      clientId: firstClientId,
+      endUserId: 'first-user',
+      requestId: 'request-1',
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(secondProvider).toHaveBeenCalledTimes(1);
+    expect(secondProvider).toHaveBeenCalledWith('second-user');
+    expect(firstProvider).not.toHaveBeenCalled();
+    expect(mockNativeModule.resolveTokenRequest).toHaveBeenCalledWith(
+      'request-2',
+      'ct-for-second-user',
+      1_800
+    );
+    expect(mockNativeModule.resolveTokenRequest).not.toHaveBeenCalledWith(
+      'request-1',
+      expect.anything(),
+      expect.anything()
+    );
+    second.dispose();
+    mockNativeModule.onTokenRequested.mockImplementation((() => ({
+      remove: jest.fn(),
+    })) as never);
+  });
+});
