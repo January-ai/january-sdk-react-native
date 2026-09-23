@@ -89,14 +89,18 @@ tags:
       TARGET_ID: water-empty
 - assertNotVisible:
     id: water-delete-last
-- assertVisible:
-    id: water-chart-empty
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-chart-empty
 - runFlow:
     file: ../scroll-to.yaml
     env:
       TARGET_ID: weight-empty
-- assertVisible:
-    id: weight-chart-empty
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-chart-empty
 - takeScreenshot: example/.maestro/artifacts/react-native-switched-user
 # The new user's own log is theirs to undo.
 - runFlow:
