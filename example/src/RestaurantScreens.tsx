@@ -26,6 +26,7 @@ import {
 import {
   fixtureDelay,
   fixtureFailsFirstTime,
+  isSlow,
   SLOW_FIXTURE_DELAY,
 } from './e2eFixtures';
 import { FoodGlucoseSheet } from './FoodDetailScreen';
@@ -113,7 +114,8 @@ export function RestaurantScreens({
   };
 
   // Fixture mode: a query with "search error" fails once and then succeeds,
-  // and one with "search empty" finds nothing.
+  // one with "search empty" finds nothing, and one with "slow" stays loading
+  // long enough to be seen.
   const submit = async () => {
     if (!query.trim() || !configured) return;
     Keyboard.dismiss();
@@ -121,7 +123,7 @@ export function RestaurantScreens({
     setResultError(undefined);
     const normalized = query.toLowerCase();
     if (fixturesEnabled) {
-      await fixtureDelay(4000);
+      await fixtureDelay(isSlow(normalized) ? SLOW_FIXTURE_DELAY : 4000);
       if (
         normalized.includes('search error') &&
         fixtureFailsFirstTime(`restaurants-${normalized}`)

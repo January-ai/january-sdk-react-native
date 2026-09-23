@@ -22,12 +22,17 @@ tags:
     id: restaurant-filters-apply
 - assertNotVisible:
     id: restaurant-filters
-# In fixture mode "search empty" finds nothing.
+# In fixture mode "search empty" finds nothing, and "slow" keeps the search
+# loading long enough to be seen.
 - tapOn:
     id: restaurant-search-input
-- inputText: search empty
+- inputText: slow search empty
+# On iOS a tap waits for the screen to settle, and on CI the spinner kept it
+# busy until the search had answered, so the loading state was gone before
+# it could be seen; don't wait long for this one.
 - tapOn:
     id: restaurant-search-submit
+    waitToSettleTimeoutMs: 500
 - extendedWaitUntil:
     visible:
       id: restaurants-loading
