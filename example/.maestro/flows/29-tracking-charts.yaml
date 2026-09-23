@@ -17,11 +17,13 @@ tags:
       id: tracking-totals
     timeout: 15000
 # Fixture mode seeds a year of history, starting two days ago, so every range
-# has water and weight to draw.
+# has water and weight to draw. Scroll to the range buttons above each chart
+# rather than to the chart: the chart is tall, and centring it can leave the
+# buttons under the fixed day picker on a short screen.
 - runFlow:
     file: ../scroll-to.yaml
     env:
-      TARGET_ID: water-chart
+      TARGET_ID: water-chart-range-week
 - assertVisible:
     id: water-chart-range-week
 - takeScreenshot: example/.maestro/artifacts/react-native-water-chart-week
@@ -50,7 +52,7 @@ tags:
 - runFlow:
     file: ../scroll-to.yaml
     env:
-      TARGET_ID: water-chart
+      TARGET_ID: water-chart-range-week
 # In fixture mode a long press shows the range as an end user with no logs
 # sees it.
 - longPressOn:
@@ -70,7 +72,7 @@ tags:
 - runFlow:
     file: ../scroll-to.yaml
     env:
-      TARGET_ID: weight-chart
+      TARGET_ID: weight-chart-range-week
 - assertVisible:
     id: weight-chart-range-week
 - takeScreenshot: example/.maestro/artifacts/react-native-weight-chart-week
@@ -98,7 +100,7 @@ tags:
 - runFlow:
     file: ../scroll-to.yaml
     env:
-      TARGET_ID: weight-chart
+      TARGET_ID: weight-chart-range-month
 - longPressOn:
     id: weight-chart-range-month
 - extendedWaitUntil:
