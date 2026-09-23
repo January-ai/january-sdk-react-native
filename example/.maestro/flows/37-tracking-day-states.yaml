@@ -51,20 +51,19 @@ tags:
     id: tracking-logs-error
 - assertVisible: Temporary fixture failure. Try again.
 - takeScreenshot: example/.maestro/artifacts/react-native-tracking-error
-# The day loads under its Food heading; bring that into view first.
-- scrollUntilVisible:
-    element:
-      text: FOOD
-    direction: UP
-    centerElement: true
-    timeout: 8000
-    optional: true
-- scrollUntilVisible:
-    element:
-      text: FOOD
-    direction: DOWN
-    centerElement: true
-    timeout: 8000
+# The day loads under its Food heading; bring that into view first. The
+# error under the day picker can reach the middle of the screen, where
+# Maestro starts its scrolls, so swipe on the cards below it instead.
+- repeat:
+    while:
+      notVisible: FOOD
+    times: 8
+    commands:
+      - swipe:
+          start: 50%, 65%
+          end: 50%, 90%
+          duration: 400
+- assertVisible: FOOD
 - tapOn:
     id: tracking-logs-retry
 - extendedWaitUntil:
