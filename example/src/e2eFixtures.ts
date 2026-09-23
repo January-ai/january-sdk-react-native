@@ -18,6 +18,7 @@ import type {
 } from '@januaryai/react-native';
 
 import { localDayOf, localIsoDate, shiftIsoDate } from './localDate';
+import { FL_OZ_PER_CUP, ML_PER_FL_OZ } from './unitDrafts';
 
 /**
  * How long a fixture request stays loading when a flow asserts its loading
@@ -449,8 +450,6 @@ export async function failIfArmed(key: string | undefined): Promise<void> {
 // day's total back, and deletes, so the entries live for the app session and
 // every bootstrap clears them. Amounts are kept in fluid ounces and converted
 // on the way out, like the API's daily totals.
-const ML_PER_FL_OZ = 29.5735;
-const FL_OZ_PER_CUP = 8;
 // The API's limits: one log of 1–811.5 fl oz, 30–24000 ml, or 0.125–101.4
 // cup, and at most 24 L (811.5 fl oz) in a day; a weight of 10–1000 lb or
 // 4.5–453.6 kg.

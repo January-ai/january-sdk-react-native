@@ -44,6 +44,7 @@ import {
 } from './e2eFixtures';
 import { localIsoDate, shiftIsoDate, timestampForDay } from './localDate';
 import { WaterChart, WeightChart } from './TrackingCharts';
+import { convertWaterDraft, convertWeightDraft } from './unitDrafts';
 import {
   copyFoodLog,
   FoodLogDetail,
@@ -510,6 +511,13 @@ function WaterCard({
   const latestLoad = useRef(load);
   latestLoad.current = load;
 
+  // An amount already typed is converted to the new unit, so what is logged
+  // is the quantity the user meant, not the same number in another unit.
+  function changeUnit(next: VolumeUnit) {
+    setAmount(convertWaterDraft(amount, unit, next));
+    setUnit(next);
+  }
+
   async function log() {
     const value = Number(amount);
     if (!Number.isFinite(value) || value <= 0) return;
@@ -594,7 +602,7 @@ function WaterCard({
           { id: 'ml', label: 'ml' },
           { id: 'cup', label: 'cup' },
         ]}
-        onSelect={setUnit}
+        onSelect={changeUnit}
         selected={unit}
         testIDPrefix="water-unit"
       />
@@ -727,6 +735,12 @@ function WeightCard({
   const latestLoad = useRef(load);
   latestLoad.current = load;
 
+  // As on the water card: a weight already typed is converted to the new unit.
+  function changeUnit(next: WeightUnit) {
+    setValue(convertWeightDraft(value, unit, next));
+    setUnit(next);
+  }
+
   async function log() {
     const weight = Number(value);
     if (!Number.isFinite(weight) || weight <= 0) return;
@@ -785,7 +799,7 @@ function WeightCard({
           { id: 'lb', label: 'lb' },
           { id: 'kg', label: 'kg' },
         ]}
-        onSelect={setUnit}
+        onSelect={changeUnit}
         selected={unit}
         testIDPrefix="weight-unit"
       />
