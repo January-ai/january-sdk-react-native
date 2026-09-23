@@ -5,6 +5,8 @@ This project uses Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-23
+
 - Pin the January iOS SDK `0.3.1` and Android SDK `0.3.1`, which add water and
   weight logs and cups, and read and send the API's `created_at` log timestamps.
   Food, serving, alternative, and menu-item IDs are no longer optional, and
