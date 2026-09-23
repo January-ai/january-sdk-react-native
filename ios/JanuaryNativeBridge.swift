@@ -430,6 +430,95 @@ public final class JanuaryNativeBridge: NSObject, @unchecked Sendable {
         }
     }
 
+    @objc(waterLogsCreate:value:unit:consumedAt:completion:)
+    public func waterLogsCreate(
+        _ clientID: String,
+        value: Double,
+        unit: String,
+        consumedAt: String?,
+        completion: @escaping (NSString?, NSError?) -> Void
+    ) {
+        guard let volumeUnit = VolumeUnit(rawValue: unit) else {
+            completion(nil, bridgeError("unit must be fl_oz, ml, or cup."))
+            return
+        }
+        perform(clientID, completion: completion) { client in
+            try await client.waterLogs.create(
+                amount: WaterAmount(value: value, unit: volumeUnit),
+                consumedAtUTC: consumedAt
+            )
+        }
+    }
+
+    @objc(waterLogsList:start:end:unit:completion:)
+    public func waterLogsList(
+        _ clientID: String,
+        start: String,
+        end: String,
+        unit: String,
+        completion: @escaping (NSString?, NSError?) -> Void
+    ) {
+        guard let volumeUnit = VolumeUnit(rawValue: unit) else {
+            completion(nil, bridgeError("unit must be fl_oz, ml, or cup."))
+            return
+        }
+        perform(clientID, completion: completion) { client in
+            try await client.waterLogs.list(start: start, end: end, unit: volumeUnit)
+        }
+    }
+
+    @objc(waterLogsDelete:id:completion:)
+    public func waterLogsDelete(
+        _ clientID: String,
+        id: String,
+        completion: @escaping (NSString?, NSError?) -> Void
+    ) {
+        guard let client = withLock({ clients[clientID] }) else {
+            completion(nil, bridgeError("The January client is not configured."))
+            return
+        }
+        Task {
+            do {
+                try await client.waterLogs.delete(id: id)
+                completion("{}", nil)
+            } catch {
+                completion(nil, nativeError(error))
+            }
+        }
+    }
+
+    @objc(weightLogsCreate:value:unit:measuredAt:completion:)
+    public func weightLogsCreate(
+        _ clientID: String,
+        value: Double,
+        unit: String,
+        measuredAt: String?,
+        completion: @escaping (NSString?, NSError?) -> Void
+    ) {
+        guard let weightUnit = WeightUnit(rawValue: unit) else {
+            completion(nil, bridgeError("unit must be lb or kg."))
+            return
+        }
+        perform(clientID, completion: completion) { client in
+            try await client.weightLogs.create(
+                weight: Weight(value: value, unit: weightUnit),
+                measuredAtUTC: measuredAt
+            )
+        }
+    }
+
+    @objc(weightLogsList:start:end:completion:)
+    public func weightLogsList(
+        _ clientID: String,
+        start: String,
+        end: String,
+        completion: @escaping (NSString?, NSError?) -> Void
+    ) {
+        perform(clientID, completion: completion) { client in
+            try await client.weightLogs.list(start: start, end: end)
+        }
+    }
+
     @objc(glucosePredict:requestJson:completion:)
     public func glucosePredict(
         _ clientID: String,

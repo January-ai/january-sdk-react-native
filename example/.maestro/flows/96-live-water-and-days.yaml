@@ -1,0 +1,287 @@
+appId: ai.january.sdk.demo
+name: Live - water in fl oz, ml, and cups, the day picker, and the water chart, checked against the API
+tags:
+  - live
+# Also after a failure: take back a water log the flow made and has not yet
+# deleted. (Weight logs cannot be deleted through the API.)
+onFlowComplete:
+  - runFlow:
+      when:
+        visible:
+          id: water-delete-last
+      commands:
+        - tapOn:
+            id: water-delete-last
+        - extendedWaitUntil:
+            notVisible:
+              id: water-delete-last
+            timeout: 30000
+---
+- runFlow: ../bootstrap.yaml
+- extendedWaitUntil:
+    visible:
+      id: search-input
+    timeout: 15000
+- runFlow: ../live/context.yaml
+- tapOn:
+    id: tab-tracking
+- assertVisible:
+    id: logs-day-label
+    text: Today
+# Water in fluid ounces: the total before, after logging 8, and after deleting
+# that log, each read back from the API.
+- runFlow:
+    file: ../live/water-check.yaml
+    env:
+      UNIT: fl_oz
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-amount
+- tapOn:
+    id: water-amount
+- inputText: "8"
+- pressKey: Enter
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-log
+- tapOn:
+    id: water-log
+- extendedWaitUntil:
+    visible:
+      id: water-logged
+    timeout: 30000
+- assertNotVisible:
+    id: water-error
+- runFlow:
+    file: ../live/water-check.yaml
+    env:
+      UNIT: fl_oz
+      EXPECT_CHANGE: "8"
+- takeScreenshot: example/.maestro/artifacts/live-water-fl-oz-logged
+- runFlow:
+    file: ../live/chart-check.yaml
+    env:
+      KIND: water
+      RANGE: week
+      UNIT: fl_oz
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-delete-last
+- tapOn:
+    id: water-delete-last
+- extendedWaitUntil:
+    visible: Deleted the last water log
+    timeout: 30000
+- runFlow:
+    file: ../live/water-check.yaml
+    env:
+      UNIT: fl_oz
+      EXPECT_CHANGE: "-8"
+# The same in millilitres.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-unit-ml
+- tapOn:
+    id: water-unit-ml
+- runFlow:
+    file: ../live/water-check.yaml
+    env:
+      UNIT: ml
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-amount
+- tapOn:
+    id: water-amount
+- inputText: "250"
+- pressKey: Enter
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-log
+- tapOn:
+    id: water-log
+- extendedWaitUntil:
+    visible:
+      id: water-logged
+    timeout: 30000
+- assertNotVisible:
+    id: water-error
+- runFlow:
+    file: ../live/water-check.yaml
+    env:
+      UNIT: ml
+      EXPECT_CHANGE: "250"
+- takeScreenshot: example/.maestro/artifacts/live-water-ml-logged
+- runFlow:
+    file: ../live/chart-check.yaml
+    env:
+      KIND: water
+      RANGE: month
+      UNIT: ml
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-delete-last
+- tapOn:
+    id: water-delete-last
+- extendedWaitUntil:
+    visible: Deleted the last water log
+    timeout: 30000
+- runFlow:
+    file: ../live/water-check.yaml
+    env:
+      UNIT: ml
+      EXPECT_CHANGE: "-250"
+# US cups. The SDK takes cup ahead of the January API, which still refuses it
+# (400 invalid_request). Either answer passes, so this flow needs no change
+# when the API starts taking cup: an accepted cup must add 8 fl oz to the day
+# and is then deleted; a refused one must show the error, log nothing, and
+# leave the card working.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-unit-cup
+- tapOn:
+    id: water-unit-cup
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-amount
+- tapOn:
+    id: water-amount
+- inputText: "1"
+- pressKey: Enter
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-log
+# The card reads the day in cups first (or fails to, while the API refuses
+# cup); Log is available once that is over.
+- extendedWaitUntil:
+    visible:
+      id: water-log
+      enabled: true
+    timeout: 30000
+- tapOn:
+    id: water-log
+- extendedWaitUntil:
+    visible: Logged 1 cup|January couldn’t complete the request
+    timeout: 30000
+- evalScript: ${output.cupAccepted = false}
+- runFlow:
+    when:
+      visible: Logged 1 cup
+    commands:
+      - evalScript: ${output.cupAccepted = true}
+# Accepted: the API has 8 fl oz more, the card's total in cups is the API's,
+# and deleting the log takes the 8 fl oz back off.
+- runFlow:
+    when:
+      true: ${output.cupAccepted}
+    commands:
+      - assertNotVisible:
+          id: water-error
+      - runScript:
+          file: ../live/api.js
+          env:
+            CHECK: water-change
+            UNIT: fl_oz
+            EXPECT_CHANGE: "8"
+      - runFlow:
+          file: ../live/water-check.yaml
+          env:
+            UNIT: cup
+      - takeScreenshot: example/.maestro/artifacts/live-water-cup-logged
+      - runFlow:
+          file: ../scroll-to.yaml
+          env:
+            TARGET_ID: water-delete-last
+      - tapOn:
+          id: water-delete-last
+      - extendedWaitUntil:
+          visible: Deleted the last water log
+          timeout: 30000
+      - runScript:
+          file: ../live/api.js
+          env:
+            CHECK: water-change
+            UNIT: fl_oz
+            EXPECT_CHANGE: "0"
+# Refused: the request has finished once Log is back with the amount still
+# typed. The card shows the error, the API refuses cup as invalid_request, the
+# day's total is unchanged, and there is no log to delete.
+- runFlow:
+    when:
+      true: ${!output.cupAccepted}
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: water-log
+            enabled: true
+          timeout: 30000
+      - runFlow:
+          file: ../scroll-to.yaml
+          env:
+            TARGET_ID: water-error
+      - assertVisible: January couldn’t complete the request
+      - assertNotVisible: Logged 1 cup
+      - takeScreenshot: example/.maestro/artifacts/live-water-cup-rejected
+      - runScript:
+          file: ../live/api.js
+          env:
+            CHECK: water-cup-refused
+      - runScript:
+          file: ../live/api.js
+          env:
+            CHECK: water-change
+            UNIT: fl_oz
+            EXPECT_CHANGE: "0"
+      - assertNotVisible:
+          id: water-delete-last
+# Back to fluid ounces: the card recovers.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-unit-fl_oz
+- tapOn:
+    id: water-unit-fl_oz
+- runFlow:
+    file: ../live/water-check.yaml
+    env:
+      UNIT: fl_oz
+- runFlow:
+    file: ../live/chart-check.yaml
+    env:
+      KIND: water
+      RANGE: year
+      UNIT: fl_oz
+- takeScreenshot: example/.maestro/artifacts/live-water-chart-year
+# Yesterday has its own water and weight, as the API has them.
+- scrollUntilVisible:
+    element:
+      id: logs-day-previous
+    direction: UP
+- tapOn:
+    id: logs-day-previous
+- assertVisible:
+    id: logs-day-today
+- runFlow:
+    file: ../live/water-check.yaml
+    env:
+      UNIT: fl_oz
+      DAY: yesterday
+- runFlow:
+    file: ../live/weight-check.yaml
+    env:
+      DAY: yesterday
+- takeScreenshot: example/.maestro/artifacts/live-yesterday
+- tapOn:
+    id: logs-day-today
+- assertVisible:
+    id: logs-day-label
+    text: Today

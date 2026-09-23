@@ -1,0 +1,95 @@
+appId: ai.january.sdk.demo
+name: Live - weight in lb and kg, and the weight chart, checked against the API
+tags:
+  - live
+---
+# Weight logs cannot be deleted through the API, so this flow runs last, after
+# every other live flow has passed; its first request confirms the API still
+# answers before anything is logged.
+- runFlow: ../bootstrap.yaml
+- extendedWaitUntil:
+    visible:
+      id: search-input
+    timeout: 15000
+- runFlow: ../live/context.yaml
+- tapOn:
+    id: tab-tracking
+- assertVisible:
+    id: logs-day-label
+    text: Today
+- runFlow:
+    file: ../live/weight-check.yaml
+# Weight in pounds, then kilograms: each becomes the day's latest.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-value
+- tapOn:
+    id: weight-value
+- inputText: "165.4"
+- pressKey: Enter
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-log
+- tapOn:
+    id: weight-log
+- extendedWaitUntil:
+    visible:
+      id: weight-logged
+    timeout: 30000
+- assertNotVisible:
+    id: weight-error
+- runFlow:
+    file: ../live/weight-check.yaml
+    env:
+      UNIT: lb
+      EXPECT_VALUE: "165.4"
+- takeScreenshot: example/.maestro/artifacts/live-weight-lb
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-unit-kg
+- tapOn:
+    id: weight-unit-kg
+- tapOn:
+    id: weight-value
+- inputText: "74.9"
+- pressKey: Enter
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-log
+- tapOn:
+    id: weight-log
+- extendedWaitUntil:
+    visible: Logged 74.9 kg
+    timeout: 30000
+- assertNotVisible:
+    id: weight-error
+- runFlow:
+    file: ../live/weight-check.yaml
+    env:
+      UNIT: kg
+      EXPECT_VALUE: "74.9"
+- takeScreenshot: example/.maestro/artifacts/live-weight-kg
+# The weight chart in kilograms, for a week, a month, and a year.
+- runFlow:
+    file: ../live/chart-check.yaml
+    env:
+      KIND: weight
+      RANGE: week
+      UNIT: kg
+- runFlow:
+    file: ../live/chart-check.yaml
+    env:
+      KIND: weight
+      RANGE: month
+      UNIT: kg
+- runFlow:
+    file: ../live/chart-check.yaml
+    env:
+      KIND: weight
+      RANGE: year
+      UNIT: kg
+- takeScreenshot: example/.maestro/artifacts/live-weight-chart-year

@@ -1,0 +1,63 @@
+appId: ai.january.sdk.demo
+name: Tracking - a water log that finishes after the day changed leaves that day alone
+tags:
+  - fixture
+---
+- runFlow: ../bootstrap.yaml
+- extendedWaitUntil:
+    visible:
+      id: tab-tracking
+    timeout: 15000
+- tapOn:
+    id: tab-tracking
+- extendedWaitUntil:
+    visible:
+      id: tracking-totals
+    timeout: 15000
+# In fixture mode a log of exactly 77 fl oz saves slowly; move to yesterday
+# while it is in flight.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-amount
+- tapOn:
+    id: water-amount
+- inputText: "77"
+- pressKey: Enter
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-log
+- tapOn:
+    id: water-log
+- tapOn:
+    id: logs-day-previous
+- assertVisible:
+    id: logs-day-today
+# Yesterday gets no report of today's log and no undo for it, and keeps its own
+# (empty) total once the save lands.
+- extendedWaitUntil:
+    notVisible:
+      id: water-log
+      enabled: false
+    timeout: 15000
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-empty
+- assertNotVisible:
+    id: water-logged
+- assertNotVisible:
+    id: water-delete-last
+# Today has the log.
+- scrollUntilVisible:
+    element:
+      id: logs-day-today
+    direction: UP
+- tapOn:
+    id: logs-day-today
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-total
+- assertVisible: .*77 fl oz.*

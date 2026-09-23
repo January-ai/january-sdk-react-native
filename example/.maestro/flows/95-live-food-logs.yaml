@@ -1,0 +1,223 @@
+appId: ai.january.sdk.demo
+name: Live - create, list, rename and add to, and delete a food log, with its summaries, checked against the API
+tags:
+  - live
+# Also after a failure: remove this run's log if a step before the delete
+# failed. Needs the context the flow recorded first.
+onFlowComplete:
+  - runFlow:
+      when:
+        true: ${typeof output.live !== 'undefined'}
+      commands:
+        - runScript:
+            file: ../live/api.js
+            env:
+              CHECK: cleanup
+              NAME: RN live ${output.live.run}
+---
+# Every change is read back from the January API for the same end user
+# (../live/api.js). The log is named for this run, and a cleanup at the end
+# removes it if a step before the delete failed.
+- runFlow: ../bootstrap.yaml
+- extendedWaitUntil:
+    visible:
+      id: search-input
+    timeout: 15000
+- runFlow: ../live/context.yaml
+- tapOn:
+    id: tab-food-logs
+- extendedWaitUntil:
+    visible:
+      id: food-logs-refresh
+    timeout: 60000
+- tapOn:
+    id: food-log-add
+- tapOn:
+    id: food-log-name
+- inputText: RN live ${output.live.run}
+- pressKey: Enter
+- tapOn:
+    id: food-log-add-food
+- tapOn:
+    id: food-picker-input
+- inputText: banana
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: food-picker-result-0
+    timeout: 30000
+- tapOn:
+    id: food-picker-result-0
+- tapOn:
+    id: food-serving-add
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: food-log-save
+- tapOn:
+    id: food-log-save
+- extendedWaitUntil:
+    notVisible:
+      id: food-log-editor
+    timeout: 60000
+- assertNotVisible:
+    id: food-log-save-error
+- extendedWaitUntil:
+    visible:
+      id: food-logs-refresh
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      text: .*RN live ${output.live.run}.*
+    direction: DOWN
+    timeout: 30000
+- takeScreenshot: example/.maestro/artifacts/live-food-log-created
+- runScript:
+    file: ../live/api.js
+    env:
+      CHECK: food-log-saved
+      NAME: RN live ${output.live.run}
+      EXPECT_FOODS: "1"
+# The week's summary line equals the summary endpoint's for the same dates.
+- scrollUntilVisible:
+    element:
+      id: food-log-summary
+    direction: UP
+- retry:
+    maxRetries: 2
+    commands:
+      - copyTextFrom:
+          text: "[0-9]+ logs?.*"
+          childOf:
+            id: food-log-summary
+      - runScript:
+          file: ../live/api.js
+          env:
+            CHECK: food-summary
+            RANGE: week
+            UI_TEXT: ${maestro.copiedText}
+# Rename it.
+- scrollUntilVisible:
+    element:
+      text: .*RN live ${output.live.run}.*
+    direction: DOWN
+- tapOn: .*RN live ${output.live.run}.*
+- extendedWaitUntil:
+    visible:
+      id: food-log-detail
+    timeout: 10000
+- tapOn:
+    id: food-log-edit
+- tapOn:
+    id: food-log-name
+- eraseText: 40
+- inputText: RN live ${output.live.run} renamed
+- pressKey: Enter
+# And add a second food, saved with the first.
+- scrollUntilVisible:
+    element:
+      id: food-log-add-food
+    direction: DOWN
+- tapOn:
+    id: food-log-add-food
+- tapOn:
+    id: food-picker-input
+- inputText: apple
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: food-picker-result-0
+    timeout: 30000
+- tapOn:
+    id: food-picker-result-0
+- tapOn:
+    id: food-serving-add
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: food-log-save
+- tapOn:
+    id: food-log-save
+- extendedWaitUntil:
+    notVisible:
+      id: food-log-editor
+    timeout: 60000
+- assertNotVisible:
+    id: food-log-save-error
+- extendedWaitUntil:
+    visible:
+      id: food-logs-refresh
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      text: .*RN live ${output.live.run} renamed.*
+    direction: DOWN
+    timeout: 30000
+- runScript:
+    file: ../live/api.js
+    env:
+      CHECK: food-log-renamed
+      NAME: RN live ${output.live.run} renamed
+      EXPECT_FOODS: "2"
+# Today on the Tracking tab: the day's summary and the meal.
+- tapOn:
+    id: tab-tracking
+- extendedWaitUntil:
+    visible:
+      id: tracking-totals
+    timeout: 60000
+- retry:
+    maxRetries: 2
+    commands:
+      - copyTextFrom:
+          text: "[0-9]+ logs?.*"
+          childOf:
+            id: tracking-totals
+      - runScript:
+          file: ../live/api.js
+          env:
+            CHECK: food-summary
+            RANGE: day
+            UI_TEXT: ${maestro.copiedText}
+- assertVisible: .*RN live ${output.live.run} renamed.*
+- takeScreenshot: example/.maestro/artifacts/live-tracking-today
+# Delete it.
+- tapOn:
+    id: tab-food-logs
+- extendedWaitUntil:
+    visible:
+      id: food-logs-refresh
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      text: .*RN live ${output.live.run} renamed.*
+    direction: DOWN
+    timeout: 30000
+- tapOn: .*RN live ${output.live.run} renamed.*
+- extendedWaitUntil:
+    visible:
+      id: food-log-detail
+    timeout: 10000
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: food-log-delete
+- tapOn:
+    id: food-log-delete
+- tapOn: Delete
+- extendedWaitUntil:
+    notVisible:
+      id: food-log-detail
+    timeout: 60000
+- assertNotVisible:
+    id: food-logs-error
+- extendedWaitUntil:
+    visible:
+      id: food-logs-refresh
+    timeout: 60000
+- assertNotVisible: .*RN live ${output.live.run}.*
+- runScript:
+    file: ../live/api.js
+    env:
+      CHECK: food-log-deleted
+- takeScreenshot: example/.maestro/artifacts/live-food-log-deleted

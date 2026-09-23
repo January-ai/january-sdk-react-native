@@ -29,7 +29,6 @@ import {
   type FoodScan,
   type FoodSearchItem,
   type FoodSuggestion,
-  type JanuaryClientToken,
 } from '@januaryai/react-native';
 
 import {
@@ -38,10 +37,14 @@ import {
   lookupFixtureBarcode,
   resetFixtureAttempts,
   searchFixtureFoods,
+  setFixtureEndUser,
 } from './e2eFixtures';
+import { deviceTimeZone } from './localDate';
+import { relayTokenProvider } from './relayTokenProvider';
 import { goBack, navigateTo, ScreenStack, useScreenStack } from './navigation';
 import { FoodDetailScreen } from './FoodDetailScreen';
 import { FoodLogsScreen } from './FoodLogsScreen';
+import { TrackingScreen } from './TrackingScreen';
 import { GlucoseScreen } from './GlucoseScreen';
 import { RestaurantScreens } from './RestaurantScreens';
 import { ScanScreen } from './ScanScreen';
@@ -51,9 +54,15 @@ const tokenEndpoint = process.env.EXPO_PUBLIC_JANUARY_TOKEN_ENDPOINT;
 const developmentApiKey = process.env.EXPO_PUBLIC_JANUARY_API_KEY;
 const e2eFixturesEnabled = process.env.EXPO_PUBLIC_E2E_FIXTURES === '1';
 const sessionToken = process.env.EXPO_PUBLIC_DEMO_SESSION_TOKEN;
-const endUserId =
+// Asks the relay for a token for whichever end user the SDK names.
+const fetchClientToken = relayTokenProvider({
+  endpoint: tokenEndpoint,
+  sessionToken,
+});
+const configuredEndUserId =
   process.env.EXPO_PUBLIC_DEMO_END_USER_ID ??
   (e2eFixturesEnabled ? 'parity-user' : 'january-sdk-demo-user');
+if (e2eFixturesEnabled) setFixtureEndUser(configuredEndUserId);
 
 const palette = {
   paper: '#FAF8F2',
@@ -103,6 +112,12 @@ function DemoScreen() {
   const [selectedFood, setSelectedFood] = useState<FoodSearchItem>();
   const [suggestions, setSuggestions] = useState<FoodSuggestion[]>([]);
   const [naturalResult, setNaturalResult] = useState<FoodScan>();
+  // The end user every request is for; Settings can switch it, which starts a
+  // new client for that user.
+  const [endUserId, setEndUserId] = useState(configuredEndUserId);
+  // Fixture mode only: Settings can show the screen an unconfigured build
+  // opens on, so a flow can check it.
+  const [previewSetup, setPreviewSetup] = useState(false);
   const nativeVersion = getNativeModuleVersion();
   const searchStack = useScreenStack();
 
@@ -120,15 +135,15 @@ function DemoScreen() {
           ? {
               developmentApiKey,
               endUserId,
-              timezone: 'America/New_York',
+              timezone: deviceTimeZone(),
             }
           : {
               endUserId,
-              timezone: 'America/New_York',
+              timezone: deviceTimeZone(),
               clientTokenProvider: fetchClientToken,
             }
       ),
-    []
+    [endUserId]
   );
 
   useEffect(() => () => client.dispose(), [client]);
@@ -219,7 +234,7 @@ function DemoScreen() {
     e2eFixturesEnabled || developmentApiKey || tokenEndpoint
   );
 
-  if (!configured) return <SetupScreen />;
+  if (!configured || previewSetup) return <SetupScreen />;
 
   const searchTab = (
     <View style={styles.screenBody} testID="search-screen">
@@ -287,16 +302,14 @@ function DemoScreen() {
             setError(undefined);
           }}
           onSubmit={() => {
-            if (configured) search().catch(() => undefined);
+            search().catch(() => undefined);
           }}
           placeholder={
-            searchScope === 'restaurants'
-              ? 'Restaurant name'
-              : foodMode === 'description'
-                ? 'Describe what was eaten'
-                : foodMode === 'barcode'
-                  ? '6–14 digit barcode'
-                  : 'Food name'
+            foodMode === 'description'
+              ? 'Describe what was eaten'
+              : foodMode === 'barcode'
+                ? '6–14 digit barcode'
+                : 'Food name'
           }
           value={query}
         />
@@ -329,36 +342,24 @@ function DemoScreen() {
           testIDPrefix="search-scope"
         />
 
-        {searchScope === 'foods' ? (
-          <SearchSegmentedControl
-            items={[
-              { id: 'name', label: 'Name' },
-              { id: 'description', label: 'Description' },
-              { id: 'barcode', label: 'Barcode' },
-            ]}
-            onSelect={(value) => {
-              setFoodMode(value as 'name' | 'description' | 'barcode');
-              setResults([]);
-              setNaturalResult(undefined);
-              setSuggestions([]);
-              setHasSearched(false);
-            }}
-            selected={foodMode}
-            testIDPrefix="search-mode"
-          />
-        ) : (
-          <SearchSegmentedControl
-            items={[
-              { id: 'restaurants', label: 'Restaurants' },
-              { id: 'menu', label: 'Menu items' },
-            ]}
-            onSelect={() => undefined}
-            selected="restaurants"
-            testIDPrefix="restaurant-mode"
-          />
-        )}
+        <SearchSegmentedControl
+          items={[
+            { id: 'name', label: 'Name' },
+            { id: 'description', label: 'Description' },
+            { id: 'barcode', label: 'Barcode' },
+          ]}
+          onSelect={(value) => {
+            setFoodMode(value as 'name' | 'description' | 'barcode');
+            setResults([]);
+            setNaturalResult(undefined);
+            setSuggestions([]);
+            setHasSearched(false);
+          }}
+          selected={foodMode}
+          testIDPrefix="search-mode"
+        />
 
-        {searchScope === 'foods' && foodMode === 'name' ? (
+        {foodMode === 'name' ? (
           <View style={styles.chips}>
             <CategoryChip
               label="All"
@@ -403,21 +404,16 @@ function DemoScreen() {
           </Text>
         ) : null}
 
-        {!query.trim() ? (
-          <SearchPromptCard
-            restaurant={searchScope === 'restaurants'}
-            mode={foodMode}
-          />
-        ) : null}
+        {!query.trim() ? <SearchPromptCard mode={foodMode} /> : null}
 
         <Pressable
           accessibilityRole="button"
-          disabled={!configured || isSearching}
+          disabled={isSearching}
           onPress={() => search().catch(() => undefined)}
           style={({ pressed }) => [
             styles.primaryButton,
             pressed && styles.primaryButtonPressed,
-            (!configured || isSearching) && styles.primaryButtonDisabled,
+            isSearching && styles.primaryButtonDisabled,
           ]}
           testID={isSearching ? 'search-loading' : 'search-submit'}
         >
@@ -426,24 +422,16 @@ function DemoScreen() {
               <ActivityIndicator color={palette.paper} />
             </View>
           ) : (
-            <Text
-              style={[
-                styles.primaryButtonText,
-                !configured && styles.disabledButtonText,
-              ]}
-            >
-              {searchScope === 'restaurants'
-                ? 'Search nearby'
-                : foodMode === 'description'
-                  ? 'Parse meal'
-                  : foodMode === 'barcode'
-                    ? 'Look up barcode'
-                    : 'Search foods'}
+            <Text style={styles.primaryButtonText}>
+              {foodMode === 'description'
+                ? 'Parse meal'
+                : foodMode === 'barcode'
+                  ? 'Look up barcode'
+                  : 'Search foods'}
             </Text>
           )}
         </Pressable>
 
-        {!configured ? <ConfigurationCard /> : null}
         {error ? (
           <ErrorNotice
             message={error}
@@ -509,9 +497,21 @@ function DemoScreen() {
           fixtures={e2eFixturesEnabled}
           onSettings={() => setShowSettings(true)}
         />
+      ) : activeTab === 'tracking' ? (
+        // Keyed by the end user: a switch drops everything the previous user
+        // saw or could act on (a just-logged result, "Delete the last log",
+        // their day and charts) and loads the new user's day from scratch.
+        <TrackingScreen
+          client={client}
+          key={endUserId}
+          configured={configured}
+          fixtures={e2eFixturesEnabled}
+          onSettings={() => setShowSettings(true)}
+        />
       ) : activeTab === 'foodLogs' ? (
         <FoodLogsScreen
           client={client}
+          key={endUserId}
           configured={configured}
           endUserId={endUserId}
           fixtures={e2eFixturesEnabled}
@@ -542,7 +542,23 @@ function DemoScreen() {
         }
         endUserId={endUserId}
         nativeVersion={nativeVersion ?? 'Unavailable'}
-        onClose={() => setShowSettings(false)}
+        onClose={(draftUserId) => {
+          setShowSettings(false);
+          const next = draftUserId.trim();
+          if (!next || next === endUserId) return;
+          // Fixture data belongs to one user too; switch it before the
+          // screens load for the new user.
+          if (e2eFixturesEnabled) setFixtureEndUser(next);
+          setEndUserId(next);
+        }}
+        onPreviewSetup={
+          e2eFixturesEnabled
+            ? () => {
+                setShowSettings(false);
+                setPreviewSetup(true);
+              }
+            : undefined
+        }
         visible={showSettings}
       />
     </View>
@@ -771,55 +787,29 @@ function SearchSegmentedControl({
 }
 
 function SearchPromptCard({
-  restaurant,
   mode,
 }: {
-  restaurant: boolean;
   mode: 'name' | 'description' | 'barcode';
 }) {
-  const title = restaurant
-    ? 'Search nearby'
-    : mode === 'description'
+  const title =
+    mode === 'description'
       ? 'Describe a meal'
       : mode === 'barcode'
         ? 'Enter or scan a barcode'
         : 'Find a food';
-  const description = restaurant
-    ? 'Find restaurants or dishes around a location.'
-    : mode === 'description'
+  const description =
+    mode === 'description'
       ? 'January will identify foods, servings, and nutrition from a sentence.'
       : "Search January's database, then choose a serving and quantity.";
   return (
     <View style={styles.promptCard} testID="search-prompt">
-      {restaurant ? (
-        <MaterialIcons color={palette.green} name="location-on" size={25} />
-      ) : (
-        <MaterialCommunityIcons
-          color={palette.green}
-          name="silverware-fork-knife"
-          size={25}
-        />
-      )}
+      <MaterialCommunityIcons
+        color={palette.green}
+        name="silverware-fork-knife"
+        size={25}
+      />
       <Text style={styles.cardTitle}>{title}</Text>
       <Text style={styles.cardBody}>{description}</Text>
-    </View>
-  );
-}
-
-function ConfigurationCard() {
-  return (
-    <View style={styles.configurationCard} testID="configuration-card">
-      <MaterialCommunityIcons
-        color={palette.goldText}
-        name="key-outline"
-        size={22}
-      />
-      <View style={styles.promptCopy}>
-        <Text style={styles.configurationTitle}>Connect the token server</Text>
-        <Text style={styles.configurationBody}>
-          Copy example/.env.example to example/.env, then rebuild.
-        </Text>
-      </View>
     </View>
   );
 }
@@ -1004,6 +994,26 @@ function SuggestionList({
 }
 
 function NaturalLanguageResult({ result }: { result: FoodScan }) {
+  if (result.detections.length === 0) {
+    return (
+      <View style={styles.promptCard} testID="description-empty">
+        <View style={styles.promptIcon}>
+          <MaterialCommunityIcons
+            color={palette.green}
+            name="text-search"
+            size={24}
+          />
+        </View>
+        <View style={styles.promptCopy}>
+          <Text style={styles.cardTitle}>No foods recognized</Text>
+          <Text style={styles.cardBody}>
+            January found no food in that description. Name what was eaten, such
+            as “two eggs and toast.”
+          </Text>
+        </View>
+      </View>
+    );
+  }
   return (
     <View style={styles.naturalResults} testID="description-results">
       <Text style={styles.naturalHeading}>Meal nutrition</Text>
@@ -1165,13 +1175,31 @@ function formatNumber(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
-type TabId = 'search' | 'scan' | 'foodLogs' | 'glucose';
+type TabId = 'search' | 'scan' | 'tracking' | 'foodLogs' | 'glucose';
 
+// Test IDs are fixed so the Maestro flows survive a label change; the Logs
+// tab kept `tab-food-logs` when it was renamed from Food Logs.
 const tabs = [
-  { id: 'search', label: 'Search', icon: 'search' },
-  { id: 'scan', label: 'Scan', icon: 'center-focus-weak' },
-  { id: 'foodLogs', label: 'Food Logs', icon: 'list-alt' },
-  { id: 'glucose', label: 'Glucose', icon: 'show-chart' },
+  { id: 'search', label: 'Search', icon: 'search', testID: 'tab-search' },
+  { id: 'scan', label: 'Scan', icon: 'center-focus-weak', testID: 'tab-scan' },
+  {
+    id: 'tracking',
+    label: 'Tracking',
+    icon: 'insights',
+    testID: 'tab-tracking',
+  },
+  {
+    id: 'foodLogs',
+    label: 'Logs',
+    icon: 'menu-book',
+    testID: 'tab-food-logs',
+  },
+  {
+    id: 'glucose',
+    label: 'Glucose',
+    icon: 'show-chart',
+    testID: 'tab-glucose',
+  },
 ] as const;
 
 function AppTabBar({
@@ -1197,7 +1225,7 @@ function AppTabBar({
             key={tab.label}
             onPress={() => onSelect(tab.id)}
             style={[styles.tab, tab.id === activeTab && styles.tabSelected]}
-            testID={`tab-${tab.label.toLowerCase().replace(' ', '-')}`}
+            testID={tab.testID}
           >
             <MaterialIcons color={palette.ink} name={tab.icon} size={25} />
             <Text style={styles.tabLabel}>{tab.label}</Text>
@@ -1212,7 +1240,10 @@ interface SettingsSheetProps {
   authentication: string;
   endUserId: string;
   nativeVersion: string;
-  onClose: () => void;
+  /** Called with the end user ID as edited; the demo switches to it. */
+  onClose: (endUserId: string) => void;
+  /** Fixture mode only: a long press on the connection shows the setup screen. */
+  onPreviewSetup?: () => void;
   visible: boolean;
 }
 
@@ -1221,14 +1252,20 @@ function SettingsSheet({
   endUserId: userId,
   nativeVersion,
   onClose,
+  onPreviewSetup,
   visible,
 }: SettingsSheetProps) {
   const insets = useSafeAreaInsets();
   const [draftUserId, setDraftUserId] = useState(userId);
+  // Each opening starts from the end user in use.
+  useEffect(() => {
+    if (visible) setDraftUserId(userId);
+  }, [userId, visible]);
+  const close = () => onClose(draftUserId);
   return (
     <Modal
       animationType="none"
-      onRequestClose={onClose}
+      onRequestClose={close}
       statusBarTranslucent
       transparent
       visible={visible}
@@ -1248,7 +1285,7 @@ function SettingsSheet({
               accessibilityLabel="Close settings"
               accessibilityRole="button"
               hitSlop={8}
-              onPress={onClose}
+              onPress={close}
               style={styles.sheetClose}
               testID="settings-close"
             >
@@ -1269,27 +1306,21 @@ function SettingsSheet({
             style={styles.settingsScroll}
           >
             <Text style={styles.settingsSectionLabel}>Connection</Text>
-            <View style={styles.connectionCard}>
-              <MaterialCommunityIcons
-                color={palette.green}
-                name="check-circle"
-                size={24}
-              />
-              <View style={styles.promptCopy}>
-                <Text style={styles.connectionTitle}>January SDK</Text>
-                <Text style={styles.connectionDetail}>{authentication}</Text>
-              </View>
-              <View style={styles.connectedBadge}>
-                <Text style={styles.connectedText}>Connected</Text>
-              </View>
-            </View>
+            <ConnectionCard
+              authentication={authentication}
+              onLongPress={onPreviewSetup}
+            />
 
             <Text style={styles.settingsSectionLabel}>Request context</Text>
             <View style={styles.settingsFieldGroup}>
               <Text style={styles.settingsFieldLabel}>End user ID</Text>
               <TextInput
                 accessibilityLabel="End user ID"
+                autoCapitalize="none"
+                autoCorrect={false}
                 onChangeText={setDraftUserId}
+                onSubmitEditing={close}
+                returnKeyType="done"
                 placeholder="Partner user identifier"
                 placeholderTextColor={palette.subdued}
                 style={styles.settingsInput}
@@ -1297,14 +1328,19 @@ function SettingsSheet({
                 value={draftUserId}
               />
               <Text style={styles.settingsHelp}>
-                Food Logs requires a stable ID. Other requests include it when
-                available.
+                Every request is made for this user, and logs are saved to them.
+                Edit it and close Settings to switch users.
               </Text>
             </View>
             <View style={styles.timezoneCard}>
               <View style={styles.promptCopy}>
                 <Text style={styles.settingsFieldLabel}>Timezone</Text>
-                <Text style={styles.connectionDetail}>America/New York</Text>
+                <Text
+                  style={styles.connectionDetail}
+                  testID="settings-timezone"
+                >
+                  {deviceTimeZone()}
+                </Text>
               </View>
               <MaterialCommunityIcons
                 color={palette.green}
@@ -1325,6 +1361,49 @@ function SettingsSheet({
   );
 }
 
+function ConnectionCard({
+  authentication,
+  onLongPress,
+}: {
+  authentication: string;
+  onLongPress?: () => void;
+}) {
+  const content = (
+    <>
+      <MaterialCommunityIcons
+        color={palette.green}
+        name="check-circle"
+        size={24}
+      />
+      <View style={styles.promptCopy}>
+        <Text style={styles.connectionTitle}>January SDK</Text>
+        <Text style={styles.connectionDetail}>{authentication}</Text>
+      </View>
+      <View style={styles.connectedBadge}>
+        <Text style={styles.connectedText}>Connected</Text>
+      </View>
+    </>
+  );
+  // Only fixture builds give the card a long press; elsewhere it is plain
+  // information.
+  return onLongPress ? (
+    <Pressable
+      // Its texts stay separate for screen readers, as on the plain card.
+      accessible={false}
+      delayLongPress={350}
+      onLongPress={onLongPress}
+      style={styles.connectionCard}
+      testID="settings-connection"
+    >
+      {content}
+    </Pressable>
+  ) : (
+    <View style={styles.connectionCard} testID="settings-connection">
+      {content}
+    </View>
+  );
+}
+
 function SettingsRow({ label, value }: { label: string; value: string }) {
   return (
     <View
@@ -1337,35 +1416,6 @@ function SettingsRow({ label, value }: { label: string; value: string }) {
       </Text>
     </View>
   );
-}
-
-async function fetchClientToken(
-  requestedEndUserId: string
-): Promise<JanuaryClientToken> {
-  if (!tokenEndpoint) {
-    throw new Error('EXPO_PUBLIC_JANUARY_TOKEN_ENDPOINT is not configured.');
-  }
-  const response = await fetch(tokenEndpoint, {
-    method: 'POST',
-    headers: {
-      ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
-      'January-End-User-ID': requestedEndUserId,
-    },
-  });
-  if (!response.ok) {
-    throw new Error(`Token endpoint returned ${response.status}.`);
-  }
-
-  const body = (await response.json()) as {
-    expiresIn?: number;
-    expires_in?: number;
-    token?: string;
-  };
-  const expiresIn = body.expiresIn ?? body.expires_in;
-  if (!body.token || !expiresIn) {
-    throw new Error('Token response is malformed.');
-  }
-  return { token: body.token, expiresIn };
 }
 
 const styles = StyleSheet.create({
@@ -1585,21 +1635,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
   },
-  disabledButtonText: { color: palette.subdued },
-  configurationCard: {
-    padding: 20,
-    borderRadius: 18,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    backgroundColor: palette.goldBackground,
-  },
-  configurationTitle: {
-    color: palette.goldText,
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  configurationBody: { color: palette.goldText, fontSize: 14, lineHeight: 20 },
   errorNotice: {
     padding: 22,
     borderWidth: 1,

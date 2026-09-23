@@ -1,4 +1,4 @@
-import { describe, expect, it, jest } from '@jest/globals';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
 type Listener = (update: Record<string, unknown>) => void;
 const mockListeners = new Set<Listener>();
@@ -24,6 +24,12 @@ import NativeJanuaryReactNative from '../NativeJanuaryReactNative';
 import { VoiceCaptureError, VoiceCaptureSession } from '../voice-capture';
 
 const native = jest.mocked(NativeJanuaryReactNative!);
+
+// Each test reads only its own native calls, whatever order the tests run in.
+// The mocks keep their implementations.
+beforeEach(() => {
+  jest.clearAllMocks();
+});
 
 function emit(sessionId: string, update: Record<string, unknown>) {
   for (const listener of mockListeners) listener({ sessionId, ...update });

@@ -1,0 +1,173 @@
+appId: ai.january.sdk.demo
+name: Tracking - a day's meal, and loading, error, retry, and empty for each card
+tags:
+  - fixture
+---
+- runFlow: ../bootstrap.yaml
+- extendedWaitUntil:
+    visible:
+      id: tab-tracking
+    timeout: 15000
+- tapOn:
+    id: tab-tracking
+- extendedWaitUntil:
+    visible:
+      id: tracking-totals
+    timeout: 15000
+- assertVisible:
+    id: logs-day-label
+    text: Today
+# A meal opens read-only on the Tracking tab.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: tracking-log-0
+- assertVisible:
+    id: tracking-log-list
+- tapOn:
+    id: tracking-log-0
+- extendedWaitUntil:
+    visible:
+      id: food-log-detail
+    timeout: 10000
+- assertVisible: Fixture oatmeal
+- assertNotVisible:
+    id: food-log-delete
+- tapOn: Back from food log
+- extendedWaitUntil:
+    visible:
+      id: tracking-screen
+    timeout: 10000
+# In fixture mode a long press on Previous day opens yesterday with its meals,
+# water, and weight requests failing once; each card offers Try again. The
+# day's own error shows under the day picker.
+- longPressOn:
+    id: logs-day-previous
+- extendedWaitUntil:
+    visible:
+      id: tracking-logs-retry
+    timeout: 15000
+- assertVisible:
+    id: tracking-logs-error
+- assertVisible: Temporary fixture failure. Try again.
+- takeScreenshot: example/.maestro/artifacts/react-native-tracking-error
+# The day loads under its Food heading; bring that into view first. The
+# error under the day picker can reach the middle of the screen, where
+# Maestro starts its scrolls, so swipe on the cards below it instead.
+- repeat:
+    while:
+      notVisible: FOOD
+    times: 8
+    commands:
+      - swipe:
+          start: 50%, 65%
+          end: 50%, 90%
+          duration: 400
+- assertVisible: FOOD
+- tapOn:
+    id: tracking-logs-retry
+- extendedWaitUntil:
+    visible:
+      id: tracking-loading
+    timeout: 5000
+# The empty day takes the loading row's place under Food, already in view.
+# Scrolling for it while the day still loads would carry the list past it,
+# and coming back up leaves it half under the fixed day picker.
+- extendedWaitUntil:
+    visible:
+      id: tracking-logs-empty
+    timeout: 15000
+- assertVisible: No food logs on this day
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-retry
+- assertVisible:
+    id: water-error
+# Water loads at the top of its card, above the unit picker, while Try again
+# sits lower down; on a short screen the scroll can leave the top under the
+# fixed day picker. Short swipes bring the unit picker back into view with
+# Try again still on screen, so the loading row opens where it can be seen.
+- repeat:
+    while:
+      notVisible:
+        id: water-unit-fl_oz
+    times: 8
+    commands:
+      - swipe:
+          start: 50%, 65%
+          end: 50%, 80%
+          duration: 400
+- tapOn:
+    id: water-retry
+- extendedWaitUntil:
+    visible:
+      id: water-loading
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: water-empty
+    timeout: 15000
+- assertVisible:
+    id: water-card
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-retry
+- assertVisible:
+    id: weight-error
+# As for water: weight loads at the top of its card, above the unit picker.
+- repeat:
+    while:
+      notVisible:
+        id: weight-unit-lb
+    times: 8
+    commands:
+      - swipe:
+          start: 50%, 65%
+          end: 50%, 80%
+          duration: 400
+- tapOn:
+    id: weight-retry
+- extendedWaitUntil:
+    visible:
+      id: weight-loading
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: weight-empty
+    timeout: 15000
+- assertVisible:
+    id: weight-card
+# Units switch back and forth without a new log.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-unit-kg
+- tapOn:
+    id: weight-unit-kg
+- tapOn:
+    id: weight-unit-lb
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-empty
+- scrollUntilVisible:
+    element:
+      id: water-unit-ml
+    direction: UP
+- tapOn:
+    id: water-unit-ml
+- tapOn:
+    id: water-unit-fl_oz
+# Next day comes back to today, and stops there.
+- assertVisible:
+    id: logs-day-label
+    text: (?!Today).*
+- tapOn:
+    id: logs-day-next
+- extendedWaitUntil:
+    visible:
+      id: logs-day-label
+      text: Today
+    timeout: 10000

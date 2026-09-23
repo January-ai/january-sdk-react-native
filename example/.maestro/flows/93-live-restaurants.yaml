@@ -1,0 +1,78 @@
+appId: ai.january.sdk.demo
+name: Live - restaurants, a menu, a menu item's glucose impact, and menu item search
+tags:
+  - live
+---
+- runFlow: ../bootstrap.yaml
+- extendedWaitUntil:
+    visible:
+      id: search-scope-restaurants
+    timeout: 15000
+# Records the end user and stops here, before any request of the flow's own,
+# if the API account has no requests left.
+- runFlow: ../live/context.yaml
+- tapOn:
+    id: search-scope-restaurants
+- tapOn:
+    id: restaurant-search-input
+- inputText: "${typeof RESTAURANT === 'undefined' ? 'Starbucks' : RESTAURANT}"
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: restaurant-result-0
+    timeout: 30000
+- assertNotVisible:
+    id: restaurants-error
+- takeScreenshot: example/.maestro/artifacts/live-restaurants
+- tapOn:
+    id: restaurant-result-0
+- extendedWaitUntil:
+    visible:
+      id: restaurant-menu-item-0
+    timeout: 30000
+- assertNotVisible:
+    id: menu-error
+- takeScreenshot: example/.maestro/artifacts/live-restaurant-menu
+- tapOn:
+    id: restaurant-menu-item-0
+- assertVisible:
+    id: menu-item-detail-screen
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: menu-glucose-button
+- tapOn:
+    id: menu-glucose-button
+- extendedWaitUntil:
+    visible:
+      id: food-glucose-result|food-glucose-error
+    timeout: 60000
+- takeScreenshot: example/.maestro/artifacts/live-menu-item-glucose
+- assertNotVisible:
+    id: food-glucose-error
+- tapOn: Close Glucose response
+- tapOn:
+    id: menu-item-detail-back
+- tapOn:
+    id: restaurant-detail-back
+- extendedWaitUntil:
+    visible:
+      id: restaurant-mode-menu
+    timeout: 10000
+- tapOn:
+    id: restaurant-mode-menu
+- tapOn:
+    id: restaurant-search-clear
+- tapOn:
+    id: restaurant-search-input
+- inputText: "${typeof MENU_ITEM === 'undefined' ? 'burrito' : MENU_ITEM}"
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: menu-result-0
+    timeout: 30000
+- takeScreenshot: example/.maestro/artifacts/live-menu-items
+- tapOn:
+    id: menu-result-0
+- assertVisible:
+    id: menu-item-detail-screen

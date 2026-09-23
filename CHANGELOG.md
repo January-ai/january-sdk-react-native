@@ -5,6 +5,31 @@ This project uses Semantic Versioning.
 
 ## [Unreleased]
 
+- Pin the January iOS SDK `0.3.1` and Android SDK `0.3.1`, which add water and
+  weight logs and cups, and read and send the API's `created_at` log timestamps.
+  Food, serving, alternative, and menu-item IDs are no longer optional, and
+  photo analysis without a reasoning effort now uses the API's reasoning-based
+  analyzer.
+- Add `waterLogs` (`create`, `list`, `delete`) and `weightLogs` (`create`,
+  `list`) with the `WaterAmount`, `Volume`, `WaterLog`, `DailyWaterTotal`,
+  `Weight`, `WeightLog`, and `DailyWeight` models. Client tokens need the
+  `water_logs:*` and `weight_logs:*` scopes for them.
+- `VolumeUnit` includes `cup`, a US cup of 8 fl oz: log 0.125–101.4 cups at a
+  time, or read daily water totals in cups.
+- `foodLogs.update` rejects an update that changes nothing before sending it;
+  the API now refuses empty patches and unknown fields.
+- `ServingDetails.weightGrams` is documented as the weight of one catalog
+  serving.
+- The example gains a Tracking tab that shows one day at a time: the day’s
+  food-log summary and meals, water total, and weight. The Food Logs tab is
+  renamed Logs.
+- The example's Tracking tab charts the last week, month, or year: weight as
+  a line in the selected unit and water as daily (or, for a year, monthly)
+  bars, reading a year in consecutive 90-day `list` requests.
+- The example's client uses the device's IANA timezone, and "today" on the
+  Tracking and Logs tabs is the device's calendar date instead of the UTC date,
+  which in the Americas turned into tomorrow every evening.
+
 ## [0.2.1] - 2026-09-16
 
 - The example app and the repository toolchain now run React Native 0.83.10

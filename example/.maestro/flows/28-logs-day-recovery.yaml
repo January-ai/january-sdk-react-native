@@ -1,0 +1,154 @@
+appId: ai.january.sdk.demo
+name: Tracking - water cap error and weight retry
+tags:
+  - fixture
+---
+- runFlow: ../bootstrap.yaml
+- extendedWaitUntil:
+    visible:
+      id: tab-tracking
+    timeout: 15000
+- tapOn:
+    id: tab-tracking
+# Over the daily cap: 800 fl oz is fine, but 20 more would take the day past
+# 24 L (811.5 fl oz), and the API answers 400 daily_water_limit_exceeded; a
+# smaller amount goes through on retry.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-amount
+- tapOn:
+    id: water-amount
+- inputText: "800"
+- pressKey: Enter
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-log
+- tapOn:
+    id: water-log
+- extendedWaitUntil:
+    visible:
+      id: water-logged
+    timeout: 15000
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-amount
+- tapOn:
+    id: water-amount
+- inputText: "20"
+- pressKey: Enter
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-log
+- tapOn:
+    id: water-log
+- extendedWaitUntil:
+    visible:
+      id: water-error
+    timeout: 15000
+# The error card opens under the floating tab bar; bring its message clear of
+# it before reading it. The scroll can instead leave the card's upper part
+# under the fixed day picker on a short screen, so short swipes bring back the
+# last log's line, just above the error, with Try again still on screen.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-retry
+- repeat:
+    while:
+      notVisible:
+        id: water-logged
+    times: 8
+    commands:
+      - swipe:
+          start: 50%, 65%
+          end: 50%, 80%
+          duration: 400
+- assertVisible: .*24 L daily cap.*
+- takeScreenshot: example/.maestro/artifacts/react-native-water-error
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-amount
+- tapOn:
+    id: water-amount
+- eraseText: 5
+- inputText: "8"
+- pressKey: Enter
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-retry
+- repeat:
+    while:
+      notVisible:
+        id: water-logged
+    times: 8
+    commands:
+      - swipe:
+          start: 50%, 65%
+          end: 50%, 80%
+          duration: 400
+- tapOn:
+    id: water-retry
+# The line still reads the 800 fl oz log until the retry saves the new one.
+- extendedWaitUntil:
+    visible:
+      id: water-logged
+      text: Logged 8 fl oz
+    timeout: 15000
+- assertNotVisible:
+    id: water-error
+# A weight of 999 fails once in fixture mode; retrying saves it.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-value
+- tapOn:
+    id: weight-value
+- inputText: "999"
+- pressKey: Enter
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-log
+- tapOn:
+    id: weight-log
+- extendedWaitUntil:
+    visible:
+      id: weight-error
+    timeout: 15000
+# As for water; the saved weight's line opens where the error was, under the
+# weight field, so keep that field in view too.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-retry
+- repeat:
+    while:
+      notVisible:
+        id: weight-value
+    times: 8
+    commands:
+      - swipe:
+          start: 50%, 65%
+          end: 50%, 80%
+          duration: 400
+- assertVisible: Temporary fixture weight log failure.
+- takeScreenshot: example/.maestro/artifacts/react-native-weight-error
+- tapOn:
+    id: weight-retry
+- extendedWaitUntil:
+    visible:
+      id: weight-logged
+    timeout: 15000
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-day
+- assertVisible: .*999 lb.*
+- assertNotVisible:
+    id: weight-error

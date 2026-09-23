@@ -274,6 +274,68 @@
   }];
 }
 
+- (void)waterLogsCreate:(NSString *)clientId
+                   value:(double)value
+                    unit:(NSString *)unit
+              consumedAt:(NSString * _Nullable)consumedAt
+                 resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject
+{
+  [_bridge waterLogsCreate:clientId value:value unit:unit consumedAt:consumedAt completion:^(NSString *json, NSError *error) {
+    if (error) { reject(error.userInfo[@"code"] ?: @"january_error", error.localizedDescription, error); return; }
+    resolve(json);
+  }];
+}
+
+- (void)waterLogsList:(NSString *)clientId
+                start:(NSString *)start
+                  end:(NSString *)end
+                 unit:(NSString *)unit
+              resolve:(RCTPromiseResolveBlock)resolve
+               reject:(RCTPromiseRejectBlock)reject
+{
+  [_bridge waterLogsList:clientId start:start end:end unit:unit completion:^(NSString *json, NSError *error) {
+    if (error) { reject(error.userInfo[@"code"] ?: @"january_error", error.localizedDescription, error); return; }
+    resolve(json);
+  }];
+}
+
+- (void)waterLogsDelete:(NSString *)clientId
+                      id:(NSString *)logId
+                 resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject
+{
+  [_bridge waterLogsDelete:clientId id:logId completion:^(NSString *json, NSError *error) {
+    if (error) { reject(error.userInfo[@"code"] ?: @"january_error", error.localizedDescription, error); return; }
+    resolve(json);
+  }];
+}
+
+- (void)weightLogsCreate:(NSString *)clientId
+                    value:(double)value
+                     unit:(NSString *)unit
+               measuredAt:(NSString * _Nullable)measuredAt
+                  resolve:(RCTPromiseResolveBlock)resolve
+                   reject:(RCTPromiseRejectBlock)reject
+{
+  [_bridge weightLogsCreate:clientId value:value unit:unit measuredAt:measuredAt completion:^(NSString *json, NSError *error) {
+    if (error) { reject(error.userInfo[@"code"] ?: @"january_error", error.localizedDescription, error); return; }
+    resolve(json);
+  }];
+}
+
+- (void)weightLogsList:(NSString *)clientId
+                 start:(NSString *)start
+                   end:(NSString *)end
+               resolve:(RCTPromiseResolveBlock)resolve
+                reject:(RCTPromiseRejectBlock)reject
+{
+  [_bridge weightLogsList:clientId start:start end:end completion:^(NSString *json, NSError *error) {
+    if (error) { reject(error.userInfo[@"code"] ?: @"january_error", error.localizedDescription, error); return; }
+    resolve(json);
+  }];
+}
+
 - (void)glucosePredict:(NSString *)clientId
              requestJson:(NSString *)requestJson
                  resolve:(RCTPromiseResolveBlock)resolve

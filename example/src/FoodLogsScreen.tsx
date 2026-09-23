@@ -23,6 +23,7 @@ import type {
 } from '@januaryai/react-native';
 
 import { palette, sharedStyles } from './demoTheme';
+import { deviceTimeZone, localDayOf, localIsoDate } from './localDate';
 import {
   goBack,
   isOnScreen,
@@ -39,10 +40,13 @@ import {
 } from './designSystem';
 import {
   fixtureDelay,
-  fixtureFoodLogs,
+  fixtureFoodLogsForUser,
   fixtureFoodLogSummary,
+  isSlow,
+  SLOW_FIXTURE_DELAY,
 } from './e2eFixtures';
 import { FoodPickerSheet, type SelectedFood } from './FoodPickerSheet';
+import { foodsAfterAdding } from './foodLogEdits';
 
 interface FoodLogsScreenProps {
   client: JanuaryClient;
@@ -100,7 +104,9 @@ export function FoodLogsScreen({
           if (forceFixtureFailure) {
             throw new Error('Temporary fixture food logs failure.');
           }
-          setLogs(range === 'month' ? [] : fixtureFoodLogs.map(copyFoodLog));
+          setLogs(
+            range === 'month' ? [] : fixtureFoodLogsForUser().map(copyFoodLog)
+          );
         } else {
           const dates = dateRange(range);
           // The list is the screen; the summary is a bonus row, so its failure
@@ -233,6 +239,7 @@ export function FoodLogsScreen({
             accessibilityRole="button"
             onPress={onSettings}
             style={sharedStyles.iconButton}
+            testID="settings-button"
           >
             <MaterialCommunityIcons
               color={palette.ink}
@@ -242,7 +249,7 @@ export function FoodLogsScreen({
           </Pressable>
         </View>
         <Text accessibilityRole="header" style={styles.logsTitle}>
-          Food logs
+          Logs
         </Text>
       </View>
 
@@ -277,8 +284,12 @@ export function FoodLogsScreen({
             </View>
           </View>
           <View style={styles.userIdentity}>
-            <Text style={styles.userId}>{endUserId}</Text>
-            <Text style={styles.userTimezone}>America/New_York</Text>
+            <Text style={styles.userId} testID="food-log-user-id">
+              {endUserId}
+            </Text>
+            <Text style={styles.userTimezone} testID="food-log-user-timezone">
+              {deviceTimeZone()}
+            </Text>
           </View>
           <Pressable onPress={onSettings} style={styles.userActionButton}>
             <Text style={styles.userAction}>Change user or timezone</Text>
@@ -508,7 +519,7 @@ export function FoodLogsScreen({
             // A new log belongs on screen only if its date is in the selected
             // range ("Last month" is a past window; today's log is not in it).
             const dates = dateRange(range);
-            const day = saved.timestampUTC.slice(0, 10);
+            const day = localDayOf(saved.timestampUTC);
             return day >= dates.start && day <= dates.end
               ? [saved, ...current]
               : current;
@@ -563,18 +574,31 @@ function FoodLogEditor({
     try {
       let saved: FoodLog;
       if (fixtures) {
-        await fixtureDelay();
+        await fixtureDelay(isSlow(name) ? SLOW_FIXTURE_DELAY : undefined);
         if (name.toLowerCase().includes('retry') && !fixtureSaveFailed) {
           setFixtureSaveFailed(true);
           throw new Error('Temporary fixture food log save failure.');
         }
         saved = existing
-          ? { ...existing, name: name.trim() || 'Meal' }
+          ? {
+              ...existing,
+              name: name.trim() || 'Meal',
+              foods: [
+                ...existing.foods,
+                ...fixtureLogFromSelection(selected, name).foods,
+              ],
+            }
           : fixtureLogFromSelection(selected, name);
       } else if (existing?.id) {
+        // Foods added while editing are saved with the ones already logged.
+        const foods = foodsAfterAdding(
+          existing,
+          selected.map((food) => food.selection)
+        );
         saved = await client.foodLogs.update({
           id: existing.id,
           name: name.trim() || 'Meal',
+          ...(foods ? { foods } : {}),
         });
       } else {
         saved = await client.foodLogs.create({
@@ -667,7 +691,7 @@ function FoodLogEditor({
               </View>
             </View>
             <SectionLabel>
-              {`Foods in this meal · ${existing ? existing.foods.length : selected.length}`}
+              {`Foods in this meal · ${(existing?.foods.length ?? 0) + selected.length}`}
             </SectionLabel>
             {!existing && selected.length === 0 ? (
               <View style={styles.editorEmpty} testID="food-log-editor-empty">
@@ -683,21 +707,20 @@ function FoodLogEditor({
                 </Text>
               </View>
             ) : null}
-            {existing
-              ? existing.foods.map((food, index) => (
-                  <EditorLoggedFood food={food} key={`${food.id ?? index}`} />
-                ))
-              : selected.map((food, index) => (
-                  <EditorSelectedFood
-                    food={food}
-                    key={`${food.item.id}-${index}`}
-                    onRemove={() =>
-                      setSelected((current) =>
-                        current.filter((_, itemIndex) => itemIndex !== index)
-                      )
-                    }
-                  />
-                ))}
+            {existing?.foods.map((food, index) => (
+              <EditorLoggedFood food={food} key={`${food.id ?? index}`} />
+            ))}
+            {selected.map((food, index) => (
+              <EditorSelectedFood
+                food={food}
+                key={`${food.item.id}-${index}`}
+                onRemove={() =>
+                  setSelected((current) =>
+                    current.filter((_, itemIndex) => itemIndex !== index)
+                  )
+                }
+              />
+            ))}
             <Pressable
               accessibilityRole="button"
               onPress={() => setPickerVisible(true)}
@@ -710,7 +733,7 @@ function FoodLogEditor({
                 size={21}
               />
               <Text style={sharedStyles.secondaryText}>
-                {(existing?.foods.length ?? selected.length) === 0
+                {(existing?.foods.length ?? 0) + selected.length === 0
                   ? 'Add first food'
                   : 'Add another food'}
               </Text>
@@ -897,7 +920,7 @@ function EditorLoggedFood({ food }: { food: FoodLog['foods'][number] }) {
   );
 }
 
-function FoodLogDetail({
+export function FoodLogDetail({
   loading,
   log,
   onClose,
@@ -907,8 +930,9 @@ function FoodLogDetail({
   loading: boolean;
   log?: FoodLog;
   onClose: () => void;
-  onDelete: (log: FoodLog) => void;
-  onEdit: (log: FoodLog) => void;
+  /** Omitted on the Tracking tab, which shows a log without changing it. */
+  onDelete?: (log: FoodLog) => void;
+  onEdit?: (log: FoodLog) => void;
 }) {
   if (!log) return null;
   return (
@@ -930,13 +954,17 @@ function FoodLogDetail({
           />
         </Pressable>
         <Text style={styles.detailHeaderTitle}>Food log</Text>
-        <Pressable
-          accessibilityLabel="Edit food log"
-          onPress={() => onEdit(log)}
-          testID="food-log-edit"
-        >
-          <Text style={styles.editText}>Edit</Text>
-        </Pressable>
+        {onEdit ? (
+          <Pressable
+            accessibilityLabel="Edit food log"
+            onPress={() => onEdit(log)}
+            testID="food-log-edit"
+          >
+            <Text style={styles.editText}>Edit</Text>
+          </Pressable>
+        ) : (
+          <View style={styles.detailHeaderSpacer} />
+        )}
       </View>
       <ScrollView
         contentContainerStyle={sharedStyles.content}
@@ -1032,15 +1060,17 @@ function FoodLogDetail({
             size={20}
           />
         </View>
-        <Pressable
-          accessibilityRole="button"
-          disabled={loading}
-          onPress={() => onDelete(log)}
-          style={styles.deleteButton}
-          testID="food-log-delete"
-        >
-          <Text style={styles.deleteText}>Delete food log</Text>
-        </Pressable>
+        {onDelete ? (
+          <Pressable
+            accessibilityRole="button"
+            disabled={loading}
+            onPress={() => onDelete(log)}
+            style={styles.deleteButton}
+            testID="food-log-delete"
+          >
+            <Text style={styles.deleteText}>Delete food log</Text>
+          </Pressable>
+        ) : null}
       </ScrollView>
     </View>
   );
@@ -1084,25 +1114,25 @@ function dateRange(range: Range): { start: string; end: string } {
     start.setMonth(now.getMonth() - 1, 1);
     end.setDate(0);
   }
-  return { start: isoDate(start), end: isoDate(end) };
+  return { start: localIsoDate(start), end: localIsoDate(end) };
 }
 
 // Fixture mode has no server to total the logs, so the summary is computed
 // from the logs on screen the way the API would for the selected range: one
 // bucket per day of the range, only logs inside it, sparse nutrient totals,
 // and an average per logged day.
-function fixtureSummaryFor(
+export function fixtureSummaryFor(
   logs: FoodLog[],
   range: { start: string; end: string }
 ): FoodLogSummary | undefined {
   const inRange = logs.filter((log) => {
-    const day = log.timestampUTC.slice(0, 10);
+    const day = localDayOf(log.timestampUTC);
     return day >= range.start && day <= range.end;
   });
   if (inRange.length === 0) return undefined;
   const byDay = new Map<string, FoodLog[]>();
   for (const log of inRange) {
-    const day = log.timestampUTC.slice(0, 10);
+    const day = localDayOf(log.timestampUTC);
     byDay.set(day, [...(byDay.get(day) ?? []), log]);
   }
   const buckets: FoodLogSummary['buckets'] = [];
@@ -1185,11 +1215,7 @@ function formatRange(range: Range): string {
   return `${format(dates.start)} – ${format(dates.end)}`;
 }
 
-function isoDate(value: Date): string {
-  return value.toISOString().slice(0, 10);
-}
-
-function formatDate(value: string): string {
+export function formatDate(value: string): string {
   const date = new Date(value);
   return Number.isNaN(date.valueOf())
     ? value
@@ -1228,7 +1254,7 @@ function sumNutrient(
   );
 }
 
-function copyFoodLog(log: FoodLog): FoodLog {
+export function copyFoodLog(log: FoodLog): FoodLog {
   return { ...log, foods: log.foods.map((food) => ({ ...food })) };
 }
 
@@ -1534,6 +1560,7 @@ const styles = StyleSheet.create({
     backgroundColor: palette.paper,
   },
   detailHeaderTitle: { color: palette.ink, fontSize: 17, fontWeight: '800' },
+  detailHeaderSpacer: { width: 32 },
   editText: { color: palette.goldText, fontSize: 15, fontWeight: '600' },
   detailTitle: {
     color: palette.ink,

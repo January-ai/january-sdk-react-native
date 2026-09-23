@@ -1,0 +1,147 @@
+appId: ai.january.sdk.demo
+name: Logs - empty editor, today's range, meal totals, adding a food to a saved log, and saving
+tags:
+  - fixture
+---
+- runFlow: ../bootstrap.yaml
+- extendedWaitUntil:
+    visible:
+      id: tab-food-logs
+    timeout: 15000
+- tapOn:
+    id: tab-food-logs
+- scrollUntilVisible:
+    element:
+      id: food-log-0
+    direction: DOWN
+    timeout: 20000
+- assertVisible:
+    id: food-log-list
+# The large Create button opens an empty editor.
+- scrollUntilVisible:
+    element:
+      id: food-log-create
+    direction: UP
+- tapOn:
+    id: food-log-create
+- assertVisible:
+    id: food-log-editor
+- assertVisible:
+    id: food-log-editor-empty
+- assertVisible: No foods added
+- tapOn: Close food log editor
+- assertNotVisible:
+    id: food-log-editor
+# Today's range has today's meal; its detail totals the meal.
+- tapOn:
+    id: logs-range-today
+- scrollUntilVisible:
+    element:
+      id: food-log-0
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: food-log-0
+- extendedWaitUntil:
+    visible:
+      id: food-log-detail
+    timeout: 10000
+- assertVisible:
+    id: food-log-totals
+- assertVisible: Meal total · 1 food
+# A food added while editing is saved with the one already logged.
+- tapOn:
+    id: food-log-edit
+- scrollUntilVisible:
+    element:
+      id: food-log-add-food
+    direction: DOWN
+- tapOn:
+    id: food-log-add-food
+- tapOn:
+    id: food-picker-input
+- inputText: greek yogurt
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: food-picker-result-0
+    timeout: 15000
+- tapOn:
+    id: food-picker-result-0
+- tapOn:
+    id: food-serving-add
+- assertVisible: .*Foods in this meal · 2.*
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: food-log-save
+- tapOn:
+    id: food-log-save
+- extendedWaitUntil:
+    notVisible:
+      id: food-log-editor
+    timeout: 15000
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: food-log-0
+    direction: DOWN
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn:
+          id: food-log-0
+      - extendedWaitUntil:
+          visible:
+            id: food-log-detail
+          timeout: 10000
+- assertVisible: Meal total · 2 foods
+- tapOn: Back from food log
+# Saving shows its progress on the button.
+- scrollUntilVisible:
+    element:
+      id: food-log-add
+    direction: UP
+- tapOn:
+    id: food-log-add
+- tapOn:
+    id: food-log-name
+# "slow" keeps the save loading long enough to be seen in fixture mode.
+- inputText: Slow evening snack
+- pressKey: Enter
+- scrollUntilVisible:
+    element:
+      id: food-log-add-food
+    direction: DOWN
+- tapOn:
+    id: food-log-add-food
+- tapOn:
+    id: food-picker-input
+- inputText: greek yogurt
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: food-picker-result-0
+    timeout: 15000
+- tapOn:
+    id: food-picker-result-0
+- tapOn:
+    id: food-serving-add
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: food-log-save
+- tapOn:
+    id: food-log-save
+- extendedWaitUntil:
+    visible:
+      id: food-log-save-loading
+    timeout: 5000
+- extendedWaitUntil:
+    notVisible:
+      id: food-log-editor
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      text: .*Slow evening snack.*
+    direction: DOWN

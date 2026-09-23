@@ -1,0 +1,94 @@
+appId: ai.january.sdk.demo
+name: Search - the search button and its loading state, and empty and failed descriptions and barcodes
+tags:
+  - fixture
+---
+- runFlow: ../bootstrap.yaml
+- extendedWaitUntil:
+    visible:
+      id: search-screen
+    timeout: 15000
+# Restaurants and back to foods.
+- tapOn:
+    id: search-scope-restaurants
+- assertVisible:
+    id: restaurant-search-screen
+- tapOn:
+    id: search-scope-foods
+- assertVisible:
+    id: search-screen
+- tapOn:
+    id: search-input
+# In fixture mode "slow search" stays loading long enough to be seen.
+- inputText: slow search
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: search-loading
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: search-results
+    timeout: 30000
+# The button searches again; the keyboard closed with the first search, so
+# the button is in reach.
+- tapOn:
+    id: search-submit
+- extendedWaitUntil:
+    visible:
+      id: search-loading
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: search-results
+    timeout: 30000
+- tapOn:
+    id: search-clear
+- tapOn:
+    id: search-mode-description
+- tapOn:
+    id: search-input
+- inputText: nothing at all
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: description-empty
+    timeout: 15000
+- assertVisible: No foods recognized
+- takeScreenshot: example/.maestro/artifacts/react-native-description-empty
+# A description that fails.
+- tapOn:
+    id: search-clear
+- tapOn:
+    id: search-input
+- inputText: error in the kitchen
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: search-error
+    timeout: 15000
+- assertVisible: Fixture request failed.
+# A barcode January does not know, and one whose lookup fails.
+- tapOn:
+    id: search-clear
+- tapOn:
+    id: search-mode-barcode
+- tapOn:
+    id: search-input
+- inputText: "000000000000"
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: empty-results
+    timeout: 15000
+- tapOn:
+    id: search-clear
+- tapOn:
+    id: search-input
+- inputText: error
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: search-error
+    timeout: 15000
+- takeScreenshot: example/.maestro/artifacts/react-native-barcode-error

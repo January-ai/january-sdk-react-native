@@ -1,0 +1,41 @@
+appId: ai.january.sdk.demo
+# Compares the Weight card's weight for the day with the API's (api.js,
+# CHECK=weight-day). After a log pass EXPECT_VALUE and UNIT, the weight just
+# logged, which must be the day's latest.
+---
+- retry:
+    maxRetries: 2
+    commands:
+      - runFlow:
+          file: ../scroll-to.yaml
+          env:
+            TARGET_ID: weight-day|weight-empty
+      - extendedWaitUntil:
+          visible:
+            id: weight-day|weight-empty
+          timeout: 30000
+      - waitForAnimationToEnd
+      - runFlow:
+          when:
+            visible:
+              id: weight-day
+          commands:
+            - copyTextFrom:
+                text: "[0-9.,]+ (lb|kg)"
+                childOf:
+                  id: weight-day
+            - evalScript: ${output.uiText = maestro.copiedText}
+      - runFlow:
+          when:
+            visible:
+              id: weight-empty
+          commands:
+            - evalScript: ${output.uiText = '—'}
+      - runScript:
+          file: api.js
+          env:
+            CHECK: weight-day
+            UI_TEXT: ${output.uiText}
+            DAY: "${typeof DAY === 'undefined' ? '' : DAY}"
+            UNIT: "${typeof UNIT === 'undefined' ? '' : UNIT}"
+            EXPECT_VALUE: "${typeof EXPECT_VALUE === 'undefined' ? '' : EXPECT_VALUE}"

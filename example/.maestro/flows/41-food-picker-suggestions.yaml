@@ -1,0 +1,50 @@
+appId: ai.january.sdk.demo
+name: Food picker - suggestions while typing, and the search they start
+tags:
+  - fixture
+---
+- runFlow: ../bootstrap.yaml
+- extendedWaitUntil:
+    visible:
+      id: tab-glucose
+    timeout: 15000
+- tapOn:
+    id: tab-glucose
+- scrollUntilVisible:
+    element:
+      id: glucose-add-food
+    direction: DOWN
+- tapOn:
+    id: glucose-add-food
+- tapOn:
+    id: food-picker-input
+- inputText: oa
+- extendedWaitUntil:
+    visible:
+      id: food-picker-suggestions
+    timeout: 10000
+- takeScreenshot: example/.maestro/artifacts/react-native-food-picker-suggestions
+- tapOn:
+    id: food-picker-suggestion-0
+- extendedWaitUntil:
+    visible:
+      id: food-picker-result-0
+    timeout: 15000
+# In fixture mode "slow search" stays loading long enough to be seen.
+- tapOn:
+    id: food-picker-input
+- eraseText: 30
+- inputText: slow search
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: food-picker-loading
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: food-picker-result-0
+    timeout: 15000
+- tapOn:
+    id: food-picker-close
+- assertNotVisible:
+    id: food-picker

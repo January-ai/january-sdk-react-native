@@ -1,0 +1,94 @@
+appId: ai.january.sdk.demo
+name: Glucose - profile height and sex, a condition, loading, and back from the result
+tags:
+  - fixture
+---
+- runFlow: ../bootstrap.yaml
+- extendedWaitUntil:
+    visible:
+      id: tab-glucose
+    timeout: 15000
+- tapOn:
+    id: tab-glucose
+- tapOn:
+    id: glucose-sex-male
+- tapOn:
+    id: glucose-sex-female
+# Height in feet and inches: 6 ft 2 in is 188 cm. Each field selects its
+# number when tapped, so typing replaces it (erasing first would clamp the
+# height as it empties).
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: glucose-height-feet
+- tapOn:
+    id: glucose-height-feet
+- inputText: "6"
+- tapOn:
+    id: glucose-height-inches
+- inputText: "2"
+- tapOn:
+    id: glucose-height-unit-metric
+- assertVisible:
+    id: glucose-height-centimeters
+    text: "188.0"
+- tapOn:
+    id: glucose-height-unit-imperial
+- scrollUntilVisible:
+    element:
+      id: glucose-health-conditions
+    direction: DOWN
+- tapOn:
+    id: glucose-health-conditions
+- assertVisible:
+    id: conditions-screen
+- tapOn:
+    id: condition-prediabetes
+- tapOn:
+    id: conditions-back
+- assertVisible: .*1 selected.*
+- scrollUntilVisible:
+    element:
+      id: glucose-add-food
+    direction: DOWN
+- tapOn:
+    id: glucose-add-food
+- tapOn:
+    id: food-picker-input
+- inputText: greek yogurt
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: food-picker-result-0
+    timeout: 15000
+- tapOn:
+    id: food-picker-result-0
+- tapOn:
+    id: food-serving-add
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: glucose-predict
+- waitForAnimationToEnd
+- tapOn:
+    id: glucose-predict
+    retryTapIfNoChange: true
+- extendedWaitUntil:
+    visible:
+      id: glucose-loading
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: glucose-results-screen
+    timeout: 15000
+- tapOn:
+    id: glucose-result-back
+- extendedWaitUntil:
+    visible:
+      id: glucose-screen
+    timeout: 10000
+# Back keeps the meal for another estimate.
+- scrollUntilVisible:
+    element:
+      id: glucose-food-0
+    direction: DOWN

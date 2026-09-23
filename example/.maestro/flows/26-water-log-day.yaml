@@ -1,0 +1,115 @@
+appId: ai.january.sdk.demo
+name: Tracking - water total, unit switch, and delete
+tags:
+  - fixture
+---
+- runFlow: ../bootstrap.yaml
+- extendedWaitUntil:
+    visible:
+      id: tab-tracking
+    timeout: 15000
+- tapOn:
+    id: tab-tracking
+# Let today's meals load first: they push everything below them down, which
+# can carry a card past a scroll that is already under way.
+- extendedWaitUntil:
+    visible:
+      id: tracking-totals
+    timeout: 15000
+# A long scroll down can fling past the small empty total on Android, so
+# look back up for it if the way down missed it.
+- scrollUntilVisible:
+    element:
+      id: water-empty
+    direction: DOWN
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: water-empty
+    direction: UP
+- assertVisible: No water logged on this day
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-amount
+- tapOn:
+    id: water-amount
+- inputText: "8"
+- pressKey: Enter
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-log
+- tapOn:
+    id: water-log
+- extendedWaitUntil:
+    visible:
+      id: water-logged
+    timeout: 15000
+# Logging scrolls the day's total above the screen; the chart under it keeps
+# the card long, so look for the total upwards.
+- scrollUntilVisible:
+    element:
+      id: water-total
+    direction: UP
+    timeout: 15000
+- assertVisible: .*8 fl oz.*
+- takeScreenshot: example/.maestro/artifacts/react-native-water-logged
+# The same total in millilitres: the API converts, the fixture mirrors it.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-unit-ml
+- tapOn:
+    id: water-unit-ml
+# The total sits just above the centred unit picker.
+- scrollUntilVisible:
+    element:
+      text: ".*236.6 ml.*"
+    direction: UP
+    timeout: 15000
+# And in US cups of 8 fl oz.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-unit-cup
+- tapOn:
+    id: water-unit-cup
+# The total sits just above the centred unit picker.
+- scrollUntilVisible:
+    element:
+      text: ".*1 cup.*"
+    direction: UP
+    timeout: 15000
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-delete-last
+- tapOn:
+    id: water-delete-last
+- scrollUntilVisible:
+    element:
+      id: water-empty
+    direction: UP
+    timeout: 15000
+- takeScreenshot: example/.maestro/artifacts/react-native-water-deleted
+# Another day has its own total.
+- scrollUntilVisible:
+    element:
+      id: logs-day-previous
+    direction: UP
+- tapOn:
+    id: logs-day-previous
+# The water card's chart keeps the screen scrolled below the day's total, so
+# look for it upwards.
+- scrollUntilVisible:
+    element:
+      id: water-empty
+    direction: UP
+- scrollUntilVisible:
+    element:
+      id: logs-day-today
+    direction: UP
+- tapOn:
+    id: logs-day-today
+- assertVisible: Today

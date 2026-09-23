@@ -1,0 +1,104 @@
+appId: ai.january.sdk.demo
+name: Food detail - serving menu, loading states, and a detail that fails to load
+tags:
+  - fixture
+---
+- runFlow: ../bootstrap.yaml
+- extendedWaitUntil:
+    visible:
+      id: search-input
+    timeout: 15000
+- tapOn:
+    id: search-input
+- inputText: oatmeal
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: food-result-0
+    timeout: 15000
+- tapOn:
+    id: food-result-0
+- extendedWaitUntil:
+    visible:
+      id: food-detail-screen
+    timeout: 10000
+- assertVisible:
+    id: food-macros
+- assertVisible:
+    id: food-serving-controls
+# Search lists one serving; the food's own request adds the rest, and then the
+# serving menu opens.
+- extendedWaitUntil:
+    visible:
+      id: food-serving-unit
+      enabled: true
+    timeout: 10000
+- tapOn:
+    id: food-serving-unit
+- tapOn:
+    id: food-serving-option-1
+- assertVisible: .*large bowl.*
+# The large bowl is 1.5 of the food's base serving: 100 cal becomes 150.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: food-macros
+- assertVisible: "150"
+- takeScreenshot: example/.maestro/artifacts/react-native-food-serving-menu
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: food-check-glucose
+- tapOn:
+    id: food-check-glucose
+- extendedWaitUntil:
+    visible:
+      id: food-glucose-loading
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: food-glucose-result
+    timeout: 15000
+- tapOn: Close Glucose response
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: food-alternatives
+- tapOn:
+    id: food-alternatives
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: alternatives-refresh
+- tapOn:
+    id: alternatives-refresh
+- extendedWaitUntil:
+    visible:
+      id: alternatives-loading
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: alternatives-results
+    timeout: 15000
+- tapOn: Close Food alternatives
+- tapOn:
+    id: food-detail-back
+# A food whose own request fails keeps the serving search returned.
+- tapOn:
+    id: search-clear
+- tapOn:
+    id: search-input
+- inputText: detail error
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: food-result-0
+    timeout: 15000
+- tapOn:
+    id: food-result-0
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: food-detail-warning
+- assertVisible: .*Complete serving details could not be loaded.*
+- takeScreenshot: example/.maestro/artifacts/react-native-food-detail-warning

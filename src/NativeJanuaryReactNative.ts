@@ -126,6 +126,26 @@ export interface Spec extends TurboModule {
     name: string | null
   ): Promise<string>;
   foodLogsDelete(clientId: string, id: string): Promise<string>;
+  waterLogsCreate(
+    clientId: string,
+    value: number,
+    unit: string,
+    consumedAt: string | null
+  ): Promise<string>;
+  waterLogsList(
+    clientId: string,
+    start: string,
+    end: string,
+    unit: string
+  ): Promise<string>;
+  waterLogsDelete(clientId: string, id: string): Promise<string>;
+  weightLogsCreate(
+    clientId: string,
+    value: number,
+    unit: string,
+    measuredAt: string | null
+  ): Promise<string>;
+  weightLogsList(clientId: string, start: string, end: string): Promise<string>;
   glucosePredict(clientId: string, requestJson: string): Promise<string>;
   voiceCaptureIsSupported(locale: string | null): boolean;
   voiceCaptureStart(

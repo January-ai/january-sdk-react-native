@@ -1,0 +1,76 @@
+appId: ai.january.sdk.demo
+name: Scan - correction with an edited meal name, loading, error, and retry
+tags:
+  - fixture
+---
+- runFlow: ../bootstrap.yaml
+- extendedWaitUntil:
+    visible:
+      id: tab-scan
+    timeout: 15000
+- tapOn:
+    id: tab-scan
+- tapOn:
+    id: scan-sample
+- tapOn:
+    id: scan-analyze
+- extendedWaitUntil:
+    visible:
+      id: scan-results
+    timeout: 15000
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: scan-correct
+- tapOn:
+    id: scan-correct
+- assertVisible:
+    id: correction-meal-name
+    text: Fixture breakfast
+- tapOn:
+    id: correction-meal-name
+- eraseText: 30
+- inputText: Weekend breakfast
+- tapOn:
+    id: scan-correction-input
+# In fixture mode a correction with "retry" in it fails once, and "slow"
+# keeps it loading long enough to be seen.
+- inputText: retry slowly the oatmeal was steel-cut
+# iOS submits from the keyboard; Android closes the keyboard and taps Submit.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - pressKey: Enter
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      # Back would close the sheet along with the keyboard; a tap on plain
+      # text in the sheet closes only the keyboard.
+      - tapOn: (?i)current detections
+      - runFlow:
+          file: ../scroll-to.yaml
+          env:
+            TARGET_ID: scan-correction-submit
+      - tapOn:
+          id: scan-correction-submit
+- extendedWaitUntil:
+    visible:
+      id: scan-correction-loading
+    timeout: 5000
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: scan-correction-error-retry
+- assertVisible:
+    id: scan-correction-error
+- assertVisible: Temporary fixture correction failure.
+# The instruction survives the failure.
+- assertVisible: retry slowly the oatmeal was steel-cut
+- tapOn:
+    id: scan-correction-error-retry
+- extendedWaitUntil:
+    visible: Corrected breakfast
+    timeout: 15000
+- takeScreenshot: example/.maestro/artifacts/react-native-correction-retried

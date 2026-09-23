@@ -35,6 +35,11 @@
 | `foodLogs.getSummary` | `GetFoodLogSummaryRequest` | `FoodLogSummary` |
 | `foodLogs.update` | `UpdateFoodLogRequest` | `FoodLog` |
 | `foodLogs.delete` | log ID string | `void` |
+| `waterLogs.create` | `CreateWaterLogRequest` | `WaterLog` |
+| `waterLogs.list` | `ListWaterLogsRequest` | `ListWaterLogsResponse` |
+| `waterLogs.delete` | log ID string | `void` |
+| `weightLogs.create` | `CreateWeightLogRequest` | `WeightLog` |
+| `weightLogs.list` | `ListWeightLogsRequest` | `ListWeightLogsResponse` |
 | `glucose.predict` | `PredictGlucoseRequest` | `GlucosePrediction` |
 
 All methods return promises and reject when local validation, authentication,

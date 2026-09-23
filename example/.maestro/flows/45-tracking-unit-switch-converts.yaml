@@ -1,0 +1,118 @@
+appId: ai.january.sdk.demo
+name: Tracking - switching units converts the amount already typed
+tags:
+  - fixture
+---
+- runFlow: ../bootstrap.yaml
+- extendedWaitUntil:
+    visible:
+      id: tab-tracking
+    timeout: 15000
+- tapOn:
+    id: tab-tracking
+# Let today's meals load first: they push everything below them down, which
+# can carry a card past a scroll that is already under way.
+- extendedWaitUntil:
+    visible:
+      id: tracking-totals
+    timeout: 15000
+# 250 typed as millilitres becomes 8.5 fl oz when the unit changes, and 8.5 fl
+# oz is what the log sends and the fixture records, not 250 fl oz.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-unit-ml
+- tapOn:
+    id: water-unit-ml
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-amount
+- tapOn:
+    id: water-amount
+- inputText: "250"
+- pressKey: Enter
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-unit-fl_oz
+- tapOn:
+    id: water-unit-fl_oz
+# The card re-reads the day's total in the new unit; Log is back once it has.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-log
+- extendedWaitUntil:
+    visible:
+      id: water-log
+      enabled: true
+    timeout: 15000
+- tapOn:
+    id: water-log
+- extendedWaitUntil:
+    visible: Logged 8.5 fl oz
+    timeout: 15000
+- takeScreenshot: example/.maestro/artifacts/react-native-water-unit-converted
+# The day's total is the converted amount too. Logging scrolls it above the
+# screen, so look for it upwards, and centre it clear of the day picker.
+- scrollUntilVisible:
+    element:
+      id: water-total
+    direction: UP
+    centerElement: true
+    timeout: 15000
+# The whole text, so the "Logged" note above does not count. (iOS lists the
+# total's text beside its card, not inside it, so childOf cannot be used.)
+- assertVisible: 8\.5 fl oz
+# An empty field stays empty in the new unit: once the day's total is read in
+# cups, Log stays unavailable.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-unit-cup
+- tapOn:
+    id: water-unit-cup
+- scrollUntilVisible:
+    element:
+      text: 1\.1 cup
+    direction: UP
+    centerElement: true
+    timeout: 15000
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: water-log
+- assertVisible:
+    id: water-log
+    enabled: false
+# 150 typed as pounds becomes 68 kg, and 68 kg is what is logged.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-value
+- tapOn:
+    id: weight-value
+- inputText: "150"
+- pressKey: Enter
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-unit-kg
+- tapOn:
+    id: weight-unit-kg
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-log
+- tapOn:
+    id: weight-log
+- extendedWaitUntil:
+    visible: Logged 68 kg
+    timeout: 15000
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: weight-day
+- assertVisible: 68 kg
+- takeScreenshot: example/.maestro/artifacts/react-native-weight-unit-converted

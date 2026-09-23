@@ -1,0 +1,71 @@
+appId: ai.january.sdk.demo
+name: Live - sample photo scan and a correction sent to January
+tags:
+  - live
+---
+- runFlow: ../bootstrap.yaml
+- extendedWaitUntil:
+    visible:
+      id: tab-scan
+    timeout: 15000
+# Records the end user and stops here, before any request of the flow's own,
+# if the API account has no requests left.
+- runFlow: ../live/context.yaml
+- tapOn:
+    id: tab-scan
+- tapOn:
+    id: scan-sample
+- tapOn:
+    id: scan-analyze
+- extendedWaitUntil:
+    visible:
+      id: scan-results
+    timeout: 90000
+- assertNotVisible:
+    id: scan-error
+- assertVisible: Detected foods
+- takeScreenshot: example/.maestro/artifacts/live-scan-results
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: scan-correct
+- tapOn:
+    id: scan-correct
+- tapOn:
+    id: correction-meal-name
+- eraseText: 60
+- inputText: Diner lunch
+- tapOn:
+    id: scan-correction-input
+- inputText: The fries were a side salad with vinaigrette
+# iOS submits from the keyboard; Android closes the keyboard with a tap on
+# plain text (Back would close the sheet) and taps Submit.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - pressKey: Enter
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn: (?i)current detections
+      - runFlow:
+          file: ../scroll-to.yaml
+          env:
+            TARGET_ID: scan-correction-submit
+      - tapOn:
+          id: scan-correction-submit
+# The corrected analysis replaces the sheet; a failure would keep it open.
+- extendedWaitUntil:
+    notVisible:
+      id: scan-correction-input
+    timeout: 90000
+- assertNotVisible:
+    id: scan-correction-error
+- extendedWaitUntil:
+    visible:
+      id: scan-results
+    timeout: 15000
+- assertVisible: .*[Ss]alad.*
+- takeScreenshot: example/.maestro/artifacts/live-scan-corrected

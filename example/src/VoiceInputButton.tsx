@@ -16,7 +16,8 @@ interface VoiceInputButtonProps {
   /** Called with a short message when capture fails. */
   onError?: (message: string) => void;
   disabled?: boolean;
-  testID?: string;
+  /** The button's test ID; the level meter shown while recording adds `-meter`. */
+  testID: string;
 }
 
 /**
@@ -28,7 +29,7 @@ export function VoiceInputButton({
   onTranscript,
   onError,
   disabled,
-  testID = 'voice-input',
+  testID,
 }: VoiceInputButtonProps) {
   const session = useMemo(() => new VoiceCaptureSession(), []);
   const [snapshot, setSnapshot] = useState<VoiceCaptureSnapshot>(

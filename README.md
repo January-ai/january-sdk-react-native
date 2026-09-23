@@ -255,6 +255,8 @@ troubleshooting.
 - [Restaurants](Documentation/GitBook/guides/restaurants.md)
 - [Meal analysis](Documentation/GitBook/guides/meal-analysis.md)
 - [Food logs](Documentation/GitBook/guides/food-logs.md)
+- [Water and weight logs](Documentation/GitBook/guides/water-and-weight-logs.md):
+  water in fluid ounces, millilitres, or US cups; weight in pounds or kilograms
 - [Glucose prediction](Documentation/GitBook/guides/glucose-prediction.md)
 - [Voice capture](Documentation/GitBook/guides/voice-capture.md)
 

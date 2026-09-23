@@ -14,10 +14,18 @@ tags:
     id: scan-screen
 - assertVisible: Scan a meal
 - tapOn:
+    id: tab-tracking
+- assertVisible:
+    id: tracking-screen
+- assertVisible: Tracking
+- assertVisible:
+    id: logs-day-picker
+- tapOn:
     id: tab-food-logs
 - assertVisible:
     id: food-logs-screen
-- assertVisible: Food logs
+# "Logs" alone also matches the tab label; this heading is only on the screen.
+- assertVisible: Build one complete meal
 - tapOn:
     id: tab-glucose
 - assertVisible:

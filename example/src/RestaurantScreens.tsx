@@ -12,12 +12,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type {
-  JanuaryClient,
-  Restaurant,
-  RestaurantMenuEntry,
-  RestaurantMenuItem,
-} from '@januaryai/react-native';
+import type { FoodSearchItem, JanuaryClient } from '@januaryai/react-native';
 
 import { palette, serifFont, sharedStyles } from './demoTheme';
 import { goBack, navigateTo, ScreenStack, useScreenStack } from './navigation';
@@ -28,32 +23,30 @@ import {
   NutritionList,
   SectionLabel,
 } from './designSystem';
+import {
+  fixtureDelay,
+  fixtureFailsFirstTime,
+  isSlow,
+  SLOW_FIXTURE_DELAY,
+} from './e2eFixtures';
+import { FoodGlucoseSheet } from './FoodDetailScreen';
+import {
+  formatGrams,
+  menuItemCaption,
+  primaryServing,
+  restaurantCaption,
+  servingLabel,
+  toMenuItemView,
+  toRestaurantMenuView,
+  toRestaurantView,
+  type MenuItemView,
+  type RestaurantView,
+} from './restaurantViews';
 
 type RestaurantMode = 'restaurants' | 'menu';
 type ResultState = 'idle' | 'loading' | 'success' | 'empty' | 'error';
 
-interface RestaurantFixture {
-  id: string;
-  name: string;
-  city: string;
-  address: string;
-  distanceMiles: number;
-}
-
-interface MenuFixture {
-  id: string;
-  name: string;
-  restaurantName: string;
-  calories: number;
-  protein: number;
-  carbohydrates: number;
-  fat: number;
-  fiber: number;
-  netCarbohydrates: number;
-  totalSugars: number;
-}
-
-const fixtureRestaurant: RestaurantFixture = {
+const fixtureRestaurant: RestaurantView = {
   id: 'fixture-cafe',
   name: 'Fixture Cafe',
   city: 'San Francisco',
@@ -61,7 +54,7 @@ const fixtureRestaurant: RestaurantFixture = {
   distanceMiles: 0.7,
 };
 
-const fixtureMenuItem: MenuFixture = {
+const fixtureMenuItem: MenuItemView = {
   id: '100',
   name: 'Fixture bowl',
   restaurantName: 'Fixture Cafe',
@@ -72,7 +65,19 @@ const fixtureMenuItem: MenuFixture = {
   fiber: 3,
   netCarbohydrates: 17,
   totalSugars: 4,
+  servings: [
+    {
+      id: 'fixture-bowl-serving',
+      isPrimary: true,
+      quantity: 1,
+      scalingFactor: 1,
+      unit: 'bowl',
+      weightGrams: 100,
+    },
+  ],
 };
+
+const fixtureFailure = 'The test request could not be completed.';
 
 export function RestaurantScreens({
   client,
@@ -92,35 +97,46 @@ export function RestaurantScreens({
   const [resultState, setResultState] = useState<ResultState>('idle');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedRestaurant, setSelectedRestaurant] =
-    useState<RestaurantFixture>();
-  const [selectedMenuItem, setSelectedMenuItem] = useState<MenuFixture>();
+    useState<RestaurantView>();
+  const [selectedMenuItem, setSelectedMenuItem] = useState<MenuItemView>();
   const [menuState, setMenuState] = useState<ResultState>('success');
-  const [restaurantResults, setRestaurantResults] = useState<
-    RestaurantFixture[]
-  >([]);
-  const [menuResults, setMenuResults] = useState<MenuFixture[]>([]);
-  const [restaurantMenu, setRestaurantMenu] = useState<MenuFixture[]>([]);
+  const [resultError, setResultError] = useState<string>();
+  const [menuError, setMenuError] = useState<string>();
+  const [restaurantResults, setRestaurantResults] = useState<RestaurantView[]>(
+    []
+  );
+  const [menuResults, setMenuResults] = useState<MenuItemView[]>([]);
+  const [restaurantMenu, setRestaurantMenu] = useState<MenuItemView[]>([]);
   const stack = useScreenStack();
-  const openMenuItem = (item: MenuFixture) => {
+  const openMenuItem = (item: MenuItemView) => {
     setSelectedMenuItem(item);
     navigateTo(stack, 'MenuItem');
   };
 
+  // Fixture mode: a query with "search error" fails once and then succeeds,
+  // one with "search empty" finds nothing, and one with "slow" stays loading
+  // long enough to be seen.
   const submit = async () => {
     if (!query.trim() || !configured) return;
     Keyboard.dismiss();
     setResultState('loading');
+    setResultError(undefined);
     const normalized = query.toLowerCase();
     if (fixturesEnabled) {
-      setTimeout(() => {
-        if (normalized.includes('error')) setResultState('error');
-        else if (normalized.includes('empty')) setResultState('empty');
-        else {
-          setRestaurantResults([fixtureRestaurant]);
-          setMenuResults([fixtureMenuItem]);
-          setResultState('success');
-        }
-      }, 4000);
+      await fixtureDelay(isSlow(normalized) ? SLOW_FIXTURE_DELAY : 4000);
+      if (
+        normalized.includes('search error') &&
+        fixtureFailsFirstTime(`restaurants-${normalized}`)
+      ) {
+        setResultError(fixtureFailure);
+        setResultState('error');
+      } else if (normalized.includes('search empty')) {
+        setResultState('empty');
+      } else {
+        setRestaurantResults([fixtureRestaurant]);
+        setMenuResults([fixtureMenuItem]);
+        setResultState('success');
+      }
       return;
     }
     try {
@@ -140,29 +156,42 @@ export function RestaurantScreens({
         setMenuResults(response.items.map(toMenuItemView));
         setResultState(response.items.length ? 'success' : 'empty');
       }
-    } catch {
+    } catch (caught) {
+      setResultError(errorMessage(caught));
       setResultState('error');
     }
   };
 
-  const openRestaurant = (restaurant: RestaurantFixture) => {
-    const normalized = query.toLowerCase();
+  const openRestaurant = (restaurant: RestaurantView) => {
     setSelectedRestaurant(restaurant);
     navigateTo(stack, 'RestaurantDetail');
-    if (fixturesEnabled) {
-      setRestaurantMenu([fixtureMenuItem]);
-      if (normalized.includes('menu error')) setMenuState('error');
-      else if (normalized.includes('menu empty')) setMenuState('empty');
-      else if (normalized.includes('menu loading')) {
-        setMenuState('loading');
-        setTimeout(() => setMenuState('success'), 1800);
-      } else setMenuState('success');
-      return;
-    }
-    loadRestaurantMenu(restaurant).catch(() => setMenuState('error'));
+    loadRestaurantMenu(restaurant).catch(() => undefined);
   };
 
-  async function loadRestaurantMenu(restaurant: RestaurantFixture) {
+  // Fixture mode: a search with "menu error" makes the menu fail once, "menu
+  // empty" makes it empty, and "menu loading" makes it slow.
+  async function loadRestaurantMenu(restaurant: RestaurantView) {
+    setMenuError(undefined);
+    if (fixturesEnabled) {
+      const normalized = query.toLowerCase();
+      setRestaurantMenu([fixtureMenuItem]);
+      if (
+        normalized.includes('menu error') &&
+        fixtureFailsFirstTime(`menu-${normalized}`)
+      ) {
+        setMenuError(fixtureFailure);
+        setMenuState('error');
+      } else if (normalized.includes('menu empty')) {
+        setMenuState('empty');
+      } else if (normalized.includes('menu loading')) {
+        setMenuState('loading');
+        await fixtureDelay(SLOW_FIXTURE_DELAY);
+        setMenuState('success');
+      } else {
+        setMenuState('success');
+      }
+      return;
+    }
     setMenuState('loading');
     try {
       const response = await client.restaurants.getMenuItems({
@@ -173,7 +202,8 @@ export function RestaurantScreens({
       );
       setRestaurantMenu(items);
       setMenuState(items.length ? 'success' : 'empty');
-    } catch {
+    } catch (caught) {
+      setMenuError(errorMessage(caught));
       setMenuState('error');
     }
   }
@@ -212,7 +242,12 @@ export function RestaurantScreens({
           />
           {query ? (
             <Pressable
-              onPress={() => setQuery('')}
+              accessibilityLabel="Clear search"
+              accessibilityRole="button"
+              onPress={() => {
+                setQuery('');
+                setResultState('idle');
+              }}
               testID="restaurant-search-clear"
             >
               <MaterialCommunityIcons
@@ -295,7 +330,11 @@ export function RestaurantScreens({
         </Pressable>
 
         {resultState === 'error' ? (
-          <RequestError onRetry={submit} testID="restaurants-error" />
+          <RequestError
+            message={resultError}
+            onRetry={submit}
+            testID="restaurants-error"
+          />
         ) : resultState === 'empty' ? (
           <EmptyState
             body="Try another name, location, or search radius."
@@ -322,8 +361,7 @@ export function RestaurantScreens({
                 <View style={styles.flexCopy}>
                   <Text style={styles.resultTitle}>{restaurant.name}</Text>
                   <Text style={styles.resultMeta}>
-                    {restaurant.address} · {restaurant.distanceMiles.toFixed(1)}{' '}
-                    mi
+                    {restaurantCaption(restaurant)}
                   </Text>
                 </View>
                 <MaterialIcons
@@ -353,9 +391,7 @@ export function RestaurantScreens({
                 </View>
                 <View style={styles.flexCopy}>
                   <Text style={styles.resultTitle}>{item.name}</Text>
-                  <Text style={styles.resultMeta}>
-                    {item.restaurantName} · {item.calories} cal
-                  </Text>
+                  <Text style={styles.resultMeta}>{menuItemCaption(item)}</Text>
                 </View>
                 <MaterialIcons
                   color={palette.subdued}
@@ -382,15 +418,20 @@ export function RestaurantScreens({
         RestaurantDetail: selectedRestaurant ? (
           <RestaurantDetail
             items={restaurantMenu}
+            menuError={menuError}
             menuState={menuState}
             onBack={() => goBack(stack)}
             onMenuItem={openMenuItem}
-            onRetry={() => loadRestaurantMenu(selectedRestaurant)}
+            onRetry={() =>
+              loadRestaurantMenu(selectedRestaurant).catch(() => undefined)
+            }
             restaurant={selectedRestaurant}
           />
         ) : null,
         MenuItem: selectedMenuItem ? (
           <MenuItemDetail
+            client={client}
+            fixtures={fixturesEnabled}
             item={selectedMenuItem}
             onBack={() => goBack(stack)}
           />
@@ -481,18 +522,20 @@ function CompactHeader({
 
 function RestaurantDetail({
   items,
+  menuError,
   menuState,
   onBack,
   onMenuItem,
   onRetry,
   restaurant,
 }: {
-  items: MenuFixture[];
+  items: MenuItemView[];
+  menuError?: string;
   menuState: ResultState;
   onBack: () => void;
-  onMenuItem: (item: MenuFixture) => void;
+  onMenuItem: (item: MenuItemView) => void;
   onRetry: () => void;
-  restaurant: RestaurantFixture;
+  restaurant: RestaurantView;
 }) {
   return (
     <View style={sharedStyles.screen} testID="restaurant-detail-screen">
@@ -524,7 +567,11 @@ function RestaurantDetail({
             <Text style={styles.detailMuted}>Loading menu</Text>
           </View>
         ) : menuState === 'error' ? (
-          <RequestError onRetry={onRetry} testID="menu-error" />
+          <RequestError
+            message={menuError}
+            onRetry={onRetry}
+            testID="menu-error"
+          />
         ) : menuState === 'empty' ? (
           <EmptyState
             body="January did not return menu items for this restaurant."
@@ -548,8 +595,7 @@ function RestaurantDetail({
               </View>
               <View style={styles.flexCopy}>
                 <Text style={styles.rowTitle}>{item.name}</Text>
-                <Text style={styles.detailMuted}>{item.restaurantName}</Text>
-                <Text style={styles.detailMuted}>{item.calories} cal</Text>
+                <Text style={styles.detailMuted}>{menuItemCaption(item)}</Text>
               </View>
               <MaterialIcons
                 color={palette.subdued}
@@ -566,12 +612,26 @@ function RestaurantDetail({
 }
 
 function MenuItemDetail({
+  client,
+  fixtures,
   item,
   onBack,
 }: {
-  item: MenuFixture;
+  client: JanuaryClient;
+  fixtures: boolean;
+  item: MenuItemView;
   onBack: () => void;
 }) {
+  const [showGlucose, setShowGlucose] = useState(false);
+  const serving = primaryServing(item.servings);
+  const label = servingLabel(serving);
+  // The glucose sheet predicts for a food; a menu item is one, by its ID.
+  const food: FoodSearchItem = {
+    id: item.id,
+    name: item.name,
+    servings: item.servings,
+    type: 'generic',
+  };
   return (
     <View style={sharedStyles.screen} testID="menu-item-detail-screen">
       <CompactHeader
@@ -598,30 +658,48 @@ function MenuItemDetail({
             rows={[
               {
                 label: 'Net carbohydrates',
-                value: `${item.netCarbohydrates} g`,
+                value: formatGrams(item.netCarbohydrates),
               },
-              { label: 'Fiber', value: `${item.fiber} g` },
-              { label: 'Total sugars', value: `${item.totalSugars} g` },
+              { label: 'Fiber', value: formatGrams(item.fiber) },
+              { label: 'Total sugars', value: formatGrams(item.totalSugars) },
             ]}
           />
         </AppCard>
-        <View style={sharedStyles.card}>
-          <SectionLabel>Serving</SectionLabel>
-          <Text style={styles.rowTitle}>1 bowl · 100 g</Text>
-        </View>
+        {label ? (
+          <View style={sharedStyles.card} testID="menu-item-serving">
+            <SectionLabel>Serving</SectionLabel>
+            <Text style={styles.rowTitle}>{label}</Text>
+          </View>
+        ) : null}
         <Pressable
-          style={sharedStyles.primaryButton}
+          accessibilityRole="button"
+          disabled={!serving?.id}
+          onPress={() => setShowGlucose(true)}
+          style={[
+            sharedStyles.primaryButton,
+            !serving?.id && sharedStyles.disabled,
+          ]}
           testID="menu-glucose-button"
         >
           <MaterialIcons color={palette.paper} name="monitor-heart" size={22} />
           <Text style={sharedStyles.primaryText}>See glucose impact</Text>
         </Pressable>
       </ScrollView>
+      <FoodGlucoseSheet
+        client={client}
+        fixtures={fixtures}
+        food={food}
+        onClose={() => setShowGlucose(false)}
+        quantity={1}
+        serving={label ?? 'serving'}
+        servingId={serving?.id}
+        visible={showGlucose}
+      />
     </View>
   );
 }
 
-function MacroCard({ item }: { item: MenuFixture }) {
+function MacroCard({ item }: { item: MenuItemView }) {
   return (
     <AppCard>
       <MacroGrid
@@ -656,9 +734,11 @@ function EmptyState({
 }
 
 function RequestError({
+  message,
   onRetry,
   testID,
 }: {
+  message?: string;
   onRetry: () => void;
   testID: string;
 }) {
@@ -675,7 +755,7 @@ function RequestError({
         </Text>
       </View>
       <Text style={styles.errorBody}>
-        The test request could not be completed.
+        {message ?? 'The request could not be completed.'}
       </Text>
       <Text style={styles.disclosure}>Technical details　›</Text>
       <Pressable onPress={onRetry} testID={`${testID}-retry`}>
@@ -805,50 +885,10 @@ function RestaurantFilters({
   );
 }
 
-function toRestaurantView(restaurant: Restaurant): RestaurantFixture {
-  const address = [restaurant.address1, restaurant.address2]
-    .filter(Boolean)
-    .join(', ');
-  return {
-    id: restaurant.id,
-    name: restaurant.name ?? 'Restaurant',
-    city: restaurant.city ?? '—',
-    address: address || restaurant.city || 'Location unavailable',
-    distanceMiles: (restaurant.distance ?? 0) / 1609.344,
-  };
-}
-
-function toMenuItemView(item: RestaurantMenuItem): MenuFixture {
-  return {
-    id: item.id,
-    name: item.name ?? 'Menu item',
-    restaurantName: item.restaurantName ?? 'Restaurant',
-    calories: item.calories ?? 0,
-    protein: item.protein ?? 0,
-    carbohydrates: item.carbohydrates ?? 0,
-    fat: item.totalFat ?? 0,
-    fiber: item.fiber ?? 0,
-    netCarbohydrates: item.netCarbohydrates ?? item.carbohydrates ?? 0,
-    totalSugars: item.totalSugars ?? 0,
-  };
-}
-
-function toRestaurantMenuView(
-  item: RestaurantMenuEntry,
-  restaurantName: string
-): MenuFixture {
-  return {
-    id: item.id ?? `${restaurantName}-${item.name ?? 'menu-item'}`,
-    name: item.name ?? 'Menu item',
-    restaurantName,
-    calories: item.calories ?? 0,
-    protein: item.protein ?? 0,
-    carbohydrates: item.carbohydrates ?? 0,
-    fat: item.totalFat ?? 0,
-    fiber: item.fiber ?? 0,
-    netCarbohydrates: item.netCarbohydrates ?? item.carbohydrates ?? 0,
-    totalSugars: item.totalSugars ?? 0,
-  };
+function errorMessage(caught: unknown): string {
+  return caught instanceof Error && caught.message
+    ? caught.message
+    : 'The request could not be completed.';
 }
 
 const styles = StyleSheet.create({
