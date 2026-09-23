@@ -39,45 +39,28 @@ tags:
       id: tracking-screen
     timeout: 10000
 # In fixture mode a long press on Previous day opens yesterday with its meals,
-# water, and weight requests failing once; each card offers Try again.
-# Start from the top of the day, where the day's error opens low on the
-# screen, and bring its retry to the middle before tapping it. Scrolled the
-# other way, the error slides under the fixed day picker, where it still
-# counts as visible and a tap on it lands on the picker.
-- repeat:
-    times: 3
-    commands:
-      - swipe:
-          start: 50%, 40%
-          end: 50%, 90%
-          duration: 300
+# water, and weight requests failing once; each card offers Try again. The
+# day's own error shows under the day picker.
 - longPressOn:
     id: logs-day-previous
 - extendedWaitUntil:
     visible:
       id: tracking-logs-retry
     timeout: 15000
-- scrollUntilVisible:
-    element:
-      id: tracking-logs-retry
-    direction: DOWN
-    centerElement: true
-    timeout: 8000
-    optional: true
 - assertVisible:
     id: tracking-logs-error
 - assertVisible: Temporary fixture failure. Try again.
 - takeScreenshot: example/.maestro/artifacts/react-native-tracking-error
 - tapOn:
     id: tracking-logs-retry
-- extendedWaitUntil:
-    visible:
-      id: tracking-loading
-    timeout: 5000
-- extendedWaitUntil:
-    visible:
-      id: tracking-logs-empty
-    timeout: 15000
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: tracking-loading
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: tracking-logs-empty
 - assertVisible: No food logs on this day
 - runFlow:
     file: ../scroll-to.yaml

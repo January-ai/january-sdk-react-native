@@ -191,6 +191,29 @@ export function TrackingScreen({
           onChange={changeDay}
           onPreviousLongPress={previousDayWithFailures}
         />
+        {/* The day itself failed to load: say so under the picker, where it
+            stays in view (and its retry in reach) wherever the day's cards
+            are scrolled to. */}
+        {error ? (
+          <View
+            accessibilityRole="alert"
+            style={sharedStyles.error}
+            testID="tracking-logs-error"
+          >
+            <Text style={sharedStyles.errorTitle}>
+              January couldn’t complete the request
+            </Text>
+            <Text style={sharedStyles.errorText}>{error}</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => load().catch(() => undefined)}
+              style={sharedStyles.secondaryButton}
+              testID="tracking-logs-retry"
+            >
+              <Text style={sharedStyles.secondaryText}>Try again</Text>
+            </Pressable>
+          </View>
+        ) : null}
       </View>
 
       <ScrollView
@@ -249,27 +272,6 @@ export function TrackingScreen({
           <View style={styles.loadingLogs} testID="tracking-loading">
             <ActivityIndicator color={palette.green} size="small" />
             <Text style={styles.loadingLogsText}>Loading the day…</Text>
-          </View>
-        ) : null}
-
-        {error ? (
-          <View
-            accessibilityRole="alert"
-            style={sharedStyles.error}
-            testID="tracking-logs-error"
-          >
-            <Text style={sharedStyles.errorTitle}>
-              January couldn’t complete the request
-            </Text>
-            <Text style={sharedStyles.errorText}>{error}</Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => load().catch(() => undefined)}
-              style={sharedStyles.secondaryButton}
-              testID="tracking-logs-retry"
-            >
-              <Text style={sharedStyles.secondaryText}>Try again</Text>
-            </Pressable>
           </View>
         ) : null}
 
@@ -891,7 +893,7 @@ function formatDay(day: string): string {
 }
 
 const styles = StyleSheet.create({
-  dayBar: { paddingHorizontal: 16, paddingBottom: 8 },
+  dayBar: { paddingHorizontal: 16, paddingBottom: 8, gap: 8 },
   flex: { flex: 1 },
   logsHeader: { height: 112 },
   headerActions: {

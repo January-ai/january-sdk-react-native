@@ -51,8 +51,19 @@ appId: ai.january.sdk.demo
                 visible: "(?i).*development server.*"
                 timeout: 30000
             - openLink: "exp+january-sdk-demo://expo-development-client/?url=${typeof METRO_URL_ENCODED === 'undefined' ? 'http%3A%2F%2F127.0.0.1%3A8081' : METRO_URL_ENCODED}"
-            - waitForAnimationToEnd
-            - openLink: "exp+january-sdk-demo://expo-development-client/?url=${typeof METRO_URL_ENCODED === 'undefined' ? 'http%3A%2F%2F127.0.0.1%3A8081' : METRO_URL_ENCODED}"
+            # Open the link a second time only if the first did not start
+            # loading the app: a second link while the bundle initializes
+            # reloads a half-started runtime, which has aborted the process
+            # (FabricUIManager null after "runtime not ready") on an emulator.
+            - extendedWaitUntil:
+                notVisible: "(?i).*development server.*"
+                timeout: 15000
+                optional: true
+            - runFlow:
+                when:
+                  visible: "(?i).*development server.*"
+                commands:
+                  - openLink: "exp+january-sdk-demo://expo-development-client/?url=${typeof METRO_URL_ENCODED === 'undefined' ? 'http%3A%2F%2F127.0.0.1%3A8081' : METRO_URL_ENCODED}"
             - waitForAnimationToEnd
             # react-native-screens can throw "runtime not ready" on a warm
             # relaunch of the dev build; RELOAD on the red screen recovers it.
