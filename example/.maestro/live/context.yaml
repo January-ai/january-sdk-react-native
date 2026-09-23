@@ -11,6 +11,10 @@ appId: ai.january.sdk.demo
 - copyTextFrom:
     id: settings-user-id
 - evalScript: ${output.liveUser = maestro.copiedText}
+# The timezone sits below the fold of the half-height sheet.
+- swipe:
+    start: 50%, 90%
+    end: 50%, 60%
 - copyTextFrom:
     id: settings-timezone
 - runScript:
