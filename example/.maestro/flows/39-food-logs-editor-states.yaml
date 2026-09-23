@@ -1,5 +1,5 @@
 appId: ai.january.sdk.demo
-name: Logs - empty editor, today's range, meal totals, and saving
+name: Logs - empty editor, today's range, meal totals, adding a food to a saved log, and saving
 tags:
   - fixture
 ---
@@ -49,6 +49,53 @@ tags:
 - assertVisible:
     id: food-log-totals
 - assertVisible: Meal total · 1 food
+# A food added while editing is saved with the one already logged.
+- tapOn:
+    id: food-log-edit
+- scrollUntilVisible:
+    element:
+      id: food-log-add-food
+    direction: DOWN
+- tapOn:
+    id: food-log-add-food
+- tapOn:
+    id: food-picker-input
+- inputText: greek yogurt
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: food-picker-result-0
+    timeout: 15000
+- tapOn:
+    id: food-picker-result-0
+- tapOn:
+    id: food-serving-add
+- assertVisible: .*Foods in this meal · 2.*
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: food-log-save
+- tapOn:
+    id: food-log-save
+- extendedWaitUntil:
+    notVisible:
+      id: food-log-editor
+    timeout: 15000
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: food-log-0
+    direction: DOWN
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn:
+          id: food-log-0
+      - extendedWaitUntil:
+          visible:
+            id: food-log-detail
+          timeout: 10000
+- assertVisible: Meal total · 2 foods
 - tapOn: Back from food log
 # Saving shows its progress on the button.
 - scrollUntilVisible:

@@ -541,7 +541,30 @@ if (check === 'context') {
           '"'
       );
     }
-    log('food log ' + output.foodLogId + ' renamed to "' + renamed + '"');
+    var renamedFoods = match.foods ? match.foods.length : 0;
+    var expectedAfterEdit = envValue('EXPECT_FOODS');
+    if (
+      expectedAfterEdit !== undefined &&
+      renamedFoods !== Number(expectedAfterEdit)
+    ) {
+      fail(
+        'food log ' +
+          output.foodLogId +
+          ' has ' +
+          renamedFoods +
+          ' foods, expected ' +
+          expectedAfterEdit
+      );
+    }
+    log(
+      'food log ' +
+        output.foodLogId +
+        ' renamed to "' +
+        renamed +
+        '", ' +
+        renamedFoods +
+        ' food(s)'
+    );
   } else if (check === 'food-log-deleted') {
     var remaining = foodLogs(day, day).filter(function (item) {
       return item.id === output.foodLogId;

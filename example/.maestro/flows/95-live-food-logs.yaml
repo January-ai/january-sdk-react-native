@@ -1,5 +1,5 @@
 appId: ai.january.sdk.demo
-name: Live - create, list, rename, and delete a food log, with its summaries, checked against the API
+name: Live - create, list, rename and add to, and delete a food log, with its summaries, checked against the API
 tags:
   - live
 # Also after a failure: remove this run's log if a step before the delete
@@ -113,6 +113,25 @@ onFlowComplete:
 - eraseText: 40
 - inputText: RN live ${output.live.run} renamed
 - pressKey: Enter
+# And add a second food, saved with the first.
+- scrollUntilVisible:
+    element:
+      id: food-log-add-food
+    direction: DOWN
+- tapOn:
+    id: food-log-add-food
+- tapOn:
+    id: food-picker-input
+- inputText: apple
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: food-picker-result-0
+    timeout: 30000
+- tapOn:
+    id: food-picker-result-0
+- tapOn:
+    id: food-serving-add
 - runFlow:
     file: ../scroll-to.yaml
     env:
@@ -139,6 +158,7 @@ onFlowComplete:
     env:
       CHECK: food-log-renamed
       NAME: RN live ${output.live.run} renamed
+      EXPECT_FOODS: "2"
 # Today on the Tracking tab: the day's summary and the meal.
 - tapOn:
     id: tab-tracking

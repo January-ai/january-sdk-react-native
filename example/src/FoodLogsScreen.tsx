@@ -46,6 +46,7 @@ import {
   SLOW_FIXTURE_DELAY,
 } from './e2eFixtures';
 import { FoodPickerSheet, type SelectedFood } from './FoodPickerSheet';
+import { foodsAfterAdding } from './foodLogEdits';
 
 interface FoodLogsScreenProps {
   client: JanuaryClient;
@@ -579,12 +580,25 @@ function FoodLogEditor({
           throw new Error('Temporary fixture food log save failure.');
         }
         saved = existing
-          ? { ...existing, name: name.trim() || 'Meal' }
+          ? {
+              ...existing,
+              name: name.trim() || 'Meal',
+              foods: [
+                ...existing.foods,
+                ...fixtureLogFromSelection(selected, name).foods,
+              ],
+            }
           : fixtureLogFromSelection(selected, name);
       } else if (existing?.id) {
+        // Foods added while editing are saved with the ones already logged.
+        const foods = foodsAfterAdding(
+          existing,
+          selected.map((food) => food.selection)
+        );
         saved = await client.foodLogs.update({
           id: existing.id,
           name: name.trim() || 'Meal',
+          ...(foods ? { foods } : {}),
         });
       } else {
         saved = await client.foodLogs.create({
@@ -677,7 +691,7 @@ function FoodLogEditor({
               </View>
             </View>
             <SectionLabel>
-              {`Foods in this meal · ${existing ? existing.foods.length : selected.length}`}
+              {`Foods in this meal · ${(existing?.foods.length ?? 0) + selected.length}`}
             </SectionLabel>
             {!existing && selected.length === 0 ? (
               <View style={styles.editorEmpty} testID="food-log-editor-empty">
@@ -693,21 +707,20 @@ function FoodLogEditor({
                 </Text>
               </View>
             ) : null}
-            {existing
-              ? existing.foods.map((food, index) => (
-                  <EditorLoggedFood food={food} key={`${food.id ?? index}`} />
-                ))
-              : selected.map((food, index) => (
-                  <EditorSelectedFood
-                    food={food}
-                    key={`${food.item.id}-${index}`}
-                    onRemove={() =>
-                      setSelected((current) =>
-                        current.filter((_, itemIndex) => itemIndex !== index)
-                      )
-                    }
-                  />
-                ))}
+            {existing?.foods.map((food, index) => (
+              <EditorLoggedFood food={food} key={`${food.id ?? index}`} />
+            ))}
+            {selected.map((food, index) => (
+              <EditorSelectedFood
+                food={food}
+                key={`${food.item.id}-${index}`}
+                onRemove={() =>
+                  setSelected((current) =>
+                    current.filter((_, itemIndex) => itemIndex !== index)
+                  )
+                }
+              />
+            ))}
             <Pressable
               accessibilityRole="button"
               onPress={() => setPickerVisible(true)}
@@ -720,7 +733,7 @@ function FoodLogEditor({
                 size={21}
               />
               <Text style={sharedStyles.secondaryText}>
-                {(existing?.foods.length ?? selected.length) === 0
+                {(existing?.foods.length ?? 0) + selected.length === 0
                   ? 'Add first food'
                   : 'Add another food'}
               </Text>
