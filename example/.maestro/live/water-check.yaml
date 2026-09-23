@@ -13,6 +13,10 @@ appId: ai.january.sdk.demo
 - retry:
     maxRetries: 2
     commands:
+      - runFlow:
+          file: ../scroll-to.yaml
+          env:
+            TARGET_ID: water-total|water-empty
       - extendedWaitUntil:
           visible:
             id: water-total|water-empty

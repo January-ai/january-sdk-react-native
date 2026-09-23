@@ -6,6 +6,10 @@ appId: ai.january.sdk.demo
 - retry:
     maxRetries: 2
     commands:
+      - runFlow:
+          file: ../scroll-to.yaml
+          env:
+            TARGET_ID: weight-day|weight-empty
       - extendedWaitUntil:
           visible:
             id: weight-day|weight-empty
