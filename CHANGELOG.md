@@ -5,6 +5,11 @@ This project uses Semantic Versioning.
 
 ## [Unreleased]
 
+- Pin the January iOS SDK `0.3.1` and Android SDK `0.3.1`, which add water and
+  weight logs and cups, and read and send the API's `created_at` log timestamps.
+  Food, serving, alternative, and menu-item IDs are no longer optional, and
+  photo analysis without a reasoning effort now uses the API's reasoning-based
+  analyzer.
 - Add `waterLogs` (`create`, `list`, `delete`) and `weightLogs` (`create`,
   `list`) with the `WaterAmount`, `Volume`, `WaterLog`, `DailyWaterTotal`,
   `Weight`, `WeightLog`, and `DailyWeight` models. Client tokens need the
