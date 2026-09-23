@@ -8,6 +8,9 @@ tags:
     visible:
       id: search-input
     timeout: 15000
+# Records the end user and stops here, before the flow's own requests, if the
+# API account has no requests left.
+- runFlow: ../live/context.yaml
 - tapOn:
     id: search-input
 - inputText: greek yogurt

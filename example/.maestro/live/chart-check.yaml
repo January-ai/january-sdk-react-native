@@ -1,0 +1,41 @@
+appId: ai.january.sdk.demo
+# Selects a range on a Tracking chart and compares the chart's summary (what a
+# screen reader hears) with the API over the same dates (api.js, CHECK=chart).
+# KIND is water or weight, RANGE week, month, or year, UNIT the card's unit.
+---
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: ${KIND}-chart-range-${RANGE}
+- tapOn:
+    id: ${KIND}-chart-range-${RANGE}
+- retry:
+    maxRetries: 2
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: ${KIND}-chart|${KIND}-chart-empty
+          timeout: 60000
+      - waitForAnimationToEnd
+      - runFlow:
+          when:
+            visible:
+              id: ${KIND}-chart
+          commands:
+            - copyTextFrom:
+                id: ${KIND}-chart
+            - evalScript: ${output.uiText = maestro.copiedText}
+      - runFlow:
+          when:
+            visible:
+              id: ${KIND}-chart-empty
+          commands:
+            - evalScript: ${output.uiText = 'nothing logged, no entries'}
+      - runScript:
+          file: api.js
+          env:
+            CHECK: chart
+            KIND: ${KIND}
+            RANGE: ${RANGE}
+            UNIT: ${UNIT}
+            UI_TEXT: ${output.uiText}

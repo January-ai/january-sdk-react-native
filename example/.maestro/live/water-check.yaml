@@ -1,0 +1,44 @@
+appId: ai.january.sdk.demo
+# Compares the Water card's total for the day with the API's (api.js,
+# CHECK=water-total). Pass UNIT, the card's unit, and after a log or a delete
+# EXPECT_CHANGE, how far the total should have moved. The card reloads the
+# total after a change, so a stale read is tried again.
+#
+#   - runFlow:
+#       file: ../live/water-check.yaml
+#       env:
+#         UNIT: fl_oz
+#         EXPECT_CHANGE: "8"
+---
+- retry:
+    maxRetries: 2
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: water-total|water-empty
+          timeout: 30000
+      - waitForAnimationToEnd
+      - runFlow:
+          when:
+            visible:
+              id: water-total
+          commands:
+            - copyTextFrom:
+                text: "[0-9.,]+ (fl oz|ml|cup)"
+                childOf:
+                  id: water-total
+            - evalScript: ${output.uiText = maestro.copiedText}
+      - runFlow:
+          when:
+            visible:
+              id: water-empty
+          commands:
+            - evalScript: ${output.uiText = '—'}
+      - runScript:
+          file: api.js
+          env:
+            CHECK: water-total
+            UNIT: ${UNIT}
+            UI_TEXT: ${output.uiText}
+            DAY: "${typeof DAY === 'undefined' ? '' : DAY}"
+            EXPECT_CHANGE: "${typeof EXPECT_CHANGE === 'undefined' ? '' : EXPECT_CHANGE}"

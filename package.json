@@ -44,7 +44,7 @@
     "ui:start": "EXPO_PUBLIC_E2E_FIXTURES=1 yarn example start --port 8081",
     "ui:test": "maestro test example/.maestro/flows --include-tags fixture,parity --shard-split 1",
     "ui:test:fixtures": "maestro test example/.maestro/flows --include-tags fixture --shard-split 1",
-    "ui:test:live": "maestro test example/.maestro/flows --include-tags live",
+    "ui:test:live": "node scripts/ui-live.mjs",
     "ui:coverage": "node scripts/ui-coverage.mjs",
     "release": "release-it"
   },

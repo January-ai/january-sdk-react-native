@@ -1,0 +1,124 @@
+appId: ai.january.sdk.demo
+name: Live - food search, detail, glucose, alternatives, barcode, description, and suggestions
+tags:
+  - live
+---
+# Read-only against the January API: every answer is checked on screen, and
+# no step may end in an error.
+- runFlow: ../bootstrap.yaml
+- extendedWaitUntil:
+    visible:
+      id: search-input
+    timeout: 15000
+# Records the end user and stops here, before any request of the flow's own,
+# if the API account has no requests left.
+- runFlow: ../live/context.yaml
+- tapOn:
+    id: search-input
+- inputText: banana
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: search-results
+    timeout: 30000
+- assertNotVisible:
+    id: search-error
+- takeScreenshot: example/.maestro/artifacts/live-search-results
+- tapOn:
+    id: food-result-0
+- extendedWaitUntil:
+    visible:
+      id: food-detail-screen
+    timeout: 15000
+- assertVisible:
+    id: food-macros
+- takeScreenshot: example/.maestro/artifacts/live-food-detail
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: food-check-glucose
+- tapOn:
+    id: food-check-glucose
+- extendedWaitUntil:
+    visible:
+      id: food-glucose-result
+    timeout: 60000
+- assertNotVisible:
+    id: food-glucose-error
+- takeScreenshot: example/.maestro/artifacts/live-food-glucose
+- tapOn: Close Glucose response
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: food-alternatives
+- tapOn:
+    id: food-alternatives
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: alternatives-refresh
+- tapOn:
+    id: alternatives-refresh
+# Either a list or January's "no suitable alternatives"; never an error.
+- extendedWaitUntil:
+    visible:
+      id: alternatives-results|alternatives-empty
+    timeout: 60000
+- assertNotVisible:
+    id: alternatives-error
+- takeScreenshot: example/.maestro/artifacts/live-food-alternatives
+- tapOn: Close Food alternatives
+- tapOn:
+    id: food-detail-back
+# Barcode lookup.
+- tapOn:
+    id: search-clear
+- tapOn:
+    id: search-mode-barcode
+- tapOn:
+    id: search-input
+- inputText: "${typeof BARCODE === 'undefined' ? '016000275287' : BARCODE}"
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: food-result-0
+    timeout: 30000
+- assertNotVisible:
+    id: search-error
+- takeScreenshot: example/.maestro/artifacts/live-barcode
+# A meal described in words.
+- tapOn:
+    id: search-clear
+- tapOn:
+    id: search-mode-description
+- tapOn:
+    id: search-input
+- inputText: a bowl of oatmeal with honey and a banana
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: description-results
+    timeout: 60000
+- assertNotVisible:
+    id: search-error
+- assertVisible: Meal nutrition
+- takeScreenshot: example/.maestro/artifacts/live-description
+# Suggestions while typing a name.
+- tapOn:
+    id: search-clear
+- tapOn:
+    id: search-mode-name
+- tapOn:
+    id: search-input
+- inputText: oatm
+- extendedWaitUntil:
+    visible:
+      id: autocomplete-suggestions
+    timeout: 30000
+- takeScreenshot: example/.maestro/artifacts/live-autocomplete
+- tapOn:
+    id: autocomplete-result-0
+- extendedWaitUntil:
+    visible:
+      id: search-results
+    timeout: 30000

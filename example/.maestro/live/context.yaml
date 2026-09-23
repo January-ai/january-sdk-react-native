@@ -1,0 +1,23 @@
+appId: ai.january.sdk.demo
+# Records the end user and timezone the app is using, read from Settings, for
+# api.js. Every live flow runs it right after the bootstrap:
+#
+#   - runFlow: ../live/context.yaml
+---
+- tapOn:
+    id: tab-search
+- tapOn:
+    id: settings-button
+- copyTextFrom:
+    id: settings-user-id
+- evalScript: ${output.liveUser = maestro.copiedText}
+- copyTextFrom:
+    id: settings-timezone
+- runScript:
+    file: api.js
+    env:
+      CHECK: context
+      USER_ID: ${output.liveUser}
+      TIMEZONE: ${maestro.copiedText}
+- tapOn:
+    id: settings-close
