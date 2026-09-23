@@ -1,4 +1,4 @@
-import { describe, expect, it, jest } from '@jest/globals';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
 jest.mock('../NativeJanuaryReactNative', () => ({
   __esModule: true,
@@ -102,6 +102,12 @@ import NativeJanuaryReactNative from '../NativeJanuaryReactNative';
 import { JanuaryClient } from '../index';
 
 const mockNativeModule = jest.mocked(NativeJanuaryReactNative!);
+
+// Each test sees only its own native calls, whatever order the tests run in.
+// The mocks keep their implementations.
+beforeEach(() => {
+  jest.clearAllMocks();
+});
 
 describe('January React Native SDK', () => {
   it('configures and calls the native SDK', async () => {
@@ -400,7 +406,12 @@ describe('January React Native SDK', () => {
     await expect(client.foodLogs.update({ id: 'log-1' })).rejects.toThrow(
       'An update needs at least one of foods, timestampUTC, or name.'
     );
-    expect(mockNativeModule.foodLogsUpdate).toHaveBeenCalledTimes(1);
+    // None of these requests reached the native module.
+    expect(mockNativeModule.waterLogsCreate).not.toHaveBeenCalled();
+    expect(mockNativeModule.waterLogsList).not.toHaveBeenCalled();
+    expect(mockNativeModule.waterLogsDelete).not.toHaveBeenCalled();
+    expect(mockNativeModule.weightLogsCreate).not.toHaveBeenCalled();
+    expect(mockNativeModule.foodLogsUpdate).not.toHaveBeenCalled();
   });
 
   it('validates restaurant requests before crossing the native bridge', async () => {
