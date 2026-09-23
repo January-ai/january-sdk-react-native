@@ -212,7 +212,8 @@ function clientToken(user) {
   return body.token;
 }
 
-function api(method, path) {
+// The API's answer, whatever its status, except that a 429 stops the flow.
+function request(method, path) {
   pace();
   var headers = { Authorization: 'Bearer ' + clientToken(context.user) };
   var response =
@@ -220,6 +221,11 @@ function api(method, path) {
       ? http.delete(apiUrl + path, { headers: headers })
       : http.get(apiUrl + path, { headers: headers });
   if (response.status === 429) rateLimited(response);
+  return response;
+}
+
+function api(method, path) {
+  var response = request(method, path);
   if (!response.ok) {
     var detail = response.body ? String(response.body).slice(0, 300) : '';
     fail(method + ' ' + path + ' answered ' + response.status + ' ' + detail);
@@ -423,24 +429,31 @@ if (check === 'context') {
         '"' +
         (change !== undefined ? ', changed by ' + change + ' as expected' : '')
     );
-  } else if (check === 'water-unchanged') {
-    // A rejected log left the day's total alone.
+  } else if (check === 'water-change') {
+    // The day's total in UNIT moved by EXPECT_CHANGE (none when not given)
+    // since the last water-total check in that unit, read from the API alone:
+    // for a log made in a unit the card cannot be compared in (cup), and for
+    // a refused log, which must leave the total alone. The baseline is kept,
+    // so a log and its delete are both measured from it.
     var unitNow = required('UNIT');
     var itemsNow = waterTotals(day, day, unitNow);
     var totalNow = itemsNow.length ? itemsNow[0].total.value : 0;
-    if (output.water[unitNow] === undefined) {
-      fail('no earlier water total in ' + unitNow);
-    }
-    if (round(totalNow - output.water[unitNow], 1) !== 0) {
+    var baseline = output.water[unitNow];
+    if (baseline === undefined) fail('no earlier water total in ' + unitNow);
+    var wanted = Number(envValue('EXPECT_CHANGE') || 0);
+    var movedNow = round(totalNow - baseline, 1);
+    if (Math.abs(movedNow - wanted) > (wanted === 0 ? 0 : 0.11)) {
       fail(
         'water on ' +
           day +
-          ' changed from ' +
-          output.water[unitNow] +
+          ' went from ' +
+          baseline +
           ' to ' +
           totalNow +
           ' ' +
-          unitNow
+          unitNow +
+          ', expected a change of ' +
+          wanted
       );
     }
     log(
@@ -448,10 +461,43 @@ if (check === 'context') {
         day +
         ' ' +
         unitNow +
-        ': still ' +
+        ': ' +
         totalNow +
-        ' after the rejected log'
+        ', changed by ' +
+        movedNow +
+        ' as expected'
     );
+  } else if (check === 'water-cup-refused') {
+    // The app's cup log was refused. That is right only while the API does
+    // not take cup yet, so confirm the API still refuses the unit itself: a
+    // day's total in cups is a 400 invalid_request. (A read, so nothing is
+    // logged if the API has started taking cup.)
+    var probe = request(
+      'GET',
+      '/v1.2/water-logs?' +
+        query({
+          start_date: day,
+          end_date: day,
+          timezone: context.timezone,
+          unit: 'cup',
+        })
+    );
+    var refusal = {};
+    try {
+      refusal = JSON.parse(probe.body);
+    } catch {
+      refusal = {};
+    }
+    if (probe.status !== 400 || refusal.code !== 'invalid_request') {
+      fail(
+        'the app could not log a cup, but the API answers ' +
+          probe.status +
+          ' ' +
+          (refusal.code || '') +
+          ' for water in cups'
+      );
+    }
+    log('the API refuses cup (400 invalid_request), as the app showed');
   } else if (check === 'weight-day') {
     // The day's latest weight equals the app's, and is the one just logged.
     var weights = dailyWeights(day, day);
