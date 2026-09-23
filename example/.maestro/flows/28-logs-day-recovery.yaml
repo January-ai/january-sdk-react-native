@@ -50,11 +50,23 @@ tags:
       id: water-error
     timeout: 15000
 # The error card opens under the floating tab bar; bring its message clear of
-# it before reading it.
+# it before reading it. The scroll can instead leave the card's upper part
+# under the fixed day picker on a short screen, so short swipes bring back the
+# last log's line, just above the error, with Try again still on screen.
 - runFlow:
     file: ../scroll-to.yaml
     env:
       TARGET_ID: water-retry
+- repeat:
+    while:
+      notVisible:
+        id: water-logged
+    times: 8
+    commands:
+      - swipe:
+          start: 50%, 65%
+          end: 50%, 80%
+          duration: 400
 - assertVisible: .*24 L daily cap.*
 - takeScreenshot: example/.maestro/artifacts/react-native-water-error
 - runFlow:
@@ -70,11 +82,23 @@ tags:
     file: ../scroll-to.yaml
     env:
       TARGET_ID: water-retry
+- repeat:
+    while:
+      notVisible:
+        id: water-logged
+    times: 8
+    commands:
+      - swipe:
+          start: 50%, 65%
+          end: 50%, 80%
+          duration: 400
 - tapOn:
     id: water-retry
+# The line still reads the 800 fl oz log until the retry saves the new one.
 - extendedWaitUntil:
     visible:
       id: water-logged
+      text: Logged 8 fl oz
     timeout: 15000
 - assertNotVisible:
     id: water-error
@@ -97,18 +121,24 @@ tags:
     visible:
       id: weight-error
     timeout: 15000
-# The error card opens under the floating tab bar; bring its message clear of
-# it before reading it.
+# As for water; the saved weight's line opens where the error was, under the
+# weight field, so keep that field in view too.
 - runFlow:
     file: ../scroll-to.yaml
     env:
       TARGET_ID: weight-retry
+- repeat:
+    while:
+      notVisible:
+        id: weight-value
+    times: 8
+    commands:
+      - swipe:
+          start: 50%, 65%
+          end: 50%, 80%
+          duration: 400
 - assertVisible: Temporary fixture weight log failure.
 - takeScreenshot: example/.maestro/artifacts/react-native-weight-error
-- runFlow:
-    file: ../scroll-to.yaml
-    env:
-      TARGET_ID: weight-retry
 - tapOn:
     id: weight-retry
 - extendedWaitUntil:

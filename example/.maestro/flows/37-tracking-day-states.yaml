@@ -70,10 +70,13 @@ tags:
     visible:
       id: tracking-loading
     timeout: 5000
-- runFlow:
-    file: ../scroll-to.yaml
-    env:
-      TARGET_ID: tracking-logs-empty
+# The empty day takes the loading row's place under Food, already in view.
+# Scrolling for it while the day still loads would carry the list past it,
+# and coming back up leaves it half under the fixed day picker.
+- extendedWaitUntil:
+    visible:
+      id: tracking-logs-empty
+    timeout: 15000
 - assertVisible: No food logs on this day
 - runFlow:
     file: ../scroll-to.yaml
@@ -81,6 +84,20 @@ tags:
       TARGET_ID: water-retry
 - assertVisible:
     id: water-error
+# Water loads at the top of its card, above the unit picker, while Try again
+# sits lower down; on a short screen the scroll can leave the top under the
+# fixed day picker. Short swipes bring the unit picker back into view with
+# Try again still on screen, so the loading row opens where it can be seen.
+- repeat:
+    while:
+      notVisible:
+        id: water-unit-fl_oz
+    times: 8
+    commands:
+      - swipe:
+          start: 50%, 65%
+          end: 50%, 80%
+          duration: 400
 - tapOn:
     id: water-retry
 - extendedWaitUntil:
@@ -99,6 +116,17 @@ tags:
       TARGET_ID: weight-retry
 - assertVisible:
     id: weight-error
+# As for water: weight loads at the top of its card, above the unit picker.
+- repeat:
+    while:
+      notVisible:
+        id: weight-unit-lb
+    times: 8
+    commands:
+      - swipe:
+          start: 50%, 65%
+          end: 50%, 80%
+          duration: 400
 - tapOn:
     id: weight-retry
 - extendedWaitUntil:
