@@ -38,6 +38,9 @@ jobs:
       - name: Validate GitBook documentation
         run: yarn docs:check
 
+      - name: Check that the UI flows exercise every test ID
+        run: yarn ui:coverage
+
   test:
     runs-on: ubuntu-latest
 

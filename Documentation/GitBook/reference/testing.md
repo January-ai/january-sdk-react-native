@@ -39,6 +39,27 @@ maestro test --device <device-id> example/.maestro/flows \
   --shard-split 1
 ```
 
+Every screen has its loading, empty, error, and success states in the fixture
+flows. Fixture mode reaches the states on demand: particular search words (for
+example `no results`, `detail error`, `search error`, or `menu empty`), and a
+long press on a control that re-runs its request with a failure, such as
+**Previous day** on the Tracking tab or a drawn Tracking chart.
+
+### Flow coverage
+
+A device-free check confirms that the flows exercise every test ID the example
+app declares, and that no flow refers to an ID the app no longer has:
+
+```sh
+corepack yarn ui:coverage
+```
+
+It prints `UI coverage: <exercised>/<declared> (<percent>)`, lists anything
+missing, and fails unless coverage is 100%. A test ID counts when a flow taps
+it, types into it, scrolls to it, waits for it, copies from it, or asserts that
+it is visible; optional steps and `assertNotVisible` do not count. Add
+`--verbose` to list every ID with the flows that use it.
+
 For application tests, mock the module at your integration boundary or wrap the
 `JanuaryClient` instance in a small service that can be replaced in unit tests.
 Use a real development build for linking and end-to-end verification.
