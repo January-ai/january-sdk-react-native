@@ -46,7 +46,9 @@ tags:
     when:
       platform: Android
     commands:
-      - hideKeyboard
+      # Back would close the sheet along with the keyboard; a tap on plain
+      # text in the sheet closes only the keyboard.
+      - tapOn: (?i)current detections
       - runFlow:
           file: ../scroll-to.yaml
           env:

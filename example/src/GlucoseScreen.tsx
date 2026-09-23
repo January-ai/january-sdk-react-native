@@ -122,6 +122,9 @@ export function GlucoseScreen({
               accessibilityLabel="Age"
               keyboardType="decimal-pad"
               onChangeText={(value) => setAge(numericText(value))}
+              // Like the other measurements: a tap selects the age, so typing
+              // replaces it.
+              selectTextOnFocus
               style={styles.ageInput}
               testID="glucose-age"
               value={age}

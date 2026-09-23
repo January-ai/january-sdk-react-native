@@ -16,14 +16,11 @@ tags:
       visible:
         id: search-voice
     commands:
+      # Maestro's launch grants the microphone and speech recognition, so no
+      # permission prompt comes between the tap and the recording (Android's
+      # recognizer stops by itself after a few seconds of silence).
       - tapOn:
           id: search-voice
-      - tapOn:
-          text: (?i)(ok|allow|while using the app)
-          optional: true
-      - tapOn:
-          text: (?i)(ok|allow|while using the app)
-          optional: true
       - extendedWaitUntil:
           visible:
             id: search-voice-meter

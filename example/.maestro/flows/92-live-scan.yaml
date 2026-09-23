@@ -38,17 +38,28 @@ tags:
 - tapOn:
     id: scan-correction-input
 - inputText: The fries were a side salad with vinaigrette
-- hideKeyboard
+# iOS submits from the keyboard; Android closes the keyboard with a tap on
+# plain text (Back would close the sheet) and taps Submit.
 - runFlow:
-    file: ../scroll-to.yaml
-    env:
-      TARGET_ID: scan-correction-submit
-- tapOn:
-    id: scan-correction-submit
+    when:
+      platform: iOS
+    commands:
+      - pressKey: Enter
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn: (?i)current detections
+      - runFlow:
+          file: ../scroll-to.yaml
+          env:
+            TARGET_ID: scan-correction-submit
+      - tapOn:
+          id: scan-correction-submit
 # The corrected analysis replaces the sheet; a failure would keep it open.
 - extendedWaitUntil:
     notVisible:
-      id: scan-correction-submit
+      id: scan-correction-input
     timeout: 90000
 - assertNotVisible:
     id: scan-correction-error

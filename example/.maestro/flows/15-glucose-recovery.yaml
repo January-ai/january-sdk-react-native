@@ -45,6 +45,11 @@ tags:
     id: food-picker-result-0
 - tapOn:
     id: food-serving-add
+# The meal's row can open under the floating tab bar; bring it clear first.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: glucose-food-0
 - tapOn: Increase Greek yogurt quantity
 - assertVisible: '1.25'
 - runFlow:

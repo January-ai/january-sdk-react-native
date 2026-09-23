@@ -53,10 +53,11 @@ tags:
 - takeScreenshot: example/.maestro/artifacts/react-native-tracking-error
 - tapOn:
     id: tracking-logs-retry
-- runFlow:
-    file: ../scroll-to.yaml
-    env:
-      TARGET_ID: tracking-loading
+# The day loads where the meal was, which is still on screen.
+- extendedWaitUntil:
+    visible:
+      id: tracking-loading
+    timeout: 5000
 - runFlow:
     file: ../scroll-to.yaml
     env:

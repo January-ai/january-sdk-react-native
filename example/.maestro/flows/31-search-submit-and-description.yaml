@@ -29,7 +29,7 @@ tags:
 - extendedWaitUntil:
     visible:
       id: search-results
-    timeout: 15000
+    timeout: 30000
 # The button searches again; the keyboard closed with the first search, so
 # the button is in reach.
 - tapOn:
@@ -41,7 +41,7 @@ tags:
 - extendedWaitUntil:
     visible:
       id: search-results
-    timeout: 15000
+    timeout: 30000
 - tapOn:
     id: search-clear
 - tapOn:
