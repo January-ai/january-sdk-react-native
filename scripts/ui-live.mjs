@@ -50,21 +50,30 @@ if (start < 0) {
   process.exit(2);
 }
 
+// The resume command is printed, so a credential passed through to Maestro
+// (for example -e JANUARY_RELAY_TOKEN=...) is shown as a placeholder instead.
+const printable = (arg) =>
+  arg.replace(
+    /^((?:--env=)?[A-Z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD)[A-Z0-9_]*=).+$/i,
+    '$1<same value as before>'
+  );
+
 const resume = (flow) =>
   [
     'corepack yarn ui:test:live',
     device ? `--device ${device}` : '',
     `--from ${flow.slice(0, 2)}`,
     debugOutput ? `--debug-output ${debugOutput}` : '',
-    maestroArgs.length ? `-- ${maestroArgs.join(' ')}` : '',
+    maestroArgs.length ? `-- ${maestroArgs.map(printable).join(' ')}` : '',
   ]
     .filter(Boolean)
     .join(' ');
 
 function runFlow(flow) {
+  // Same shape as the CI shard runner: `maestro test --device <id> ...`.
   const command = [
-    ...(device ? ['--device', device] : []),
     'test',
+    ...(device ? ['--device', device] : []),
     path.join('example', '.maestro', 'flows', flow),
     '--include-tags',
     'live',
