@@ -228,11 +228,11 @@ jobs:
           yarn example build:web
 
   # The Maestro suites reuse the apps the build jobs produced and split the
-  # flows across several emulators and simulators (four Android, three iOS),
+  # flows across several emulators and simulators (six Android, four iOS),
   # so each job stays well under its time limit. Maestro's failure screenshots and view hierarchies
   # are uploaded with the JUnit results.
   ui-test-android:
-    name: ui-test-android (shard ${{ matrix.shard }} of 4)
+    name: ui-test-android (shard ${{ matrix.shard }} of 6)
     needs: build-android
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -240,7 +240,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6]
 
     steps:
       - name: Checkout
@@ -287,7 +287,7 @@ jobs:
           # The action's defaults plus more memory: with the default 2 GB the
           # emulator went offline mid-shard and hung on app launches.
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -memory 4096
-          script: .github/scripts/android-ui-suite.sh "$RUNNER_TEMP/android-app/app-debug.apk" ${{ matrix.shard }} 4
+          script: .github/scripts/android-ui-suite.sh "$RUNNER_TEMP/android-app/app-debug.apk" ${{ matrix.shard }} 6
 
       - name: Upload Android UI artifacts
         if: always()
@@ -299,7 +299,7 @@ jobs:
             ${{ runner.temp }}/metro-android.log
 
   ui-test-ios:
-    name: ui-test-ios (shard ${{ matrix.shard }} of 3)
+    name: ui-test-ios (shard ${{ matrix.shard }} of 4)
     needs: build-ios
     runs-on: macos-latest
     timeout-minutes: 45
@@ -307,7 +307,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4]
 
     env:
       MAESTRO_DRIVER_STARTUP_TIMEOUT: '300000'
@@ -372,7 +372,7 @@ jobs:
             | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>console.log(JSON.parse(d).launchAsset.url))')"
           echo "Warming up $bundle_url"
           curl --fail --silent --output /dev/null --max-time 600 "$bundle_url"
-          flows="$(node example/.maestro/shard.mjs ${{ matrix.shard }} 3)"
+          flows="$(node example/.maestro/shard.mjs ${{ matrix.shard }} 4)"
           echo "Flows in this shard: $flows"
           test -n "$flows"
           # shellcheck disable=SC2086 # the shard is a space-separated list of files
