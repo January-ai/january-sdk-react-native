@@ -75,7 +75,7 @@ jest.mock('../NativeJanuaryReactNative', () => ({
       JSON.stringify({
         id: 'water-1',
         amount: { value: 8, unit: 'fl_oz' },
-        consumed_at: '2026-09-10T14:30:15.123Z',
+        created_at: '2026-09-10T14:30:15.123Z',
       })
     ),
     waterLogsDelete: jest.fn(async () => '{}'),
@@ -87,7 +87,7 @@ jest.mock('../NativeJanuaryReactNative', () => ({
     weightLogsCreate: jest.fn(async () =>
       JSON.stringify({
         weight: { value: 150, unit: 'lb' },
-        measured_at: '2026-09-10T14:30:15.123Z',
+        created_at: '2026-09-10T14:30:15.123Z',
       })
     ),
     weightLogsList: jest.fn(async () =>
@@ -268,6 +268,54 @@ describe('January React Native SDK', () => {
     expect(mockNativeModule.foodAnalysisAnalyzeDescription).toHaveBeenCalled();
   });
 
+  it('returns log times under the SDK names from either native bridge', async () => {
+    const client = new JanuaryClient({
+      clientTokenProvider: async () => ({ token: 'ct-test', expiresIn: 1_800 }),
+      endUserId: 'demo-user',
+    });
+    // The Android bridge sends the SDK's own names.
+    mockNativeModule.waterLogsCreate.mockResolvedValueOnce(
+      JSON.stringify({
+        id: 'water-3',
+        amount: { value: 8, unit: 'fl_oz' },
+        consumedAt: '2026-09-11T08:00:00.000Z',
+      })
+    );
+    mockNativeModule.weightLogsCreate.mockResolvedValueOnce(
+      JSON.stringify({
+        weight: { value: 70, unit: 'kg' },
+        measuredAt: '2026-09-11T08:00:00.000Z',
+      })
+    );
+    const water = await client.waterLogs.create({
+      amount: { value: 8, unit: 'fl_oz' },
+    });
+    const weight = await client.weightLogs.create({
+      weight: { value: 70, unit: 'kg' },
+    });
+    expect(water).toEqual({
+      id: 'water-3',
+      amount: { value: 8, unit: 'fl_oz' },
+      consumedAt: '2026-09-11T08:00:00.000Z',
+    });
+    expect(weight).toEqual({
+      weight: { value: 70, unit: 'kg' },
+      measuredAt: '2026-09-11T08:00:00.000Z',
+    });
+
+    // The iOS SDK encodes its logs with the API's key, created_at.
+    const iosWater = await client.waterLogs.create({
+      amount: { value: 8, unit: 'fl_oz' },
+    });
+    const iosWeight = await client.weightLogs.create({
+      weight: { value: 150, unit: 'lb' },
+    });
+    expect(iosWater.consumedAt).toBe('2026-09-10T14:30:15.123Z');
+    expect(iosWeight.measuredAt).toBe('2026-09-10T14:30:15.123Z');
+    expect(iosWater).not.toHaveProperty('createdAt');
+    expect(iosWeight).not.toHaveProperty('createdAt');
+  });
+
   it('exposes water and weight logs through the native SDKs', async () => {
     const client = new JanuaryClient({
       clientTokenProvider: async () => ({ token: 'ct-test', expiresIn: 1_800 }),
@@ -339,7 +387,7 @@ describe('January React Native SDK', () => {
       JSON.stringify({
         id: 'water-2',
         amount: { value: 0.125, unit: 'cup' },
-        consumed_at: '2026-09-10T14:30:15.123Z',
+        created_at: '2026-09-10T14:30:15.123Z',
       })
     );
     mockNativeModule.waterLogsList.mockResolvedValueOnce(

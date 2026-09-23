@@ -332,13 +332,16 @@ export class JanuaryClient {
       create: async (request) => {
         this.assertActive();
         assertMeasurement(request.amount, VOLUME_UNITS, 'amount');
-        return parseNativeJson<WaterLog>(
-          await native.waterLogsCreate(
-            this.clientId,
-            request.amount.value,
-            request.amount.unit,
-            request.consumedAt ?? null
-          )
+        return withLogTime(
+          parseNativeJson<WaterLog & { createdAt?: string }>(
+            await native.waterLogsCreate(
+              this.clientId,
+              request.amount.value,
+              request.amount.unit,
+              request.consumedAt ?? null
+            )
+          ),
+          'consumedAt'
         );
       },
       delete: async (id) => {
@@ -368,13 +371,16 @@ export class JanuaryClient {
       create: async (request) => {
         this.assertActive();
         assertMeasurement(request.weight, WEIGHT_UNITS, 'weight');
-        return parseNativeJson<WeightLog>(
-          await native.weightLogsCreate(
-            this.clientId,
-            request.weight.value,
-            request.weight.unit,
-            request.measuredAt ?? null
-          )
+        return withLogTime(
+          parseNativeJson<WeightLog & { createdAt?: string }>(
+            await native.weightLogsCreate(
+              this.clientId,
+              request.weight.value,
+              request.weight.unit,
+              request.measuredAt ?? null
+            )
+          ),
+          'measuredAt'
         );
       },
       list: async (request) => {
@@ -528,6 +534,24 @@ function assertMeasurement(
 function describeUnits(units: readonly string[]): string {
   if (units.length <= 2) return units.join(' or ');
   return `${units.slice(0, -1).join(', ')}, or ${units[units.length - 1]}`;
+}
+
+/**
+ * The API calls every log's time `created_at`. The Android bridge already hands
+ * over the SDK's own name (`consumedAt`, `measuredAt`); the iOS SDK encodes its
+ * logs with the wire key, which arrives here as `createdAt`. Both come out under
+ * the SDK's name.
+ */
+function withLogTime<T extends { createdAt?: string }, K extends string>(
+  log: T,
+  key: K
+): Omit<T, 'createdAt'> & Record<K, string> {
+  const { createdAt, ...rest } = log;
+  const existing = (rest as Record<string, unknown>)[key];
+  return {
+    ...rest,
+    [key]: typeof existing === 'string' ? existing : createdAt,
+  } as Omit<T, 'createdAt'> & Record<K, string>;
 }
 
 function parseNativeJson<T>(json: string): T {
