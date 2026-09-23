@@ -34,6 +34,24 @@ describe('adding foods to a saved food log', () => {
     ]);
   });
 
+  it('refuses rather than guess the amount of a logged food', () => {
+    const banana = { id: 'banana', serving: { id: 'medium', quantity: 1 } };
+    for (const quantity of [undefined, 0, -1, Number.NaN, Infinity]) {
+      const withAmount: FoodLog = {
+        ...log,
+        foods: [
+          {
+            ...log.foods[0]!,
+            consumedServing: { id: 'cup', quantity },
+          },
+        ],
+      };
+      expect(() => foodsAfterAdding(withAmount, [banana])).toThrow(
+        "Oats has no logged amount to keep, so foods can't be added"
+      );
+    }
+  });
+
   it('refuses rather than drop a logged food it cannot send back', () => {
     const withoutIds: FoodLog = {
       ...log,
