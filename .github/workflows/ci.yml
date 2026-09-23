@@ -285,8 +285,11 @@ jobs:
           arch: x86_64
           profile: pixel_6
           # The action's defaults plus more memory: with the default 2 GB the
-          # emulator went offline mid-shard and hung on app launches.
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -memory 4096
+          # emulator went offline mid-shard and hung on app launches. And an
+          # emulated back camera instead of none: without any camera the
+          # system camera app still opens for Take photo, crashes, and takes
+          # the demo down with it.
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back emulated -memory 4096
           script: .github/scripts/android-ui-suite.sh "$RUNNER_TEMP/android-app/app-debug.apk" ${{ matrix.shard }} 6
 
       - name: Upload Android UI artifacts

@@ -12,8 +12,9 @@ tags:
     id: tab-scan
 - assertVisible:
     id: scan-guide
-# Take photo: a simulator, or an emulator without a camera, says it cannot
-# open one; an emulator's camera opens, and Back returns without a photo.
+# Take photo: a simulator says it cannot open a camera; an emulator's camera
+# opens, and Back returns without a photo. The emulator needs a camera: with
+# none, its camera app still opens, crashes, and Android closes the demo too.
 - tapOn:
     id: scan-camera
 - runFlow:
