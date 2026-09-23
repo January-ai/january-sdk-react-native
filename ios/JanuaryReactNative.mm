@@ -23,7 +23,7 @@
 
 - (NSString *)getNativeModuleVersion
 {
-  return @"0.2.1";
+  return @"0.3.0";
 }
 
 - (NSString * _Nullable)configureClient:(NSString *)clientId

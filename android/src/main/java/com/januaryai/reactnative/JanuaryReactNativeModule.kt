@@ -130,7 +130,7 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
   private val pendingTokenRequests = ConcurrentHashMap<String, PendingTokenRequest>()
 
   override fun getNativeModuleVersion(): String {
-    return "0.2.1"
+    return "0.3.0"
   }
 
   override fun configureClient(clientId: String, endUserId: String, timezone: String?): String? =
