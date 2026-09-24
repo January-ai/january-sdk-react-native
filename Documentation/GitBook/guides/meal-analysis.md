@@ -1,6 +1,9 @@
-# Meal analysis
+# Food analysis
 
-Analyze a natural-language meal description:
+Every call on this page needs the `food_analysis:write` scope. An analysis can
+take tens of seconds, so show progress.
+
+## Analyze a description
 
 ```ts
 const scan = await january.foodAnalysis.analyzeDescription({
@@ -8,35 +11,63 @@ const scan = await january.foodAnalysis.analyzeDescription({
 });
 ```
 
-Analyze a remote image URL or base64 data URI:
+`analyzeDescription` takes only `query`.
+
+## Analyze a photo
+
+`analyzePhoto` takes a remote image URL or a base64 data URI. The SDK has no
+camera UI; this sample uses `expo-image-picker`:
 
 ```ts
-const scan = await january.foodAnalysis.analyzePhoto({
-  image: imageUrlOrDataUri,
-});
+import * as ImagePicker from 'expo-image-picker';
+
+const { granted } = await ImagePicker.requestCameraPermissionsAsync();
+const picked = granted
+  ? await ImagePicker.launchCameraAsync({ base64: true, quality: 0.8 })
+  : undefined;
+const asset = picked && !picked.canceled ? picked.assets[0] : undefined;
+if (asset?.base64) {
+  const scan = await january.foodAnalysis.analyzePhoto({
+    image: `data:${asset.mimeType ?? 'image/jpeg'};base64,${asset.base64}`,
+  });
+}
 ```
 
-The API uses the reasoning-based analyzer by default. Pass
-`reasoningEffort: 'none'` for the standard analyzer (`'xhigh'` asks for the
-reasoning-based one explicitly); the result shape and cost are the same.
+Keep photos to about 1,000 px on the longest edge, the size the iOS SDK's
+`PhotoScanImage` sends. Resize with an image library such as
+`expo-image-manipulator` before you encode the photo.
 
-Each detection's `food` carries the selected catalog `serving` (`id`,
-`quantity`, `unit`, where `quantity` is the size of one serving) and the
-`quantity` eaten, so a detection logs without another lookup:
+`analyzePhoto` uses the reasoning-based analyzer by default. Pass
+`reasoningEffort: 'none'` for the standard one; the result shape and cost are
+the same.
+
+## Log a detection
+
+Each detection's `food` is ready to log:
+
+| Field | Meaning |
+| --- | --- |
+| `food.serving.id` | The catalog serving to log |
+| `food.serving.quantity`, `food.serving.unit` | The size of one serving |
+| `food.quantity` | Servings eaten; becomes `FoodSelection.serving.quantity` |
+| `food.nutrients` | Already scaled to `food.quantity` |
+
+The API always returns `food.id`, `food.serving.id`, and `food.quantity`, but
+the TypeScript types mark them optional, so guard them:
 
 ```ts
-const foods = scan.detections.flatMap((detection) => {
-  const { id, serving, quantity } = detection.food;
-  // Skip a detection the API could not size rather than inventing a quantity;
-  // let the user pick a serving for it instead.
-  if (!id || !serving.id || quantity == null) return [];
-  return [{ id, serving: { id: serving.id, quantity } }];
-});
+const foods: FoodSelection[] = scan.detections.flatMap(({ food }) =>
+  food.id && food.serving.id && food.quantity != null
+    ? [{ id: food.id, serving: { id: food.serving.id, quantity: food.quantity } }]
+    : []
+);
 ```
 
-`nutrients` on each detection are already scaled to `quantity`.
+Pass `foods` to [`foodLogs.create`](food-logs.md).
 
-Correct a prior result by passing the complete analysis and an instruction:
+## Correct a result
+
+Send the complete analysis and an instruction:
 
 ```ts
 const corrected = await january.foodAnalysis.correct({
@@ -44,7 +75,3 @@ const corrected = await january.foodAnalysis.correct({
   instruction: 'The drink was unsweetened and there was only one slice of toast',
 });
 ```
-
-The React Native package exposes analysis APIs but does not bundle a camera UI.
-Use the application’s preferred camera or image-picker library, then pass a
-supported URL or data URI to the SDK.

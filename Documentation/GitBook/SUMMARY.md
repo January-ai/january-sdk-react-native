@@ -14,13 +14,13 @@
 
 * [Client lifecycle](concepts/client-lifecycle.md)
 * [User identity and timezone](concepts/user-identity-and-timezone.md)
-* [Food hydration and portions](concepts/food-hydration-and-portions.md)
+* [Food details and portions](concepts/food-hydration-and-portions.md)
 
 ## Guides
 
 * [Foods](guides/foods.md)
 * [Restaurants](guides/restaurants.md)
-* [Meal analysis](guides/meal-analysis.md)
+* [Food analysis](guides/meal-analysis.md)
 * [Voice capture](guides/voice-capture.md)
 * [Food logs](guides/food-logs.md)
 * [Water and weight logs](guides/water-and-weight-logs.md)
@@ -30,6 +30,7 @@
 
 * [Client and resources](reference/client-and-resources.md)
 * [API reference](reference/api-reference.md)
+* [Errors](reference/errors.md)
 * [Models and validation](reference/models-and-validation.md)
 * [Platform and security](reference/platform-and-security.md)
 * [Testing](reference/testing.md)
