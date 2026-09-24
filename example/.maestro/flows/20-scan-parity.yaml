@@ -31,11 +31,14 @@ tags:
       id: scan-results
     timeout: 15000
 - takeScreenshot: example/.maestro/artifacts/react-native-scan-result
-- scrollUntilVisible:
-    element:
-      id: scan-correct
-    direction: DOWN
-- tapOn: Correct result
+# Scrolling only until the button shows can leave it at the bottom edge, under
+# the tab bar and Android's navigation bar, where the tap pressed Home.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: scan-correct
+- tapOn:
+    id: scan-correct
 - assertVisible: Correct result
 - takeScreenshot: example/.maestro/artifacts/react-native-correction-initial
 - tapOn:
