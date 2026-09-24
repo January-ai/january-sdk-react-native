@@ -87,7 +87,7 @@ To fix formatting errors, run the following:
 yarn lint --fix
 ```
 
-Remember to add tests for your change if possible. Run the unit tests by:
+Remember to add tests for your change if possible. Run the unit tests with:
 
 ```sh
 yarn test
