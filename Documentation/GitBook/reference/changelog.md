@@ -1,10 +1,8 @@
 # Changelog
 
-Release notes are maintained in the repository’s root
-[`CHANGELOG.md`](../../../CHANGELOG.md).
+Release notes are in the repository's
+[`CHANGELOG.md`](https://github.com/January-ai/january-sdk-react-native/blob/main/CHANGELOG.md).
 
-React Native releases use Semantic Versioning, and each release pins one iOS
-and one Android SDK version.
-
-Stable releases are published to npm under the `latest` distribution tag.
-Prerelease versions use the `beta` tag.
+Releases follow Semantic Versioning, and each pins one iOS and one Android SDK
+version ([pinned native versions](platform-and-security.md#pinned-native-versions)).
+Stable releases are published to npm under the `latest` tag.

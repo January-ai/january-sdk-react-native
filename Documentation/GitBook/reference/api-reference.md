@@ -1,5 +1,8 @@
 # API reference
 
+Every method returns a promise. A failed call rejects as described in
+[Errors](errors.md).
+
 ## Foods
 
 | Method | Request | Result |
@@ -18,7 +21,7 @@
 | `restaurants.searchMenuItems` | `SearchRestaurantsRequest` | `SearchRestaurantMenuItemsResponse` |
 | `restaurants.getMenuItems` | `GetRestaurantMenuItemsRequest` | `GetRestaurantMenuItemsResponse` |
 
-## Meal analysis
+## Food analysis
 
 | Method | Request | Result |
 | --- | --- | --- |
@@ -26,7 +29,7 @@
 | `foodAnalysis.analyzePhoto` | `AnalyzePhotoRequest` | `FoodScan` |
 | `foodAnalysis.correct` | `CorrectPhotoScanRequest` | `FoodScan` |
 
-## User resources
+## Logs and glucose
 
 | Method | Request | Result |
 | --- | --- | --- |
@@ -41,9 +44,6 @@
 | `weightLogs.create` | `CreateWeightLogRequest` | `WeightLog` |
 | `weightLogs.list` | `ListWeightLogsRequest` | `ListWeightLogsResponse` |
 | `glucose.predict` | `PredictGlucoseRequest` | `GlucosePrediction` |
-
-All methods return promises and reject when local validation, authentication,
-transport, or native SDK processing fails.
 
 ## Voice capture
 

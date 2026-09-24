@@ -1,34 +1,44 @@
 # First request
 
-Search for foods after constructing the client:
+This component creates a client, searches for a food, and shows the result. It
+uses the `tokenProvider` from [Authentication](authentication.md).
 
-```ts
-import { FoodCategory, JanuaryClient } from '@januaryai/react-native';
+```tsx
+import { useEffect, useState } from 'react';
+import { Text } from 'react-native';
+import { JanuaryClient } from '@januaryai/react-native';
+import { tokenProvider } from './januaryTokenProvider';
 
-const january = new JanuaryClient({
-  endUserId: session.user.id,
-  clientTokenProvider: getJanuaryClientToken,
-});
+export function FirstRequest({ userId }: { userId: string }) {
+  const [status, setStatus] = useState('Searching…');
 
-const search = await january.foods.search({
-  query: 'greek yogurt',
-  category: FoodCategory.generic,
-  limit: 10,
-});
+  useEffect(() => {
+    const january = new JanuaryClient({
+      endUserId: userId,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      clientTokenProvider: tokenProvider,
+    });
+    january.foods
+      .search({ query: 'greek yogurt', category: 'generic', limit: 10 })
+      .then(
+        (results) => setStatus(`Found ${results.totalCount} foods`),
+        (error: { code?: string; message: string }) =>
+          setStatus(`${error.code ?? 'error'}: ${error.message}`)
+      );
+    return () => january.dispose();
+  }, [userId]);
 
-const first = search.items[0];
-if (first) {
-  const food = await january.foods.get({ foodId: first.id });
-  console.log(food.name, food.servings);
+  return <Text>{status}</Text>;
 }
 ```
 
-Search results are discovery records. Hydrate the selected food with
-`foods.get`, let the user select a serving and quantity, and retain those IDs
-for food logs or glucose prediction.
+Render it with the signed-in user's end-user ID. Any count, even 0, means the
+installation and authentication work. `scope_insufficient` means the token
+lacks `foods:read`. Other codes are in [Errors](../reference/errors.md), and
+[Troubleshooting](../reference/troubleshooting.md) covers the common setup
+failures.
 
-Dispose the client when its signed-in user session ends:
+To log a food, the app needs a serving and a quantity as well; see
+[Food details and portions](../concepts/food-hydration-and-portions.md).
 
-```ts
-january.dispose();
-```
+Next: [Example app](example-app.md).

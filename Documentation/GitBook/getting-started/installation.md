@@ -1,60 +1,30 @@
 # Installation
 
-Install the package with the package manager used by your application:
+Check the [requirements](../README.md#requirements) first, then install the
+package with `npm install @januaryai/react-native` or
+`yarn add @januaryai/react-native` and follow the React Native or the Expo
+steps below.
 
-```sh
-npm install @januaryai/react-native
-```
+The package brings the January iOS and Android SDK versions it was tested with
+([pinned versions](../reference/platform-and-security.md#pinned-native-versions)).
+Don't add `January` or `ai.january:january-sdk-android` to your app yourself.
 
-```sh
-yarn add @januaryai/react-native
-```
+## React Native
 
-## iOS
-
-Install pods and rebuild the native application:
+### iOS
 
 ```sh
 npx pod-install
 npx react-native run-ios
 ```
 
-Autolinking discovers the React Native module. The package podspec installs the
-pinned January iOS SDK, so the application should not add `January` separately.
+### Android
 
-## Android
-
-Rebuild the Android application after installation:
-
-```sh
-npx react-native run-android
-```
-
-Autolinking adds the bridge and Gradle resolves the pinned January Android SDK
-from Maven Central. The application should not declare the native SDK directly.
-
-Set `minSdkVersion` in the consuming application's existing
-`android/build.gradle` configuration to 24 or higher. Keep its other
-`buildscript` and `ext` settings unchanged. For example:
+Enable core library desugaring in `android/app/build.gradle`. The January
+Android SDK uses `java.time`, and every app that depends on it must enable
+desugaring, whatever its `minSdkVersion`:
 
 ```groovy
-// android/build.gradle
-buildscript {
-    ext {
-        // ...keep the application's other ext values
-        minSdkVersion = 24
-    }
-}
-```
-
-The January Android SDK supports API 24 and uses `java.time`. Its AAR metadata
-requires every app that depends on it to enable core library desugaring with
-`desugar_jdk_libs` 2.1.5 or later, whatever the app's `minSdkVersion`. Without
-it, the build fails with `Dependency 'ai.january:january-sdk-android:…' requires
-core library desugaring to be enabled`. Enable it in the app module:
-
-```groovy
-// android/app/build.gradle
 android {
     compileOptions {
         coreLibraryDesugaringEnabled true
@@ -66,54 +36,57 @@ dependencies {
 }
 ```
 
-Use JDK 17 for Android builds. Newer Java releases may not be compatible with
-the React Native Gradle and native CMake toolchain.
+Then rebuild:
+
+```sh
+npx react-native run-android
+```
+
+React Native 0.83 projects set `minSdkVersion = 24` in `android/build.gradle`,
+the SDK's minimum; if yours is lower, raise it to 24. Build with JDK 17–21.
 
 ## Expo
 
-```sh
-npx expo install @januaryai/react-native
-npx expo install expo-build-properties
-npx expo run:ios
-# or
-npx expo run:android
-```
+The SDK has native code, so it runs in a development build (Expo SDK 55 or
+later), not in Expo Go.
 
-This package contains native code. Use an Expo development build and rebuild it
-after installing or upgrading the SDK. The standard Expo Go app cannot load the
-module.
+1. Install the package:
 
-In the Expo application's existing `app.json` or `app.config.js`, merge the
-plugin configuration below with the application's other settings. The
-`@januaryai/react-native` plugin enables core library desugaring in the
-generated Android project, which every Android build needs, whatever its
-`minSdkVersion`:
+   ```sh
+   npx expo install @januaryai/react-native
+   ```
 
-```json
-{
-  "expo": {
-    "plugins": [
-      "@januaryai/react-native",
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "minSdkVersion": 24
-          }
-        }
-      ]
-    ]
-  }
-}
-```
+2. Add `"@januaryai/react-native"` to `expo.plugins` in `app.json`. The plugin
+   enables core library desugaring, which every Android build needs.
+
+   ```json
+   { "expo": { "plugins": ["@januaryai/react-native"] } }
+   ```
+
+3. Regenerate the native projects and build:
+
+   ```sh
+   npx expo prebuild --clean
+   npx expo run:ios    # or: npx expo run:android
+   ```
+
+Config plugins run only during prebuild. If you commit `ios/` and `android/`
+and don't run prebuild, follow the [React Native](#react-native) steps instead.
+Expo SDK 55 sets `minSdkVersion` to 24 by default; don't lower it with
+`expo-build-properties`.
+
+Rebuild the development build whenever you install or upgrade the SDK.
 
 ## Confirm linking
 
 ```ts
 import { getNativeModuleVersion } from '@januaryai/react-native';
 
-console.log(getNativeModuleVersion());
+console.log(getNativeModuleVersion()); // "0.3.0" when linked, null when not
 ```
 
-If this reports that the package is not linked, reinstall pods on iOS, clean the
-native build, and rebuild the application rather than only restarting Metro.
+`null` means the running binary lacks the native module. Run `npx pod-install`
+(React Native) or `npx expo prebuild --clean` (Expo), then rebuild the app.
+Restarting Metro is not enough.
+
+Next: [Backend token endpoint](backend-token-endpoint.md).

@@ -1,24 +1,50 @@
 # Client lifecycle
 
-Create one `JanuaryClient` for the active signed-in user and reuse it across
-screens. Each client owns a native client instance and, in production, a token
-request subscription.
+Create one `JanuaryClient` per signed-in user and share it across screens.
+Each client has its own native client and token cache and never changes user.
+On sign-out or an account switch, dispose the client and create a new one. Do
+the same if the user's timezone changes.
+
+## In React
 
 ```ts
-const january = new JanuaryClient({
-  endUserId: session.user.id,
-  timezone: session.timezone,
-  clientTokenProvider: getJanuaryClientToken,
-});
+import { useEffect, useState } from 'react';
+import { JanuaryClient } from '@januaryai/react-native';
+import { tokenProvider } from './januaryTokenProvider';
+
+/** The signed-in user's client; undefined while signed out. */
+export function useJanuaryClient(userId: string | undefined) {
+  const [client, setClient] = useState<JanuaryClient>();
+
+  useEffect(() => {
+    if (!userId) return;
+    const next = new JanuaryClient({
+      endUserId: userId,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      clientTokenProvider: tokenProvider,
+    });
+    setClient(next);
+    return () => {
+      setClient(undefined);
+      next.dispose();
+    };
+  }, [userId]);
+
+  return client;
+}
 ```
 
-Call `dispose()` when the user signs out or the application permanently replaces
-the client:
+Call the hook once, in the component that owns the signed-in session, and pass
+the client down through a context. It creates a client for each end-user ID
+and disposes it when the ID changes or the component unmounts.
 
-```ts
-january.dispose();
-```
+Don't create the client in `useMemo`. Strict Mode runs effect cleanups once in
+development, which would dispose a client the next render still uses. Don't
+create it at module scope either: the constructor throws when the native
+module isn't linked ([Troubleshooting](../reference/troubleshooting.md)).
 
-Calls made after disposal throw an error. Do not construct a new client for
-every request or render. In React, keep it in session-level state or a context
-provider and dispose it in that owner’s cleanup path.
+## Disposal
+
+`dispose()` releases the native client and stops its token requests. After
+that, every call rejects with `This JanuaryClient has been disposed.`. Calling
+`dispose()` again does nothing.

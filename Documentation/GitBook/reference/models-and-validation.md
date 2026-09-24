@@ -1,11 +1,12 @@
 # Models and validation
 
 All public request and response types are exported from
-`@januaryai/react-native`. Import models with `import type` and use the exported
-`FoodCategory` constant when a runtime category value is useful.
+`@januaryai/react-native`; import them with `import type`. Food categories are
+plain strings (`'generic'`, `'branded'`, `'recipe'`).
 
-The TypeScript wrapper validates common input errors before crossing the native
-bridge:
+The SDK checks these inputs before it sends a request. Most checks run in the
+TypeScript wrapper and reject with an `Error` that has no `code`; the message
+names the field ([Errors](errors.md)).
 
 | Input | Validation |
 | --- | --- |
@@ -13,6 +14,7 @@ bridge:
 | Food query, food ID, barcode, log ID | Required and non-empty |
 | Autocomplete limit | Integer from 1 through 20 (default 8) |
 | Search limit | Integer from 1 through 50 (default 10) |
+| Restaurant, menu-item, and menu limits | Integer from 1 through 100 |
 | Restaurant latitude | -90 through 90 |
 | Restaurant longitude | -180 through 180 |
 | Restaurant radius | 1 through 50,000 meters |
@@ -21,11 +23,11 @@ bridge:
 | Glucose start time | Required and non-empty |
 | Food log update | At least one of `foods`, `timestampUTC`, or `name` |
 | Water amount, weight | Positive value with a unit of `fl_oz`/`ml`/`cup` or `lb`/`kg` |
-| Water and weight ranges | `start` and `end` required and non-empty |
+| Food, water, and weight log ranges | `start` and `end` required and non-empty |
 
-Response fields marked optional may legitimately be absent. Avoid non-null
-assertions in production UI and provide fallbacks for names, images, nutrition,
-servings, impact levels, and response IDs.
+Response fields marked optional may be absent. Avoid non-null assertions in
+production UI, and provide fallbacks for names, images, nutrition, servings,
+impact levels, and response IDs.
 
 ## Units
 
@@ -34,6 +36,6 @@ servings, impact levels, and response IDs.
 | `VolumeUnit` | `'fl_oz'` (fluid ounces), `'ml'` (milliliters), `'cup'` (a US cup of 8 fl oz) |
 | `WeightUnit` | `'lb'` (pounds), `'kg'` (kilograms) |
 
-A water amount is 1–811.5 `fl_oz`, 30–24000 `ml`, or 0.1–101.4 `cup`; a
-weight is 10–1000 `lb` or 4.5–453.6 `kg`. The API enforces these ranges.
+January enforces a range per unit; see
+[Accepted values](../guides/water-and-weight-logs.md#accepted-values).
 Responses may carry a unit newer than this SDK.

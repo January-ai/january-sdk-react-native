@@ -1,31 +1,69 @@
 # Water and weight logs
 
-Water and weight logs belong to the client’s end user, like food logs. Dates
-are inclusive calendar days (`YYYY-MM-DD`) in the client’s timezone, so a
-request with the same `start` and `end` reads back exactly one day.
+Water logs need the `water_logs:write` scope to create and delete and
+`water_logs:read` to list; weight logs need `weight_logs:write` and
+`weight_logs:read`.
+
+List dates are inclusive `YYYY-MM-DD` days in the client's timezone
+([User identity and timezone](../concepts/user-identity-and-timezone.md)), so
+the same `start` and `end` read back one day. A list returns at most 100 days,
+the most recent when more match; move `end` back to read older days. A `start`
+more than five years back rejects with `date_range_too_large`.
 
 ## Water
 
-Log an amount in fluid ounces (`fl_oz`), milliliters (`ml`), or US cups of
-8 fl oz (`cup`). An end user’s total is capped at 24 L (about 811 fl oz) per
-day; a log that would pass it is rejected, and the error’s `code` is
-`daily_water_limit_exceeded`.
+Log an amount in `fl_oz`, `ml`, or `cup` (a US cup of 8 fl oz). This helper
+reports the daily cap and returns the new log, whose `id` you need to delete
+it:
 
 ```ts
-const log = await january.waterLogs.create({
-  amount: { value: 8, unit: 'fl_oz' },
-  // Optional; omitted means now. Any ISO-8601 offset is accepted.
-  consumedAt: new Date().toISOString(),
-});
+import type { VolumeUnit } from '@januaryai/react-native';
+
+async function logWater(value: number, unit: VolumeUnit, consumedAt?: string) {
+  try {
+    return await january.waterLogs.create({ amount: { value, unit }, consumedAt });
+  } catch (error) {
+    if ((error as { code?: string }).code === 'daily_water_limit_exceeded') {
+      showMessage('That would pass 24 L for the day.');
+      return undefined;
+    }
+    throw error;
+  }
+}
+
+const log = await logWater(8, 'fl_oz'); // consumedAt omitted: now
 ```
 
-`create` is not idempotent: after a timed-out create, check the day’s total
-before retrying, since a retry records the water twice and counts twice toward
-the cap.
+* **Past days.** To log for an earlier day, send local noon of that day, which
+  stays on that day in the device's timezone:
 
-Read daily totals back in the unit you display (`fl_oz` when `unit` is
-omitted), whichever units the logs were made in. Only days with water logged
-are present, oldest first, and a total is rounded to one decimal place:
+  ```ts
+  // Local noon on a YYYY-MM-DD day, as an ISO 8601 instant.
+  function noonOn(day: string): string {
+    const [year, month, date] = day.split('-').map(Number) as [number, number, number];
+    return new Date(year, month - 1, date, 12).toISOString();
+  }
+
+  await logWater(250, 'ml', noonOn('2026-09-10'));
+  ```
+
+* **Daily cap.** An end user's water is capped at 24 L (about 811 fl oz) per
+  UTC calendar day of `consumedAt`, whatever offset you send. Lists group days
+  in the client's timezone, so near midnight a listed day's total can differ
+  from what the cap counted.
+* **Retries.** Creating is not idempotent. After a create that timed out, list
+  the day before you retry; a retry records the water twice and counts it
+  twice toward the cap.
+* **Deletes.** Deleting is idempotent: an unknown or already deleted log also
+  succeeds. A deleted amount no longer counts toward the cap.
+
+  ```ts
+  if (log) await january.waterLogs.delete(log.id);
+  ```
+
+A list returns one total per day that has water, oldest first, in the unit you
+ask for (`fl_oz` by default) whatever units the logs used, rounded to one
+decimal place:
 
 ```ts
 const { items } = await january.waterLogs.list({
@@ -36,25 +74,19 @@ const { items } = await january.waterLogs.list({
 items.forEach((day) => console.log(day.date, day.total.value, day.total.unit));
 ```
 
-Keep the `id` from `create` to remove a log. Deleting an unknown or already
-deleted log also succeeds, so a delete is safe to retry:
-
-```ts
-await january.waterLogs.delete(log.id);
-```
-
 ## Weight
 
-Log a measurement in pounds or kilograms. Every measurement is kept; listing
-shows one weight per day, the latest measured, so logging again later the same
-day replaces what that day shows. `create` is not idempotent either: a retried
-create records the measurement twice, which listing then shows once.
+Log a measurement in `lb` or `kg`. Every measurement is kept, and a list shows
+one weight per day: the one with the latest `measuredAt` that day. A
+measurement backdated to earlier that day doesn't change what the day shows.
+Weight logs
+have no ID and can't be updated or deleted. Creating is not idempotent either:
+a retried create records the measurement twice, which the list shows once.
 
 ```ts
 await january.weightLogs.create({
   weight: { value: 150, unit: 'lb' },
-  // Optional; omitted means now.
-  measuredAt: new Date().toISOString(),
+  measuredAt: new Date().toISOString(), // optional; omitted means now
 });
 
 const { items } = await january.weightLogs.list({
@@ -64,15 +96,13 @@ const { items } = await january.weightLogs.list({
 items.forEach((day) => console.log(day.date, day.weight.value, day.weight.unit));
 ```
 
-## Ranges and validation
+## Accepted values
 
-`create` rejects a non-positive value or an unknown unit before the request is
-sent. The API accepts 1–811.5 fl_oz, 30–24000 ml, or 0.1–101.4 cup of water
-and 10–1000 lb or 4.5–453.6 kg of weight per log. A range whose `start` is more
-than five years ago is refused with the code `date_range_too_large`; at most
-100 days are returned, the most recent when more match.
+| Log | Accepted per entry |
+| --- | --- |
+| Water | 1–811.5 `fl_oz`, 30–24,000 `ml`, or 0.1–101.4 `cup` |
+| Weight | 10–1,000 `lb`, or 4.5–453.6 `kg` |
 
-Client tokens need the `water_logs:read`, `water_logs:write`,
-`weight_logs:read`, and `weight_logs:write` scopes for these operations; the
-[token relay](https://github.com/January-ai/january-token-relay) requests them
-by default.
+The SDK rejects a value that isn't positive, or an unknown unit, before
+sending the request; January enforces the ranges. The minimums don't convert
+exactly into one another, so send the unit the user entered.

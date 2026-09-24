@@ -1,25 +1,36 @@
-# Food hydration and portions
+# Food details and portions
 
-Use a three-stage flow whenever a feature needs a concrete consumed food:
+Logging a food or predicting glucose takes a `FoodSelection`: a food ID, a
+serving ID, and a quantity. Build one in three steps:
 
-1. Discover with `foods.search`, `foods.autocomplete`, or barcode lookup.
-2. Hydrate the selected item with `foods.get`.
-3. Select a serving ID and positive quantity.
+1. Find the food with `foods.search`, `foods.autocomplete`, or
+   `foods.lookupBarcode`.
+2. Fetch the full food with `foods.get`. Search and autocomplete results can
+   carry less detail.
+3. Pick one of its servings and a quantity greater than zero.
 
 ```ts
-const result = await january.foods.search({ query: 'oatmeal' });
-const summary = result.items[0];
-if (!summary) return;
+import type { FoodSelection, JanuaryClient } from '@januaryai/react-native';
 
-const food = await january.foods.get({ foodId: summary.id });
-const serving = food.servings.find((item) => item.isPrimary) ?? food.servings[0];
-if (!serving?.id) return;
+export async function selectFood(
+  january: JanuaryClient,
+  query: string,
+  quantity = 1
+): Promise<FoodSelection | undefined> {
+  const { items } = await january.foods.search({ query });
+  const match = items[0]; // in your UI, the result the user picked
+  if (!match) return undefined;
 
-const selection = {
-  id: food.id,
-  serving: { id: serving.id, quantity: 1 },
-};
+  const food = await january.foods.get({ foodId: match.id });
+  const serving = food.servings.find((s) => s.isPrimary) ?? food.servings[0];
+  if (!serving?.id) return undefined;
+
+  return { id: food.id, serving: { id: serving.id, quantity } };
+}
 ```
 
-Pass the resulting `FoodSelection` to food logs or glucose prediction. Do not
-infer serving IDs from labels, and do not submit zero or negative quantities.
+`quantity` is how many of that serving were eaten. Take serving IDs from
+`food.servings` as returned; don't build them from labels.
+
+A [food analysis](../guides/meal-analysis.md) detection already carries a
+serving and a quantity, so it can be logged without these steps.
