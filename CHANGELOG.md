@@ -8,6 +8,11 @@ This project uses Semantic Versioning.
 - `foods.autocomplete` and `foods.search` check `limit` against the API's
   ranges, 1–20 and 1–50, before crossing the bridge. The native SDKs already
   refused larger values; the wrapper allowed up to 100.
+- The example sizes searched foods as a number of servings. Food details opens
+  at one whole serving and sends its glucose prediction as the number of
+  servings in the amount shown: 3 oz of a "6 oz" serving is 0.5, where it used
+  to send 3. The food picker's calories are those of the servings it logs, so
+  one "6 oz" serving of a 100-calorie food shows 100, not 16.67.
 
 ## [0.3.0] - 2026-09-23
 

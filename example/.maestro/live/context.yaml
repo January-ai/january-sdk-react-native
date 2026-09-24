@@ -3,6 +3,9 @@ appId: ai.january.sdk.demo
 # api.js. Every live flow runs it right after the bootstrap:
 #
 #   - runFlow: ../live/context.yaml
+#
+# It also makes one request to check the API is answering, unless the flow
+# passes PROBE: "no" in the runFlow env.
 ---
 - tapOn:
     id: tab-search
@@ -23,5 +26,6 @@ appId: ai.january.sdk.demo
       CHECK: context
       USER_ID: ${output.liveUser}
       TIMEZONE: ${maestro.copiedText}
+      PROBE: "${typeof PROBE === 'undefined' ? '' : PROBE}"
 - tapOn:
     id: settings-close

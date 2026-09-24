@@ -203,6 +203,66 @@ describe('live API checks', () => {
     expect(maestro.logs.at(-1)).toContain('matches the app');
   });
 
+  it('checks the logged food and its calories, then deletes the log', () => {
+    let kcal = 100.3;
+    const maestro = fakeMaestro((url) => {
+      if (url.endsWith('/v1.2/food-logs/log-1')) return { status: 204 };
+      if (url.includes('/v1.2/food-logs?')) {
+        return {
+          status: 200,
+          body: {
+            items: [
+              {
+                id: 'log-1',
+                name: 'RN servings 123456',
+                foods: [
+                  {
+                    food_id: '70376084',
+                    quantity: kcal > 200 ? 6 : 1,
+                    nutrients: { calories: { unit: 'kcal', value: kcal } },
+                  },
+                ],
+              },
+            ],
+          },
+        };
+      }
+      return noLogsToday(url);
+    });
+    // A flow on a tight request budget skips the probe.
+    maestro.run({
+      CHECK: 'context',
+      TIMEZONE: 'America/New_York',
+      USER_ID: 'qa-user',
+      PROBE: 'no',
+    });
+    expect(maestro.requests).toHaveLength(0);
+
+    const saved = {
+      CHECK: 'food-log-saved',
+      NAME: 'RN servings 123456',
+      EXPECT_FOODS: '1',
+      EXPECT_FOOD_ID: '70376084',
+      EXPECT_KCAL: '100',
+    };
+    maestro.run(saved);
+    expect(maestro.logs.at(-1)).toContain('100.3 kcal, id log-1');
+    // Six servings of the "6 oz" serving: the ounces sent as the count.
+    kcal = 601.8;
+    expect(() => maestro.run(saved)).toThrow(
+      'has 601.8 kcal (servings sent: 6), expected about 100'
+    );
+    expect(() => maestro.run({ ...saved, EXPECT_FOOD_ID: '1' })).toThrow(
+      'logged food 70376084, expected 1'
+    );
+
+    maestro.run({ CHECK: 'food-log-delete' });
+    expect(maestro.requests.at(-1)).toBe(
+      'DELETE https://partners.january.ai/v1.2/food-logs/log-1'
+    );
+    expect(maestro.output.foodLogDeleted).toBe(true);
+  });
+
   it('never prints the client token, and mints it once per flow', () => {
     const maestro = fakeMaestro(noLogsToday);
     maestro.run({

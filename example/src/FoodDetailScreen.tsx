@@ -18,12 +18,19 @@ import type {
   DietRestriction,
   AlternativeFood,
   FoodSearchItem,
+  FoodSelection,
   GlucosePrediction,
   JanuaryClient,
 } from '@januaryai/react-native';
 
 import { palette, serifFont, sharedStyles } from './demoTheme';
 import { nutrientAmount } from './foodNutrients';
+import {
+  portionSelection,
+  servingsIn,
+  servingsScale,
+  wholeServing,
+} from './foodPortions';
 import {
   getFixtureFood,
   predictFixtureGlucose,
@@ -41,7 +48,9 @@ export function FoodDetailScreen({
   food: FoodSearchItem;
   onBack: () => void;
 }) {
-  const [quantity, setQuantity] = useState(1);
+  // The amount in the serving's own unit, as the screen shows it ("3 oz").
+  // Unset means one whole serving, so each serving opens at its listed size.
+  const [amount, setAmount] = useState<number>();
   const [showAlternatives, setShowAlternatives] = useState(false);
   const [showGlucose, setShowGlucose] = useState(false);
   const [food, setFood] = useState(initialFood);
@@ -72,9 +81,9 @@ export function FoodDetailScreen({
     food.servings.find((item) => item.id === selectedServingId) ??
     food.servings.find((item) => item.isPrimary) ??
     food.servings[0];
-  const servingQuantity = serving?.quantity ?? 1;
   const servingUnit = serving?.unit ?? 'serving';
-  const scale = (quantity * (serving?.scalingFactor ?? 1)) / servingQuantity;
+  const quantity = amount ?? wholeServing(serving);
+  const scale = servingsScale(servingsIn(quantity, serving), serving);
   return (
     <View style={sharedStyles.screen} testID="food-detail-screen">
       <CompactHeader onBack={onBack} title="Food details" />
@@ -137,6 +146,7 @@ export function FoodDetailScreen({
                   key={option.id || `${option.unit}-${index}`}
                   onPress={() => {
                     setSelectedServingId(option.id);
+                    setAmount(undefined);
                     setShowServings(false);
                   }}
                   style={[
@@ -168,7 +178,7 @@ export function FoodDetailScreen({
             <View style={styles.stepper}>
               <Pressable
                 accessibilityLabel="Decrease quantity"
-                onPress={() => setQuantity(Math.max(0.25, quantity - 0.25))}
+                onPress={() => setAmount(Math.max(0.25, quantity - 0.25))}
                 style={styles.stepperButton}
               >
                 <Text style={styles.stepperSymbol}>−</Text>
@@ -176,7 +186,7 @@ export function FoodDetailScreen({
               <View style={styles.stepperDivider} />
               <Pressable
                 accessibilityLabel="Increase quantity"
-                onPress={() => setQuantity(quantity + 0.25)}
+                onPress={() => setAmount(quantity + 0.25)}
                 style={styles.stepperButton}
               >
                 <Text style={styles.stepperSymbol}>+</Text>
@@ -255,9 +265,8 @@ export function FoodDetailScreen({
         fixtures={fixtures}
         food={food}
         onClose={() => setShowGlucose(false)}
-        quantity={quantity}
-        serving={`${formatNumber(servingQuantity)} ${servingUnit}`}
-        servingId={serving?.id}
+        portion={`${formatNumber(quantity)} ${servingUnit}`}
+        selection={portionSelection(food.id, serving, quantity)}
         visible={showGlucose}
       />
       <AlternativesSheet
@@ -391,18 +400,18 @@ export function FoodGlucoseSheet({
   fixtures,
   food,
   onClose,
-  quantity,
-  serving,
-  servingId,
+  portion,
+  selection,
   visible,
 }: {
   client: JanuaryClient;
   fixtures: boolean;
   food: FoodSearchItem;
   onClose: () => void;
-  quantity: number;
-  serving: string;
-  servingId?: string;
+  /** The portion as the screen shows it, such as "3 oz". */
+  portion: string;
+  /** That portion as a count of servings; undefined without a serving ID. */
+  selection?: FoodSelection;
   visible: boolean;
 }) {
   const [result, setResult] = useState<GlucosePrediction>();
@@ -410,14 +419,14 @@ export function FoodGlucoseSheet({
   const [error, setError] = useState<string>();
 
   async function predict() {
-    if (!servingId) return;
+    if (!selection) return;
     setLoading(true);
     setError(undefined);
     try {
       const response = fixtures
         ? await predictFixtureGlucose(food.barcode === 'fixture-glucose-retry')
         : await client.glucose.predict({
-            foods: [{ id: food.id, serving: { id: servingId, quantity } }],
+            foods: [selection],
             startTime: new Date().toISOString(),
             userProfile: {
               age: 42,
@@ -457,7 +466,7 @@ export function FoodGlucoseSheet({
           <Text style={styles.sheetFoodName}>
             {food.name ?? 'Unnamed food'}
           </Text>
-          <Text style={styles.sheetServing}>{serving}</Text>
+          <Text style={styles.sheetServing}>{portion}</Text>
         </View>
         {loading ? (
           <View style={styles.sheetLoadingCard} testID="food-glucose-loading">

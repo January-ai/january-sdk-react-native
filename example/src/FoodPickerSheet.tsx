@@ -27,6 +27,7 @@ import type {
 
 import { palette, serifFont, sharedStyles } from './demoTheme';
 import { autocompleteFixtureFoods, searchFixtureFoods } from './e2eFixtures';
+import { servingsScale } from './foodPortions';
 
 export interface SelectedFood {
   item: FoodSearchItem;
@@ -424,9 +425,11 @@ function ServingSelection({
       primaryServing(food) ??
       servings[0] ?? { id: '', quantity: 1, scalingFactor: 1, unit: 'serving' }
   );
+  // How many of the serving, the count the selection sends: 1 of a "6 oz"
+  // serving is 6 oz.
   const [quantity, setQuantity] = useState(1);
   const [showServings, setShowServings] = useState(false);
-  const scale = (quantity * serving.scalingFactor) / (serving.quantity || 1);
+  const scale = servingsScale(quantity, serving);
   return (
     <View style={styles.servingRoot} testID="food-serving-sheet">
       <View style={styles.sheetHeader}>

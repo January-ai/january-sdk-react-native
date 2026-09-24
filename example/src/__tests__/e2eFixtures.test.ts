@@ -14,6 +14,7 @@ import {
   deleteFixtureWaterLog,
   failFixtureRequestsOnce,
   failIfArmed,
+  fixtureFoodLog,
   fixtureFoodLogsForUser,
   getFixtureFood,
   isSlow,
@@ -117,6 +118,42 @@ describe('fixture answers', () => {
       'large bowl',
     ]);
     jest.useRealTimers();
+  });
+
+  it('logs nutrients for the servings sent, as the API does', () => {
+    // January's greek yogurt: 100 kcal per "6 oz" serving.
+    const item = {
+      id: 'yogurt',
+      name: 'Greek yogurt',
+      calories: 100,
+      protein: 17,
+      servings: [
+        { id: 'oz', quantity: 6, scalingFactor: 1, unit: 'oz' },
+        { id: 'cup', quantity: 1, scalingFactor: 1.5, unit: 'cup' },
+      ],
+      type: 'generic' as const,
+    };
+    const logged = (servingId: string, quantity: number) =>
+      fixtureFoodLog(
+        [
+          {
+            item,
+            selection: { id: 'yogurt', serving: { id: servingId, quantity } },
+          },
+        ],
+        'Snack'
+      ).foods[0]!;
+
+    expect(logged('oz', 1).nutrients.calories?.value).toBe(100);
+    expect(logged('oz', 1).nutrients.protein?.value).toBe(17);
+    // Sending the ounces as the count logs six servings.
+    expect(logged('oz', 6).nutrients.calories?.value).toBe(600);
+    expect(logged('cup', 2).nutrients.calories?.value).toBe(300);
+    expect(logged('oz', 1).consumedServing).toEqual({ id: 'oz', quantity: 1 });
+    expect(logged('oz', 1).servingDetails).toMatchObject({
+      quantity: 6,
+      unit: 'oz',
+    });
   });
 });
 

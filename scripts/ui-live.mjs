@@ -7,11 +7,13 @@
 // and prints the command that resumes it. The weight flow runs last, so a run
 // that cannot finish never logs a weight it cannot take back.
 //
-//   node scripts/ui-live.mjs --device <id> [--from <flow>] [--pause <seconds>]
-//     [--debug-output <dir>] [-- <extra maestro test arguments>]
+//   node scripts/ui-live.mjs --device <id> [--from <flow> | --only <flow>]
+//     [--pause <seconds>] [--debug-output <dir>]
+//     [-- <extra maestro test arguments>]
 //
-// `--from 95` resumes at 95-live-food-logs.yaml. Arguments after `--` go to
-// every `maestro test`, for example `-e JANUARY_RELAY_TOKEN=...`.
+// `--from 95` resumes at 95-live-food-logs.yaml, and `--only 97` runs just
+// 97-live-food-log-servings.yaml. Arguments after `--` go to every
+// `maestro test`, for example `-e JANUARY_RELAY_TOKEN=...`.
 import { spawn } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
@@ -30,10 +32,11 @@ const option = (name) => {
 };
 const device = option('device');
 const from = option('from');
+const only = option('only');
 const pauseSeconds = Number(option('pause') ?? 30);
 const debugOutput = option('debug-output');
 
-const flows = readdirSync(flowsRoot)
+const liveFlows = readdirSync(flowsRoot)
   .filter((name) => name.endsWith('.yaml'))
   .sort()
   .filter((name) => {
@@ -42,10 +45,13 @@ const flows = readdirSync(flowsRoot)
     );
     return (header?.tags ?? []).includes('live');
   });
+const flows = only
+  ? liveFlows.filter((name) => name.startsWith(only))
+  : liveFlows;
 const start = from ? flows.findIndex((name) => name.startsWith(from)) : 0;
-if (start < 0) {
+if (start < 0 || flows.length === 0) {
   console.error(
-    `No live flow starts with "${from}". Live flows: ${flows.join(', ')}`
+    `No live flow starts with "${from ?? only}". Live flows: ${liveFlows.join(', ')}`
   );
   process.exit(2);
 }
@@ -62,7 +68,7 @@ const resume = (flow) =>
   [
     'corepack yarn ui:test:live',
     device ? `--device ${device}` : '',
-    `--from ${flow.slice(0, 2)}`,
+    only ? `--only ${only}` : `--from ${flow.slice(0, 2)}`,
     debugOutput ? `--debug-output ${debugOutput}` : '',
     maestroArgs.length ? `-- ${maestroArgs.map(printable).join(' ')}` : '',
   ]

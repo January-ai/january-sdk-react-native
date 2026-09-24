@@ -1,0 +1,67 @@
+appId: ai.january.sdk.demo
+name: Food log - a searched food saves the calories its serving sheet showed
+tags:
+  - fixture
+---
+# Greek yogurt's serving is "6 oz" at 100 calories. A selection's quantity is
+# a count of servings, and the fixture log computes nutrients from it as the
+# API does, so the saved meal must show the 100 calories the serving sheet
+# showed before saving.
+- runFlow: ../bootstrap.yaml
+- extendedWaitUntil:
+    visible:
+      id: tab-food-logs
+    timeout: 15000
+- tapOn:
+    id: tab-food-logs
+# The add button waits for the list to load.
+- scrollUntilVisible:
+    element:
+      id: food-log-0
+    direction: DOWN
+- tapOn:
+    id: food-log-add
+- assertVisible: New food log
+- tapOn:
+    id: food-log-name
+- inputText: Yogurt servings
+- pressKey: Enter
+- scrollUntilVisible:
+    element:
+      id: food-log-add-food
+    direction: DOWN
+- tapOn:
+    id: food-log-add-food
+- tapOn:
+    id: food-picker-input
+- inputText: greek yogurt
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: food-picker-result-0
+    timeout: 15000
+- tapOn:
+    id: food-picker-result-0
+# Before saving: one serving, 100 calories.
+- assertVisible: "100"
+- takeScreenshot: example/.maestro/artifacts/react-native-food-log-servings-sheet
+- tapOn:
+    id: food-serving-add
+- scrollUntilVisible:
+    element:
+      id: food-log-save
+    direction: DOWN
+- tapOn:
+    id: food-log-save
+- extendedWaitUntil:
+    visible: .*Yogurt servings.*
+    timeout: 15000
+- tapOn: .*Yogurt servings.*
+- extendedWaitUntil:
+    visible:
+      id: food-log-detail
+    timeout: 10000
+# After saving: the same 100 calories, for one serving of 6 oz.
+- assertVisible: "100"
+- assertVisible: 1 × 6 oz
+- takeScreenshot: example/.maestro/artifacts/react-native-food-log-servings-saved

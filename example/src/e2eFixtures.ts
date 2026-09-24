@@ -8,7 +8,9 @@ import type {
   FoodCategoryValue,
   FoodSearchItem,
   FoodSearchResults,
+  FoodSelection,
   GlucosePrediction,
+  NutritionFacts,
   SuggestFoodAlternativesResponse,
   VolumeUnit,
   WaterAmount,
@@ -393,6 +395,77 @@ export const fixtureFoodLogSummary: FoodLogSummary = {
     nutrients: fixtureScan.detections[0]!.food.nutrients,
   },
 };
+
+/**
+ * The log January saves for a meal of search results. As the API does, each
+ * food's nutrients are its per-serving values times the servings sent times
+ * the serving's scaling factor, so a selection with the wrong count shows the
+ * wrong calories on the saved log.
+ */
+export function fixtureFoodLog(
+  foods: readonly { item: FoodSearchItem; selection: FoodSelection }[],
+  name: string
+): FoodLog {
+  return {
+    id: `fixture-log-${Date.now()}`,
+    name: name.trim() || 'Meal',
+    timestampUTC: new Date().toISOString(),
+    foods: foods.map(({ item, selection }) => {
+      const serving = item.servings.find(
+        (candidate) => candidate.id === selection.serving.id
+      );
+      const scale = selection.serving.quantity * (serving?.scalingFactor ?? 1);
+      return {
+        id: item.id,
+        name: item.name,
+        brandName: item.brandName,
+        imageURL: item.photoURL,
+        nutrients: scaleNutrients(perServingNutrients(item), scale),
+        consumedServing: {
+          id: selection.serving.id,
+          quantity: selection.serving.quantity,
+        },
+        servingDetails: {
+          id: serving?.id,
+          quantity: serving?.quantity,
+          unit: serving?.unit,
+          weightGrams: serving?.weightGrams,
+        },
+      };
+    }),
+  };
+}
+
+function perServingNutrients(item: FoodSearchItem): NutritionFacts {
+  return (
+    item.nutrients ?? {
+      calories:
+        item.calories == null
+          ? undefined
+          : { value: item.calories, unit: 'cal' },
+      protein:
+        item.protein == null ? undefined : { value: item.protein, unit: 'g' },
+      carbohydrates:
+        item.carbohydrates == null
+          ? undefined
+          : { value: item.carbohydrates, unit: 'g' },
+      totalFat:
+        item.totalFat == null ? undefined : { value: item.totalFat, unit: 'g' },
+    }
+  );
+}
+
+function scaleNutrients(
+  nutrients: NutritionFacts,
+  scale: number
+): NutritionFacts {
+  const scaled: NutritionFacts = {};
+  for (const key of Object.keys(nutrients) as (keyof NutritionFacts)[]) {
+    const amount = nutrients[key];
+    if (amount) scaled[key] = { ...amount, value: amount.value * scale };
+  }
+  return scaled;
+}
 
 export const fixtureGlucosePrediction: GlucosePrediction = {
   impact: 'medium',
