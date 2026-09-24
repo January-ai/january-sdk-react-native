@@ -378,7 +378,7 @@ describe('January React Native SDK', () => {
     expect(weights.items[0]?.weight).toEqual({ value: 150, unit: 'lb' });
   });
 
-  it('logs and totals water in US cups', async () => {
+  it('logs water from 0.1 cup and totals it in US cups', async () => {
     const client = new JanuaryClient({
       clientTokenProvider: async () => ({ token: 'ct-test', expiresIn: 1_800 }),
       endUserId: 'demo-user',
@@ -386,7 +386,7 @@ describe('January React Native SDK', () => {
     mockNativeModule.waterLogsCreate.mockResolvedValueOnce(
       JSON.stringify({
         id: 'water-2',
-        amount: { value: 0.125, unit: 'cup' },
+        amount: { value: 0.1, unit: 'cup' },
         created_at: '2026-09-10T14:30:15.123Z',
       })
     );
@@ -397,15 +397,15 @@ describe('January React Native SDK', () => {
     );
 
     const water = await client.waterLogs.create({
-      amount: { value: 0.125, unit: 'cup' },
+      amount: { value: 0.1, unit: 'cup' },
     });
     expect(mockNativeModule.waterLogsCreate).toHaveBeenLastCalledWith(
       expect.any(String),
-      0.125,
+      0.1,
       'cup',
       null
     );
-    expect(water.amount).toEqual({ value: 0.125, unit: 'cup' });
+    expect(water.amount).toEqual({ value: 0.1, unit: 'cup' });
 
     const totals = await client.waterLogs.list({
       start: '2026-09-10',

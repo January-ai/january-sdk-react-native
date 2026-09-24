@@ -874,8 +874,8 @@ const waterPlaceholder: Record<VolumeUnit, string> = {
   ml: 'e.g. 250',
 };
 
-// Cups are logged in eighths (0.125), so keep three decimals for them; the
-// API's daily totals already come rounded to one.
+// Keep three decimals for cups, since a cup amount can be finer than a tenth
+// (an eighth is 0.125); the API's daily totals already come rounded to one.
 function formatVolume(value: number, unit: string): string {
   const scale = unit === 'cup' ? 1000 : 10;
   const rounded = Math.round(value * scale) / scale;

@@ -33,6 +33,6 @@ servings, impact levels, and response IDs.
 | `VolumeUnit` | `'fl_oz'` (fluid ounces), `'ml'` (millilitres), `'cup'` (a US cup of 8 fl oz) |
 | `WeightUnit` | `'lb'` (pounds), `'kg'` (kilograms) |
 
-A water amount is 1–811.5 `fl_oz`, 30–24000 `ml`, or 0.125–101.4 `cup`; a
+A water amount is 1–811.5 `fl_oz`, 30–24000 `ml`, or 0.1–101.4 `cup`; a
 weight is 10–1000 `lb` or 4.5–453.6 `kg`. The API enforces these ranges.
 Responses may carry a unit newer than this SDK.

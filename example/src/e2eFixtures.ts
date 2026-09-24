@@ -450,12 +450,12 @@ export async function failIfArmed(key: string | undefined): Promise<void> {
 // day's total back, and deletes, so the entries live for the app session and
 // every bootstrap clears them. Amounts are kept in fluid ounces and converted
 // on the way out, like the API's daily totals.
-// The API's limits: one log of 1–811.5 fl oz, 30–24000 ml, or 0.125–101.4
+// The API's limits: one log of 1–811.5 fl oz, 30–24000 ml, or 0.1–101.4
 // cup, and at most 24 L (811.5 fl oz) in a day; a weight of 10–1000 lb or
 // 4.5–453.6 kg.
 const DAILY_WATER_CAP_FL_OZ = 811.5;
 const waterRange: Record<VolumeUnit, [number, number]> = {
-  cup: [0.125, 101.4],
+  cup: [0.1, 101.4],
   fl_oz: [1, 811.5],
   ml: [30, 24_000],
 };
