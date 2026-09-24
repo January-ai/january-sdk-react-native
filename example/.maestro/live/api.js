@@ -29,8 +29,9 @@
 // Maestro's script globals, and the env values a flow may pass (each read
 // with a typeof check, since an env value not passed is not defined at all).
 /* global http, output, CHECK, UNIT, UI_TEXT, NAME, EXPECT_CHANGE, EXPECT_VALUE,
-   EXPECT_FOODS, RANGE, KIND, DAY, USER_ID, TIMEZONE, JANUARY_TOKEN_ENDPOINT,
-   JANUARY_RELAY_TOKEN, JANUARY_API_URL */
+   EXPECT_FOODS, EXPECT_FOOD_ID, EXPECT_KCAL, RANGE, KIND, DAY, USER_ID,
+   TIMEZONE, PROBE, JANUARY_TOKEN_ENDPOINT, JANUARY_RELAY_TOKEN,
+   JANUARY_API_URL */
 
 var CALLS_PER_MINUTE = 20;
 
@@ -66,6 +67,10 @@ function rawEnvValue(name) {
       return typeof EXPECT_VALUE === 'undefined' ? undefined : EXPECT_VALUE;
     case 'EXPECT_FOODS':
       return typeof EXPECT_FOODS === 'undefined' ? undefined : EXPECT_FOODS;
+    case 'EXPECT_FOOD_ID':
+      return typeof EXPECT_FOOD_ID === 'undefined' ? undefined : EXPECT_FOOD_ID;
+    case 'EXPECT_KCAL':
+      return typeof EXPECT_KCAL === 'undefined' ? undefined : EXPECT_KCAL;
     case 'RANGE':
       return typeof RANGE === 'undefined' ? undefined : RANGE;
     case 'KIND':
@@ -76,6 +81,8 @@ function rawEnvValue(name) {
       return typeof USER_ID === 'undefined' ? undefined : USER_ID;
     case 'TIMEZONE':
       return typeof TIMEZONE === 'undefined' ? undefined : TIMEZONE;
+    case 'PROBE':
+      return typeof PROBE === 'undefined' ? undefined : PROBE;
     default:
       return undefined;
   }
@@ -369,9 +376,15 @@ if (check === 'context') {
       ', run ' +
       output.live.run
   );
-  // One request before the flow changes anything: a 429 stops it here.
-  waterTotals(today, today, 'fl_oz');
-  log('the January API is answering');
+  // One request before the flow changes anything: a 429 stops it here. A
+  // flow on a tight request budget passes PROBE: "no" and lets the app's own
+  // first request find out instead.
+  if (envValue('PROBE') === 'no') {
+    log('no probe request');
+  } else {
+    waterTotals(today, today, 'fl_oz');
+    log('the January API is answering');
+  }
 } else {
   if (!context) throw new Error('[api] run ../live/context.yaml first.');
   var day =
@@ -559,6 +572,50 @@ if (check === 'context') {
     if (expectedFoods !== undefined && foods !== Number(expectedFoods)) {
       fail('"' + name + '" has ' + foods + ' foods, expected ' + expectedFoods);
     }
+    // With EXPECT_FOOD_ID and EXPECT_KCAL, the log is that food at about
+    // that many kcal (within 10%): a portion sent as an amount in the
+    // serving's unit instead of a count of servings is several times more.
+    var expectedFoodId = envValue('EXPECT_FOOD_ID');
+    var loggedFoods = logs[0].foods || [];
+    if (expectedFoodId !== undefined) {
+      loggedFoods.forEach(function (food) {
+        if (String(food.food_id) !== String(expectedFoodId)) {
+          fail(
+            '"' +
+              name +
+              '" logged food ' +
+              food.food_id +
+              ', expected ' +
+              expectedFoodId
+          );
+        }
+      });
+    }
+    var expectedKcal = envValue('EXPECT_KCAL');
+    var kcal = 0;
+    loggedFoods.forEach(function (food) {
+      var calories = food.nutrients && food.nutrients.calories;
+      kcal += calories ? Number(calories.value) : 0;
+    });
+    if (
+      expectedKcal !== undefined &&
+      Math.abs(kcal - Number(expectedKcal)) > Number(expectedKcal) * 0.1
+    ) {
+      fail(
+        '"' +
+          name +
+          '" has ' +
+          round(kcal, 1) +
+          ' kcal (servings sent: ' +
+          loggedFoods
+            .map(function (food) {
+              return food.quantity;
+            })
+            .join(', ') +
+          '), expected about ' +
+          expectedKcal
+      );
+    }
     output.foodLogId = logs[0].id;
     log(
       'food log "' +
@@ -567,7 +624,24 @@ if (check === 'context') {
         day +
         ' with ' +
         foods +
-        ' food(s), id ' +
+        ' food(s) (' +
+        loggedFoods
+          .map(function (food) {
+            return (
+              'food ' +
+              food.food_id +
+              ': ' +
+              food.quantity +
+              ' × ' +
+              (food.serving
+                ? food.serving.quantity + ' ' + food.serving.unit
+                : 'no serving')
+            );
+          })
+          .join(', ') +
+        '), ' +
+        round(kcal, 1) +
+        ' kcal, id ' +
         logs[0].id
     );
   } else if (check === 'food-log-renamed') {
@@ -611,6 +685,12 @@ if (check === 'context') {
         renamedFoods +
         ' food(s)'
     );
+  } else if (check === 'food-log-delete') {
+    // Deletes the log food-log-saved found, with one request.
+    if (!output.foodLogId) fail('no saved food log to delete');
+    api('DELETE', '/v1.2/food-logs/' + output.foodLogId);
+    output.foodLogDeleted = true;
+    log('food log ' + output.foodLogId + ' deleted');
   } else if (check === 'food-log-deleted') {
     var remaining = foodLogs(day, day).filter(function (item) {
       return item.id === output.foodLogId;

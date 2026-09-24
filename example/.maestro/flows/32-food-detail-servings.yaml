@@ -107,3 +107,35 @@ tags:
       TARGET_ID: food-detail-warning
 - assertVisible: .*Complete serving details could not be loaded.*
 - takeScreenshot: example/.maestro/artifacts/react-native-food-detail-warning
+# A serving larger than one unit opens at its full size, and the quantity is
+# an amount in that unit: the 100-calorie "6 oz" yogurt is 100 calories at
+# 6 oz, and 5.5 oz of it is 91.7.
+- tapOn:
+    id: food-detail-back
+- tapOn:
+    id: search-clear
+- tapOn:
+    id: search-input
+- inputText: greek yogurt
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: food-result-0
+    timeout: 15000
+- tapOn:
+    id: food-result-0
+- extendedWaitUntil:
+    visible:
+      id: food-serving-controls
+    timeout: 10000
+- assertVisible: "Quantity: 6 oz"
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: food-macros
+- assertVisible: "100"
+- tapOn: Decrease quantity
+- tapOn: Decrease quantity
+- assertVisible: "Quantity: 5.5 oz"
+- assertVisible: "91.7"
+- takeScreenshot: example/.maestro/artifacts/react-native-food-detail-ounces

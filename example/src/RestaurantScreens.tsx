@@ -30,6 +30,7 @@ import {
   SLOW_FIXTURE_DELAY,
 } from './e2eFixtures';
 import { FoodGlucoseSheet } from './FoodDetailScreen';
+import { portionSelection } from './foodPortions';
 import {
   formatGrams,
   menuItemCaption,
@@ -690,9 +691,8 @@ function MenuItemDetail({
         fixtures={fixtures}
         food={food}
         onClose={() => setShowGlucose(false)}
-        quantity={1}
-        serving={label ?? 'serving'}
-        servingId={serving?.id}
+        portion={label ?? 'serving'}
+        selection={portionSelection(food.id, serving)}
         visible={showGlucose}
       />
     </View>

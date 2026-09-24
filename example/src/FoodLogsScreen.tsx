@@ -40,6 +40,7 @@ import {
 } from './designSystem';
 import {
   fixtureDelay,
+  fixtureFoodLog,
   fixtureFoodLogsForUser,
   fixtureFoodLogSummary,
   isSlow,
@@ -585,10 +586,10 @@ function FoodLogEditor({
               name: name.trim() || 'Meal',
               foods: [
                 ...existing.foods,
-                ...fixtureLogFromSelection(selected, name).foods,
+                ...fixtureFoodLog(selected, name).foods,
               ],
             }
-          : fixtureLogFromSelection(selected, name);
+          : fixtureFoodLog(selected, name);
       } else if (existing?.id) {
         // Foods added while editing are saved with the ones already logged.
         const foods = foodsAfterAdding(
@@ -1256,56 +1257,6 @@ function sumNutrient(
 
 export function copyFoodLog(log: FoodLog): FoodLog {
   return { ...log, foods: log.foods.map((food) => ({ ...food })) };
-}
-
-function fixtureLogFromSelection(
-  selected: SelectedFood[],
-  name: string
-): FoodLog {
-  return {
-    id: `fixture-log-${Date.now()}`,
-    name: name.trim() || 'Meal',
-    timestampUTC: new Date().toISOString(),
-    foods: selected.map(({ item, selection }) => {
-      const serving = item.servings.find(
-        (candidate) => candidate.id === selection.serving.id
-      );
-      return {
-        id: item.id,
-        name: item.name,
-        brandName: item.brandName,
-        imageURL: item.photoURL,
-        nutrients: item.nutrients ?? {
-          calories:
-            item.calories == null
-              ? undefined
-              : { value: item.calories, unit: 'cal' },
-          protein:
-            item.protein == null
-              ? undefined
-              : { value: item.protein, unit: 'g' },
-          carbohydrates:
-            item.carbohydrates == null
-              ? undefined
-              : { value: item.carbohydrates, unit: 'g' },
-          totalFat:
-            item.totalFat == null
-              ? undefined
-              : { value: item.totalFat, unit: 'g' },
-        },
-        consumedServing: {
-          id: selection.serving.id,
-          quantity: selection.serving.quantity,
-        },
-        servingDetails: {
-          id: serving?.id,
-          quantity: serving?.quantity,
-          unit: serving?.unit,
-          weightGrams: serving?.weightGrams,
-        },
-      };
-    }),
-  };
 }
 
 const styles = StyleSheet.create({

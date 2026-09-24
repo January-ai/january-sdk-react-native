@@ -1,0 +1,156 @@
+appId: ai.january.sdk.demo
+name: Live - a searched food is logged as one serving, at the calories its serving sheet showed
+tags:
+  - live
+onFlowComplete:
+  # Delete the log if the flow saved it but stopped before deleting it.
+  - runFlow:
+      when:
+        true: ${typeof output.live !== 'undefined' && output.servingsSaved === true && output.foodLogDeleted !== true}
+      commands:
+        - runScript:
+            file: ../live/api.js
+            env:
+              CHECK: cleanup
+              NAME: RN servings ${output.live.run}
+  # Give the app back its end user, from the Search tab, where switching users
+  # loads nothing.
+  - runFlow:
+      when:
+        true: ${typeof output.previousUser === 'string' && output.previousUser !== ''}
+      commands:
+        - tapOn:
+            id: tab-search
+            optional: true
+        - tapOn:
+            id: settings-button
+        - tapOn:
+            id: settings-user-id
+        - eraseText: 60
+        - inputText: ${output.previousUser}
+        - tapOn:
+            id: settings-close
+---
+# January's "greek yogurt", food 70376084, has a primary serving of 6 oz at
+# about 100 kcal. A selection's quantity counts servings, so one serving must
+# log about 100 kcal; the 6 oz sent as the count would log about 600. The flow
+# logs it for a QA end user (END_USER, default e2e-qa-portion-rn), checks the
+# Logs screen and the API, and deletes the log. It makes about 10 January API
+# requests: the app's token, list and summary, search (and possibly one
+# autocomplete), create, list and summary again, then the checks' token, one
+# read, and the delete.
+- evalScript: "${output.qaUser = typeof END_USER === 'undefined' ? 'e2e-qa-portion-rn' : END_USER}"
+- runFlow: ../bootstrap.yaml
+- extendedWaitUntil:
+    visible:
+      id: search-input
+    timeout: 15000
+- tapOn:
+    id: settings-button
+- copyTextFrom:
+    id: settings-user-id
+- evalScript: ${output.previousUser = maestro.copiedText}
+- tapOn:
+    id: settings-user-id
+- eraseText: 60
+- inputText: ${output.qaUser}
+- tapOn:
+    id: settings-close
+- runFlow:
+    file: ../live/context.yaml
+    env:
+      PROBE: "no"
+- assertTrue: ${output.live.user === output.qaUser}
+- tapOn:
+    id: tab-food-logs
+# The refresh button, below the fold, takes the id food-logs-refresh once the
+# list has loaded. It stays in view while the editor is open, for the wait
+# after saving.
+- scrollUntilVisible:
+    element:
+      id: food-logs-refresh
+    direction: DOWN
+    timeout: 60000
+- tapOn:
+    id: food-log-add
+- tapOn:
+    id: food-log-name
+- inputText: RN servings ${output.live.run}
+- pressKey: Enter
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: food-log-add-food
+- tapOn:
+    id: food-log-add-food
+- tapOn:
+    id: food-picker-input
+- inputText: greek yogurt
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: food-picker-result-0
+    timeout: 30000
+# The result with the 6 oz, 100-calorie primary serving; the API check below
+# confirms it was food 70376084.
+- scrollUntilVisible:
+    element:
+      text: .*100 cal · 6 oz.*
+    direction: DOWN
+    timeout: 15000
+- tapOn: .*100 cal · 6 oz.*
+- extendedWaitUntil:
+    visible:
+      id: food-serving-sheet
+    timeout: 10000
+# Before logging, the sheet shows about 100 calories for one serving.
+- assertVisible: (9[0-9]|1[01][0-9])(\.[0-9]+)?
+- takeScreenshot: example/.maestro/artifacts/live-food-log-servings-sheet
+- tapOn:
+    id: food-serving-add
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: food-log-save
+- evalScript: ${output.servingsSaved = true}
+- tapOn:
+    id: food-log-save
+- extendedWaitUntil:
+    notVisible:
+      id: food-log-editor
+    timeout: 60000
+- assertNotVisible:
+    id: food-log-save-error
+- extendedWaitUntil:
+    visible:
+      id: food-logs-refresh
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      text: .*RN servings ${output.live.run}.*
+    direction: DOWN
+    timeout: 30000
+- tapOn: .*RN servings ${output.live.run}.*
+- extendedWaitUntil:
+    visible:
+      id: food-log-detail
+    timeout: 10000
+# The saved log, as the API returned it: about 100 kcal, not about 600.
+- assertVisible: (9[0-9]|1[01][0-9])(\.[0-9]+)?
+- assertNotVisible: (5[5-9][0-9]|6[0-4][0-9])(\.[0-9]+)?
+- assertVisible: 1 × 6 oz
+- takeScreenshot: example/.maestro/artifacts/live-food-log-servings-saved
+- runScript:
+    file: ../live/api.js
+    env:
+      CHECK: food-log-saved
+      NAME: RN servings ${output.live.run}
+      EXPECT_FOODS: "1"
+      EXPECT_FOOD_ID: "70376084"
+      EXPECT_KCAL: "100"
+- runScript:
+    file: ../live/api.js
+    env:
+      CHECK: food-log-delete
+- tapOn:
+    id: tab-search

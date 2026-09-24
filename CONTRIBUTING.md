@@ -150,10 +150,14 @@ and fail if it differs from what the app shows.
 
 The runner starts each live flow on its own and pauses 30 seconds between
 flows (`--pause <seconds>` changes that), and it stops at the first flow that
-fails. Every flow first makes one request to check that the January API is
-answering; if the account's request allowance is used up (`429
-rate_limited`), the flow stops there, before it changes anything, and the
-runner prints the command that resumes the run, such as
+fails. `--only <number>` runs one flow, for example
+`corepack yarn ui:test:live --device <device-id> --only 97` for the check that
+a searched food is logged as a number of servings. Every other flow first
+makes one request to check that the January API is answering (97 keeps to
+about ten requests, so the app's first request finds out instead); if the
+account's request allowance is used up (`429 rate_limited`), the flow stops
+there, before it changes anything, and the runner prints the command that
+resumes the run, such as
 `corepack yarn ui:test:live --device <device-id> --from 95`. The weight flow
 runs last because weight logs cannot be deleted through the API, so a run
 that cannot finish does not log a weight. Add `--debug-output <folder>` to
@@ -161,14 +165,16 @@ keep Maestro's logs and screenshots for each flow.
 
 Use an end user reserved for testing: the flows add water and food logs and
 remove them again, but each complete run adds two weights to that user's
-history. The flows read the end user and timezone from the app's Settings.
+history. The flows read the end user and timezone from the app's Settings;
+97 first switches the app to the end user `e2e-qa-portion-rn`
+(`-e END_USER=<id>` after `--` picks another) and switches it back at the end.
 For a relay that is not on this computer, pass its address and token after
 `--`, for example
 `corepack yarn ui:test:live --device <device-id> -- -e JANUARY_TOKEN_ENDPOINT=<url> -e JANUARY_RELAY_TOKEN=<token>`.
 `-e BARCODE=<upc>`, `-e RESTAURANT=<name>`, and `-e MENU_ITEM=<dish>` change
 what the flows look up.
 
-A complete run makes about 150 January API requests per device (the app's own
+A complete run makes about 160 January API requests per device (the app's own
 and the checks'), so check your plan's request allowance before running on
 several devices in one day.
 
