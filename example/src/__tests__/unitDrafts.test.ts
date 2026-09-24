@@ -20,7 +20,7 @@ describe('a typed water amount when the unit changes', () => {
     expect(convertWaterDraft('16', 'fl_oz', 'cup')).toBe('2');
     expect(convertWaterDraft('12', 'fl_oz', 'cup')).toBe('1.5');
     expect(convertWaterDraft('1.5', 'cup', 'fl_oz')).toBe('12');
-    expect(convertWaterDraft('0.125', 'cup', 'fl_oz')).toBe('1');
+    expect(convertWaterDraft('0.1', 'cup', 'fl_oz')).toBe('0.8');
   });
 
   it('reads surrounding spaces and decimals without a leading zero', () => {
@@ -43,7 +43,7 @@ describe('a typed water amount when the unit changes', () => {
 
   it('leaves the amount alone when the unit does not change', () => {
     expect(convertWaterDraft('8.25', 'fl_oz', 'fl_oz')).toBe('8.25');
-    expect(convertWaterDraft('0.125', 'cup', 'cup')).toBe('0.125');
+    expect(convertWaterDraft('0.25', 'cup', 'cup')).toBe('0.25');
   });
 });
 
