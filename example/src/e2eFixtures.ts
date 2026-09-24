@@ -25,9 +25,11 @@ import { FL_OZ_PER_CUP, ML_PER_FL_OZ } from './unitDrafts';
 /**
  * How long a fixture request stays loading when a flow asserts its loading
  * state. On iOS, Maestro waits for a tapped screen to settle before it reads
- * it, and a spinner keeps it busy for about three seconds, so a two-second
- * load is over before a flow can see it. A search, photo, or correction with
- * "slow" in it waits this long, as do armed failures and their retries.
+ * it: up to three seconds for a spinner that never stops, then until the
+ * hierarchy holds still, which took four and a half seconds on a hosted
+ * runner. A shorter load is over before a flow can see it. A search, photo,
+ * or correction with "slow" in it waits this long, as do alternatives,
+ * armed failures and their retries.
  */
 export const SLOW_FIXTURE_DELAY = 6000;
 
@@ -795,7 +797,7 @@ export async function suggestFixtureAlternatives(
   foodId: string,
   behavior?: string
 ): Promise<SuggestFoodAlternativesResponse> {
-  await fixtureDelay(4000);
+  await fixtureDelay(SLOW_FIXTURE_DELAY);
   if (
     behavior === 'fixture-alternatives-retry' &&
     takeFirstAttempt(`alternatives-${foodId}`)

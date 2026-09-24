@@ -49,8 +49,12 @@ tags:
     file: ../scroll-to.yaml
     env:
       TARGET_ID: food-check-glucose
+# On iOS a tap waits for the screen to settle, and a spinner keeps it moving,
+# so each of these requests stays loading longer than that wait (see
+# SLOW_FIXTURE_DELAY) and the tap does not wait for the hierarchy past it.
 - tapOn:
     id: food-check-glucose
+    waitToSettleTimeoutMs: 500
 - extendedWaitUntil:
     visible:
       id: food-glucose-loading
@@ -72,6 +76,7 @@ tags:
       TARGET_ID: alternatives-refresh
 - tapOn:
     id: alternatives-refresh
+    waitToSettleTimeoutMs: 500
 - extendedWaitUntil:
     visible:
       id: alternatives-loading

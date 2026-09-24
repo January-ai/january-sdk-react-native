@@ -14,18 +14,21 @@ tags:
     id: glucose-sex-male
 - tapOn:
     id: glucose-sex-female
-# Height in feet and inches: 6 ft 2 in is 188 cm. Each field selects its
-# number when tapped, so typing replaces it (erasing first would clamp the
-# height as it empties).
+# Height in feet and inches: 6 ft 2 in is 188 cm. Each field is erased before
+# typing: on iOS the tap's select-all arrives from JavaScript after the
+# keyboard is up, sometimes after typing has started, and the typed digit
+# then joined the old one (5 and 6 became 56 ft, clamped to 8 ft).
 - runFlow:
     file: ../scroll-to.yaml
     env:
       TARGET_ID: glucose-height-feet
 - tapOn:
     id: glucose-height-feet
+- eraseText: 5
 - inputText: "6"
 - tapOn:
     id: glucose-height-inches
+- eraseText: 5
 - inputText: "2"
 - tapOn:
     id: glucose-height-unit-metric

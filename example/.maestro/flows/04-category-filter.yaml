@@ -8,8 +8,14 @@ tags:
     visible:
       id: category-general
     timeout: 15000
+# The search sends the selected category, so check the chip took the tap
+# before searching: once on a CI simulator the app's first tap after launch
+# left "All" selected, and the flow only failed later, at the results.
 - tapOn:
     id: category-general
+- assertVisible:
+    id: category-general
+    selected: true
 - tapOn:
     id: search-input
 - inputText: category
@@ -21,6 +27,9 @@ tags:
     id: search-clear
 - tapOn:
     id: category-branded
+- assertVisible:
+    id: category-branded
+    selected: true
 - tapOn:
     id: search-input
 - inputText: category
