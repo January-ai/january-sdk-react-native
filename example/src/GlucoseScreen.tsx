@@ -2,6 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -154,7 +155,13 @@ export function GlucoseScreen({
                   { id: 'imperial', label: 'ft + in' },
                   { id: 'metric', label: 'cm' },
                 ]}
-                onSelect={(value) => setHeightUnit(value as HeightUnit)}
+                onSelect={(value) => {
+                  // The fields being typed in are about to be replaced. End
+                  // the edit first: otherwise Android hands the focus, and
+                  // the keyboard, to the first field on the screen (Age).
+                  Keyboard.dismiss();
+                  setHeightUnit(value as HeightUnit);
+                }}
                 selected={heightUnit}
                 style={styles.measurementSegmented}
                 testIDPrefix="glucose-height-unit"
@@ -442,6 +449,11 @@ function MeasurementField({
   testID: string;
   value: number;
 }) {
+  // While the field is edited it shows what was typed, so clearing it to type
+  // a new number does not snap it to the nearest allowed value first. The
+  // measurement follows every number typed, and leaving the field shows the
+  // measurement again.
+  const [draft, setDraft] = useState<string>();
   const display = Number.isInteger(value) ? String(value) : value.toFixed(1);
   return (
     <View style={styles.numberField}>
@@ -449,14 +461,17 @@ function MeasurementField({
       <TextInput
         accessibilityLabel={label}
         keyboardType={decimal ? 'decimal-pad' : 'number-pad'}
+        onBlur={() => setDraft(undefined)}
         onChangeText={(candidate) => {
-          const number = Number(numericText(candidate));
-          if (Number.isFinite(number)) onChange(number);
+          const text = numericText(candidate);
+          setDraft(text);
+          const number = Number(text);
+          if (text && Number.isFinite(number)) onChange(number);
         }}
         selectTextOnFocus
         style={styles.numberInput}
         testID={testID}
-        value={display}
+        value={draft ?? display}
       />
     </View>
   );
