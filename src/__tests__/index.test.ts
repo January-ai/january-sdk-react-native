@@ -378,7 +378,7 @@ describe('January React Native SDK', () => {
     expect(weights.items[0]?.weight).toEqual({ value: 150, unit: 'lb' });
   });
 
-  it('logs and totals water in US cups', async () => {
+  it('logs water from 0.1 cup and totals it in US cups', async () => {
     const client = new JanuaryClient({
       clientTokenProvider: async () => ({ token: 'ct-test', expiresIn: 1_800 }),
       endUserId: 'demo-user',
@@ -386,7 +386,7 @@ describe('January React Native SDK', () => {
     mockNativeModule.waterLogsCreate.mockResolvedValueOnce(
       JSON.stringify({
         id: 'water-2',
-        amount: { value: 0.125, unit: 'cup' },
+        amount: { value: 0.1, unit: 'cup' },
         created_at: '2026-09-10T14:30:15.123Z',
       })
     );
@@ -397,15 +397,15 @@ describe('January React Native SDK', () => {
     );
 
     const water = await client.waterLogs.create({
-      amount: { value: 0.125, unit: 'cup' },
+      amount: { value: 0.1, unit: 'cup' },
     });
     expect(mockNativeModule.waterLogsCreate).toHaveBeenLastCalledWith(
       expect.any(String),
-      0.125,
+      0.1,
       'cup',
       null
     );
-    expect(water.amount).toEqual({ value: 0.125, unit: 'cup' });
+    expect(water.amount).toEqual({ value: 0.1, unit: 'cup' });
 
     const totals = await client.waterLogs.list({
       start: '2026-09-10',
@@ -460,6 +460,42 @@ describe('January React Native SDK', () => {
     expect(mockNativeModule.waterLogsDelete).not.toHaveBeenCalled();
     expect(mockNativeModule.weightLogsCreate).not.toHaveBeenCalled();
     expect(mockNativeModule.foodLogsUpdate).not.toHaveBeenCalled();
+  });
+
+  it('checks food limits against the API ranges before crossing the bridge', async () => {
+    const client = new JanuaryClient({
+      clientTokenProvider: async () => ({ token: 'ct-test', expiresIn: 1_800 }),
+      endUserId: 'demo-user',
+    });
+
+    await client.foods.autocomplete({ query: 'oat', limit: 20 });
+    await client.foods.search({ query: 'oat', limit: 50 });
+    expect(mockNativeModule.foodsAutocomplete).toHaveBeenCalledWith(
+      expect.any(String),
+      'oat',
+      null,
+      20
+    );
+    expect(mockNativeModule.foodsSearch).toHaveBeenCalledWith(
+      expect.any(String),
+      'oat',
+      null,
+      50
+    );
+    jest.clearAllMocks();
+
+    for (const limit of [0, 21, 2.5]) {
+      await expect(
+        client.foods.autocomplete({ query: 'oat', limit })
+      ).rejects.toThrow('limit must be an integer between 1 and 20.');
+    }
+    for (const limit of [0, 51, 2.5]) {
+      await expect(
+        client.foods.search({ query: 'oat', limit })
+      ).rejects.toThrow('limit must be an integer between 1 and 50.');
+    }
+    expect(mockNativeModule.foodsAutocomplete).not.toHaveBeenCalled();
+    expect(mockNativeModule.foodsSearch).not.toHaveBeenCalled();
   });
 
   it('validates restaurant requests before crossing the native bridge', async () => {

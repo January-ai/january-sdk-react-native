@@ -16,5 +16,7 @@ const january = new JanuaryClient({
 ```
 
 The timezone is optional but recommended. Supply an IANA timezone such as
-`America/New_York`, not a fixed UTC offset. Create a new client if the active
-user changes.
+`America/New_York`, not a fixed UTC offset. It sets the calendar days that
+food-log lists and summaries and water and weight lists cover. If omitted, iOS
+uses the device timezone and Android uses UTC, so pass one explicitly. Create a
+new client if the active user changes.

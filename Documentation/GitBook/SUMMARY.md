@@ -21,10 +21,10 @@
 * [Foods](guides/foods.md)
 * [Restaurants](guides/restaurants.md)
 * [Meal analysis](guides/meal-analysis.md)
+* [Voice capture](guides/voice-capture.md)
 * [Food logs](guides/food-logs.md)
 * [Water and weight logs](guides/water-and-weight-logs.md)
 * [Glucose prediction](guides/glucose-prediction.md)
-* [Voice capture](guides/voice-capture.md)
 
 ## Reference
 

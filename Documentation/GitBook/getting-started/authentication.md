@@ -6,11 +6,11 @@ token provider:
 ```ts
 import { JanuaryClient, type JanuaryTokenProvider } from '@januaryai/react-native';
 
-const tokenProvider: JanuaryTokenProvider = async (endUserId) => {
+// Your backend derives the end user from the session; the app sends no user ID.
+const tokenProvider: JanuaryTokenProvider = async () => {
   const response = await fetch('https://api.example.com/january/client-token', {
     method: 'POST',
     headers: { Authorization: `Bearer ${session.accessToken}` },
-    body: JSON.stringify({ endUserId }),
   });
   if (!response.ok) throw new Error('Unable to obtain a January client token');
   return response.json();

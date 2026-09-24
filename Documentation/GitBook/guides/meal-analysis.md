@@ -16,8 +16,9 @@ const scan = await january.foodAnalysis.analyzePhoto({
 });
 ```
 
-Pass `reasoningEffort: 'xhigh'` to use the reasoning-based analyzer; the result
-shape and cost are the same.
+The API uses the reasoning-based analyzer by default. Pass
+`reasoningEffort: 'none'` for the standard analyzer (`'xhigh'` asks for the
+reasoning-based one explicitly); the result shape and cost are the same.
 
 Each detection's `food` carries the selected catalog `serving` (`id`,
 `quantity`, `unit`, where `quantity` is the size of one serving) and the

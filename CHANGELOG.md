@@ -5,6 +5,10 @@ This project uses Semantic Versioning.
 
 ## [Unreleased]
 
+- `foods.autocomplete` and `foods.search` check `limit` against the API's
+  ranges, 1–20 and 1–50, before crossing the bridge. The native SDKs already
+  refused larger values; the wrapper allowed up to 100.
+
 ## [0.3.0] - 2026-09-23
 
 - Pin the January iOS SDK `0.3.1` and Android SDK `0.3.1`, which add water and
@@ -16,7 +20,7 @@ This project uses Semantic Versioning.
   `list`) with the `WaterAmount`, `Volume`, `WaterLog`, `DailyWaterTotal`,
   `Weight`, `WeightLog`, and `DailyWeight` models. Client tokens need the
   `water_logs:*` and `weight_logs:*` scopes for them.
-- `VolumeUnit` includes `cup`, a US cup of 8 fl oz: log 0.125–101.4 cups at a
+- `VolumeUnit` includes `cup`, a US cup of 8 fl oz: log 0.1–101.4 cups at a
   time, or read daily water totals in cups.
 - `foodLogs.update` rejects an update that changes nothing before sending it;
   the API now refuses empty patches and unknown fields.
@@ -40,10 +44,10 @@ This project uses Semantic Versioning.
   silence before ending a capture, so speech is no longer cut off between
   words.
 - Lower the minimum Android version from API 26 to API 24 and pin the January
-  Android SDK `0.2.1`. Apps whose `minSdkVersion` is below 26 must enable core
-  library desugaring; Expo apps add the `@januaryai/react-native` config plugin,
-  bare apps add two lines to `android/app/build.gradle` (see the installation
-  guide).
+  Android SDK `0.2.1`. Every Android app must enable core library desugaring,
+  whatever its `minSdkVersion`; Expo apps add the `@januaryai/react-native`
+  config plugin, bare apps add two lines to `android/app/build.gradle` (see the
+  installation guide).
 
 ## [0.2.0] - 2026-09-16
 

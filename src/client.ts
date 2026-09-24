@@ -155,8 +155,8 @@ export class JanuaryClient {
         const query = request.query.trim();
         if (!query) throw new Error('query is required.');
         const limit = request.limit ?? 8;
-        if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
-          throw new Error('limit must be an integer between 1 and 100.');
+        if (!Number.isInteger(limit) || limit < 1 || limit > 20) {
+          throw new Error('limit must be an integer between 1 and 20.');
         }
         return parseNativeJson<AutocompleteFoodsResponse>(
           await native.foodsAutocomplete(
@@ -188,8 +188,8 @@ export class JanuaryClient {
         const query = request.query.trim();
         if (!query) throw new Error('query is required.');
         const limit = request.limit ?? 10;
-        if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
-          throw new Error('limit must be an integer between 1 and 100.');
+        if (!Number.isInteger(limit) || limit < 1 || limit > 50) {
+          throw new Error('limit must be an integer between 1 and 50.');
         }
         const json = await native.foodsSearch(
           this.clientId,

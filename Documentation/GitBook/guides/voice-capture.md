@@ -51,9 +51,9 @@ recognizer can also end a capture on its own: Android stops after a pause in
 speech. The snapshot then returns to `idle` carrying either `result` (text was
 recognized) or `error` (for example `no_match`); call `stop()` to collect
 either one. `cancel()` discards the active capture; `dispose()` also releases
-the native session and removes subscribers. Check `session.isSupported` before showing a microphone
-control; it is `false` on devices without a speech recognizer, such as some
-Android emulator images.
+the native session and removes subscribers. Check `voice.isSupported` before
+showing a microphone control; it is `false` on devices without a speech
+recognizer, such as some Android emulator images.
 
 ## Result and states
 
@@ -73,10 +73,10 @@ iOS needs `NSMicrophoneUsageDescription` and `NSSpeechRecognitionUsageDescriptio
 in Info.plist (Expo: `ios.infoPlist` in `app.json`). The SDK asks for both when
 `start()` runs.
 
-Android needs `android.permission.RECORD_AUDIO` in the manifest (Expo:
-`android.permissions`). `start()` requests it at runtime and rejects with
-`permission_denied` if the user declines, so the app does not need its own
-`PermissionsAndroid` call.
+On Android, the January Android SDK's manifest declares
+`android.permission.RECORD_AUDIO`, which merges into your app. `start()`
+requests it at runtime and rejects with `permission_denied` if the user
+declines, so the app does not need its own `PermissionsAndroid` call.
 
 ## Example app
 

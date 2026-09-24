@@ -6,7 +6,7 @@ prediction, and profile unit selection on both iOS and Android.
 
 The Tracking tab shows one day at a time: the day’s totals from
 `foodLogs.getSummary`, the meals logged that day, the day’s water total (in
-fluid ounces, millilitres, or US cups, with delete of the last entry), and the
+fluid ounces, milliliters, or US cups, with delete of the last entry), and the
 day’s latest weight (in pounds or kilograms). Switching a card’s unit converts
 an amount already typed, so it is logged as the same quantity. Move between
 days to browse history; water or a weight logged for a past day is dated noon
@@ -20,8 +20,11 @@ with their summary, and creates, edits, and deletes them.
 
 ## Run locally
 
-First complete the two dashboard steps in the root README, run the standalone
-January Token Relay with `./start.sh`, then copy the example environment:
+First complete the two dashboard steps in the
+[repository README](https://github.com/January-ai/january-sdk-react-native#quick-start-run-the-demo-with-client-tokens),
+run the standalone
+[January Token Relay](https://github.com/January-ai/january-token-relay) with
+`./start.sh`, then copy the example environment:
 
 ```sh
 cp example/.env.example example/.env

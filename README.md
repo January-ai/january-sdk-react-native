@@ -1,8 +1,9 @@
 # January SDK for React Native
 
 The official React Native SDK for January food discovery, restaurants, food
-analysis, food logs, and glucose prediction. It exposes one TypeScript API and
-uses January's native Swift and Kotlin SDKs on iOS and Android.
+analysis, voice capture, food, water, and weight logs, and glucose prediction.
+It exposes one TypeScript API and uses January's native Swift and Kotlin SDKs on
+iOS and Android.
 
 React Native Web is not supported; use `@januaryai/web-sdk` in browsers.
 
@@ -13,8 +14,8 @@ For an app that uses the SDK:
 - React Native 0.83 or later with the New Architecture enabled
 - React 19.2 or later
 - iOS 15.1 or later
-- Android 7.0 (API 24) or later; apps with `minSdkVersion` below 26 must enable
-  core library desugaring (see [Install](#1-install))
+- Android 7.0 (API 24) or later; every app must enable core library
+  desugaring, whatever its `minSdkVersion` (see [Install](#1-install))
 
 To run the demo on your computer:
 
@@ -177,9 +178,10 @@ npx pod-install
 ```
 
 Autolinking installs the native module. Set the consuming Android application's
-`minSdkVersion` to 24 or higher; if it is below 26, also enable core library
-desugaring in `android/app/build.gradle` (the SDK uses `java.time`), then
-rebuild the app. The
+`minSdkVersion` to 24 or higher and enable core library desugaring in
+`android/app/build.gradle` (the SDK uses `java.time`, and its AAR metadata
+fails the build without desugaring at any `minSdkVersion`), then rebuild the
+app. The
 [installation guide](Documentation/GitBook/getting-started/installation.md)
 shows both snippets.
 
@@ -254,11 +256,11 @@ troubleshooting.
 - [Foods](Documentation/GitBook/guides/foods.md)
 - [Restaurants](Documentation/GitBook/guides/restaurants.md)
 - [Meal analysis](Documentation/GitBook/guides/meal-analysis.md)
+- [Voice capture](Documentation/GitBook/guides/voice-capture.md)
 - [Food logs](Documentation/GitBook/guides/food-logs.md)
 - [Water and weight logs](Documentation/GitBook/guides/water-and-weight-logs.md):
-  water in fluid ounces, millilitres, or US cups; weight in pounds or kilograms
+  water in fluid ounces, milliliters, or US cups; weight in pounds or kilograms
 - [Glucose prediction](Documentation/GitBook/guides/glucose-prediction.md)
-- [Voice capture](Documentation/GitBook/guides/voice-capture.md)
 
 To contribute to the SDK, see [CONTRIBUTING.md](CONTRIBUTING.md) and the
 [release guide](.github/RELEASING.md).

@@ -47,10 +47,11 @@ buildscript {
 }
 ```
 
-The January Android SDK uses `java.time`, which Android added in API 26. If
-`minSdkVersion` is 24 or 25, enable core library desugaring in the app module;
-the SDK's AAR metadata makes the build fail with a clear message if it is
-missing, instead of crashing on API 24 and 25 devices:
+The January Android SDK supports API 24 and uses `java.time`. Its AAR metadata
+requires every app that depends on it to enable core library desugaring with
+`desugar_jdk_libs` 2.1.5 or later, whatever the app's `minSdkVersion`. Without
+it, the build fails with `Dependency 'ai.january:january-sdk-android:…' requires
+core library desugaring to be enabled`. Enable it in the app module:
 
 ```groovy
 // android/app/build.gradle
@@ -85,8 +86,8 @@ module.
 In the Expo application's existing `app.json` or `app.config.js`, merge the
 plugin configuration below with the application's other settings. The
 `@januaryai/react-native` plugin enables core library desugaring in the
-generated Android project; it is required while `minSdkVersion` is below 26
-and harmless otherwise:
+generated Android project, which every Android build needs, whatever its
+`minSdkVersion`:
 
 ```json
 {

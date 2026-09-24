@@ -175,8 +175,11 @@ describe('fixture water and weight', () => {
       settled(createFixtureWaterLog({ unit: 'ml', value: 10 }, at(today())))
     ).rejects.toMatchObject({ code: 'invalid_request' });
     await expect(
-      settled(createFixtureWaterLog({ unit: 'cup', value: 0.1 }, at(today())))
+      settled(createFixtureWaterLog({ unit: 'cup', value: 0.09 }, at(today())))
     ).rejects.toMatchObject({ code: 'invalid_request' });
+    await expect(
+      settled(createFixtureWaterLog({ unit: 'cup', value: 0.1 }, at(today())))
+    ).resolves.toMatchObject({ amount: { unit: 'cup', value: 0.1 } });
     await expect(
       settled(createFixtureWeightLog({ unit: 'lb', value: 5 }, at(today())))
     ).rejects.toMatchObject({ code: 'invalid_request' });
