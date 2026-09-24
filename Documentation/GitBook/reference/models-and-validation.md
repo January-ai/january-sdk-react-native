@@ -11,7 +11,8 @@ bridge:
 | --- | --- |
 | `endUserId` | Required and non-empty |
 | Food query, food ID, barcode, log ID | Required and non-empty |
-| Search/autocomplete limit | Integer from 1 through 100 |
+| Autocomplete limit | Integer from 1 through 20 (default 8) |
+| Search limit | Integer from 1 through 50 (default 10) |
 | Restaurant latitude | -90 through 90 |
 | Restaurant longitude | -180 through 180 |
 | Restaurant radius | 1 through 50,000 meters |
@@ -30,7 +31,7 @@ servings, impact levels, and response IDs.
 
 | Type | Values |
 | --- | --- |
-| `VolumeUnit` | `'fl_oz'` (fluid ounces), `'ml'` (millilitres), `'cup'` (a US cup of 8 fl oz) |
+| `VolumeUnit` | `'fl_oz'` (fluid ounces), `'ml'` (milliliters), `'cup'` (a US cup of 8 fl oz) |
 | `WeightUnit` | `'lb'` (pounds), `'kg'` (kilograms) |
 
 A water amount is 1–811.5 `fl_oz`, 30–24000 `ml`, or 0.1–101.4 `cup`; a

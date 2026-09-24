@@ -462,6 +462,42 @@ describe('January React Native SDK', () => {
     expect(mockNativeModule.foodLogsUpdate).not.toHaveBeenCalled();
   });
 
+  it('checks food limits against the API ranges before crossing the bridge', async () => {
+    const client = new JanuaryClient({
+      clientTokenProvider: async () => ({ token: 'ct-test', expiresIn: 1_800 }),
+      endUserId: 'demo-user',
+    });
+
+    await client.foods.autocomplete({ query: 'oat', limit: 20 });
+    await client.foods.search({ query: 'oat', limit: 50 });
+    expect(mockNativeModule.foodsAutocomplete).toHaveBeenCalledWith(
+      expect.any(String),
+      'oat',
+      null,
+      20
+    );
+    expect(mockNativeModule.foodsSearch).toHaveBeenCalledWith(
+      expect.any(String),
+      'oat',
+      null,
+      50
+    );
+    jest.clearAllMocks();
+
+    for (const limit of [0, 21, 2.5]) {
+      await expect(
+        client.foods.autocomplete({ query: 'oat', limit })
+      ).rejects.toThrow('limit must be an integer between 1 and 20.');
+    }
+    for (const limit of [0, 51, 2.5]) {
+      await expect(
+        client.foods.search({ query: 'oat', limit })
+      ).rejects.toThrow('limit must be an integer between 1 and 50.');
+    }
+    expect(mockNativeModule.foodsAutocomplete).not.toHaveBeenCalled();
+    expect(mockNativeModule.foodsSearch).not.toHaveBeenCalled();
+  });
+
   it('validates restaurant requests before crossing the native bridge', async () => {
     const client = new JanuaryClient({
       clientTokenProvider: async () => ({ token: 'ct-test', expiresIn: 1_800 }),

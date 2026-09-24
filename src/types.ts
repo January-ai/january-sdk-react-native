@@ -37,6 +37,7 @@ export type JanuaryClientOptions =
 
 export interface SearchFoodsRequest {
   category?: FoodCategoryValue;
+  /** An integer from 1 through 50; defaults to 10. */
   limit?: number;
   query: string;
 }
@@ -45,6 +46,7 @@ export type AutocompleteFoodCategory = 'generic' | 'branded';
 
 export interface AutocompleteFoodsRequest {
   category?: AutocompleteFoodCategory;
+  /** An integer from 1 through 20; defaults to 8. */
   limit?: number;
   query: string;
 }
@@ -271,7 +273,10 @@ export type AnalysisEffort = 'none' | 'xhigh';
 export interface AnalyzePhotoRequest {
   /** A base64 data URI or a remote image URL accepted by January. */
   image: string;
-  /** Omit or `'none'` for the standard analyzer; `'xhigh'` for the reasoning-based one. */
+  /**
+   * Omit for the API's default, the reasoning-based analyzer (`'xhigh'` asks for it
+   * explicitly); `'none'` for the standard analyzer.
+   */
   reasoningEffort?: AnalysisEffort;
 }
 
@@ -360,6 +365,7 @@ export interface FoodLogList {
   totalCount: number;
 }
 
+/** Inclusive calendar dates (YYYY-MM-DD) in the client's timezone, spanning at most 60 days. */
 export interface ListFoodLogsRequest {
   end: string;
   start: string;
@@ -368,7 +374,7 @@ export interface ListFoodLogsRequest {
 export type FoodLogSummaryGrouping = 'day' | 'week';
 export type WeekStart = 'monday' | 'sunday';
 
-/** Inclusive calendar dates (YYYY-MM-DD) in the client's timezone, at most 366 days apart. */
+/** Inclusive calendar dates (YYYY-MM-DD) in the client's timezone, spanning at most 366 days. */
 export interface GetFoodLogSummaryRequest {
   end: string;
   groupBy?: FoodLogSummaryGrouping;

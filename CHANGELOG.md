@@ -5,6 +5,10 @@ This project uses Semantic Versioning.
 
 ## [Unreleased]
 
+- `foods.autocomplete` and `foods.search` check `limit` against the API's
+  ranges, 1–20 and 1–50, before crossing the bridge. The native SDKs already
+  refused larger values; the wrapper allowed up to 100.
+
 ## [0.3.0] - 2026-09-23
 
 - Pin the January iOS SDK `0.3.1` and Android SDK `0.3.1`, which add water and
