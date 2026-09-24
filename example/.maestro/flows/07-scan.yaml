@@ -26,11 +26,14 @@ tags:
       text: Fixture oatmeal
     direction: DOWN
 - assertVisible: Fixture oatmeal
-- scrollUntilVisible:
-    element:
-      id: scan-correct
-    direction: DOWN
-- tapOn: Correct result
+# Scrolling only until the button shows can leave it at the bottom edge, under
+# the tab bar and Android's navigation bar, where the tap pressed Home.
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: scan-correct
+- tapOn:
+    id: scan-correct
 - extendedWaitUntil:
     visible:
       id: scan-correction-input
