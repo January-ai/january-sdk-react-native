@@ -6,10 +6,10 @@ request with the same `start` and `end` reads back exactly one day.
 
 ## Water
 
-Log an amount in fluid ounces (`fl_oz`), millilitres (`ml`), or US cups of
-8 fl oz (`cup`). An end user’s total is capped at
-24 L per day; a log that would pass it is rejected with a `validation` error
-whose code is `daily_water_limit_exceeded`.
+Log an amount in fluid ounces (`fl_oz`), milliliters (`ml`), or US cups of
+8 fl oz (`cup`). An end user’s total is capped at 24 L (about 811 fl oz) per
+day; a log that would pass it is rejected, and the error’s `code` is
+`daily_water_limit_exceeded`.
 
 ```ts
 const log = await january.waterLogs.create({
@@ -19,9 +19,13 @@ const log = await january.waterLogs.create({
 });
 ```
 
-Read daily totals back in the unit you display, whichever units the logs were
-made in. Only days with water logged are present, oldest first, and a total is
-rounded to one decimal place:
+`create` is not idempotent: after a timed-out create, check the day’s total
+before retrying, since a retry records the water twice and counts twice toward
+the cap.
+
+Read daily totals back in the unit you display (`fl_oz` when `unit` is
+omitted), whichever units the logs were made in. Only days with water logged
+are present, oldest first, and a total is rounded to one decimal place:
 
 ```ts
 const { items } = await january.waterLogs.list({
@@ -43,7 +47,8 @@ await january.waterLogs.delete(log.id);
 
 Log a measurement in pounds or kilograms. Every measurement is kept; listing
 shows one weight per day, the latest measured, so logging again later the same
-day replaces what that day shows.
+day replaces what that day shows. `create` is not idempotent either: a retried
+create records the measurement twice, which listing then shows once.
 
 ```ts
 await january.weightLogs.create({
@@ -63,9 +68,9 @@ items.forEach((day) => console.log(day.date, day.weight.value, day.weight.unit))
 
 `create` rejects a non-positive value or an unknown unit before the request is
 sent. The API accepts 1–811.5 fl_oz, 30–24000 ml, or 0.1–101.4 cup of water
-and 10–1000 lb or 4.5–453.6 kg of weight per log. A range whose `start` is more than five years
-ago is refused with the code `date_range_too_large`; at most 100 days are
-returned, the most recent when more match.
+and 10–1000 lb or 4.5–453.6 kg of weight per log. A range whose `start` is more
+than five years ago is refused with the code `date_range_too_large`; at most
+100 days are returned, the most recent when more match.
 
 Client tokens need the `water_logs:read`, `water_logs:write`,
 `weight_logs:read`, and `weight_logs:write` scopes for these operations; the

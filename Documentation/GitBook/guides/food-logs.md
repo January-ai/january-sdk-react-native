@@ -13,12 +13,13 @@ const created = await january.foodLogs.create({
 });
 ```
 
-List logs in an ISO-8601 time range:
+List logs for inclusive calendar dates (`YYYY-MM-DD`, at most 60 days) in the
+client's timezone:
 
 ```ts
 const logs = await january.foodLogs.list({
-  start: '2026-09-01T00:00:00Z',
-  end: '2026-09-08T00:00:00Z',
+  start: '2026-09-01',
+  end: '2026-09-07',
 });
 ```
 
@@ -50,5 +51,6 @@ An update must change at least one field; the SDK rejects an empty update
 before sending it, and the API rejects unknown fields. Treat log IDs as
 optional in response models and guard them before update or delete operations.
 
-Each logged food carries `servingDetails.weightGrams`, the weight of one
-catalog serving; the grams eaten are `consumedServing.quantity` times it.
+When January knows it, each logged food carries `servingDetails.weightGrams`,
+the weight of one catalog serving; the grams eaten are
+`consumedServing.quantity` times it.

@@ -1,9 +1,9 @@
 # January SDK for React Native
 
-Build food discovery, restaurant search, meal analysis, food logging, and
-glucose-prediction experiences from one typed TypeScript API. The package uses
-January's native Swift SDK on iOS and Kotlin SDK on Android through a React
-Native TurboModule.
+Build food discovery, restaurant search, meal analysis, voice capture, food,
+water, and weight logging, and glucose-prediction experiences from one typed
+TypeScript API. The package uses January's native Swift SDK on iOS and Kotlin
+SDK on Android through a React Native TurboModule.
 
 The package supports native iOS and Android applications. React Native Web is
 not supported; browser applications should use `@januaryai/web-sdk`.
@@ -13,7 +13,9 @@ not supported; browser applications should use `@januaryai/web-sdk`.
 * Food autocomplete, search, barcode lookup, hydration, and alternatives
 * Nearby restaurant and menu-item discovery
 * Meal analysis from a description, image URL, or base64 data URI
-* Food-log creation, listing, updates, and deletion
+* Voice capture that turns speech into a food query or meal description
+* Food-log creation, listing, summaries, updates, and deletion
+* Water logs with daily totals, and weight logs with the latest weight per day
 * Personalized glucose-impact predictions
 
 ## Requirements
@@ -22,8 +24,8 @@ not supported; browser applications should use `@januaryai/web-sdk`.
 | --- | --- |
 | React Native | 0.83 or later with the New Architecture enabled |
 | React | 19.2 or later |
-| iOS | 15 or later |
-| Android | API 24 or later (core library desugaring below API 26) |
+| iOS | 15.1 or later |
+| Android | API 24 or later; every app enables core library desugaring |
 | Android toolchain | JDK 17 |
 | Expo | A development build; Expo Go is not supported |
 | React Native Web | Not supported; use `@januaryai/web-sdk` |

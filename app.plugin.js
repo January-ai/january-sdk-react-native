@@ -1,8 +1,8 @@
 // Expo config plugin: enables core library desugaring in the Android app module.
 // The January Android SDK uses java.time and supports API 24 through desugaring; its AAR
-// metadata makes the app build fail unless the app enables it too. Add
-// "@januaryai/react-native" to `expo.plugins` (alongside expo-build-properties for
-// `minSdkVersion`). Apps with minSdkVersion 26 or higher may omit this plugin.
+// metadata makes the app build fail unless the app enables it too, whatever the app's
+// minSdkVersion. Add "@januaryai/react-native" to `expo.plugins` (alongside
+// expo-build-properties for `minSdkVersion`).
 // Resolve Expo's config-plugins from the app that runs prebuild (its working directory),
 // so the plugin also works when this package is linked from outside node_modules.
 function loadConfigPlugins() {

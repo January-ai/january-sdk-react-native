@@ -44,10 +44,10 @@ This project uses Semantic Versioning.
   silence before ending a capture, so speech is no longer cut off between
   words.
 - Lower the minimum Android version from API 26 to API 24 and pin the January
-  Android SDK `0.2.1`. Apps whose `minSdkVersion` is below 26 must enable core
-  library desugaring; Expo apps add the `@januaryai/react-native` config plugin,
-  bare apps add two lines to `android/app/build.gradle` (see the installation
-  guide).
+  Android SDK `0.2.1`. Every Android app must enable core library desugaring,
+  whatever its `minSdkVersion`; Expo apps add the `@januaryai/react-native`
+  config plugin, bare apps add two lines to `android/app/build.gradle` (see the
+  installation guide).
 
 ## [0.2.0] - 2026-09-16
 
