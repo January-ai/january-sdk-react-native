@@ -63,9 +63,13 @@ onFlowComplete:
 - assertTrue: ${output.live.user === output.qaUser}
 - tapOn:
     id: tab-food-logs
-- extendedWaitUntil:
-    visible:
+# The refresh button, below the fold, takes the id food-logs-refresh once the
+# list has loaded. It stays in view while the editor is open, for the wait
+# after saving.
+- scrollUntilVisible:
+    element:
       id: food-logs-refresh
+    direction: DOWN
     timeout: 60000
 - tapOn:
     id: food-log-add
@@ -73,6 +77,10 @@ onFlowComplete:
     id: food-log-name
 - inputText: RN servings ${output.live.run}
 - pressKey: Enter
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: food-log-add-food
 - tapOn:
     id: food-log-add-food
 - tapOn:

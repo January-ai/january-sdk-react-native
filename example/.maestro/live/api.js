@@ -624,7 +624,22 @@ if (check === 'context') {
         day +
         ' with ' +
         foods +
-        ' food(s), ' +
+        ' food(s) (' +
+        loggedFoods
+          .map(function (food) {
+            return (
+              'food ' +
+              food.food_id +
+              ': ' +
+              food.quantity +
+              ' × ' +
+              (food.serving
+                ? food.serving.quantity + ' ' + food.serving.unit
+                : 'no serving')
+            );
+          })
+          .join(', ') +
+        '), ' +
         round(kcal, 1) +
         ' kcal, id ' +
         logs[0].id
