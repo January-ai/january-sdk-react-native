@@ -53,10 +53,22 @@ tags:
     direction: DOWN
 - tapOn:
     id: food-log-save
+# The editor's name field shows the name too, so wait for the editor to close
+# before looking for the saved log. A new log is listed first.
 - extendedWaitUntil:
-    visible: .*Yogurt servings.*
+    notVisible:
+      id: food-log-editor
     timeout: 15000
-- tapOn: .*Yogurt servings.*
+- waitForAnimationToEnd
+- runFlow:
+    file: ../scroll-to.yaml
+    env:
+      TARGET_ID: food-log-0
+- assertVisible:
+    id: food-log-0
+    text: .*Yogurt servings.*
+- tapOn:
+    id: food-log-0
 - extendedWaitUntil:
     visible:
       id: food-log-detail
