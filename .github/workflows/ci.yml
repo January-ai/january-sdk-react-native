@@ -9,16 +9,83 @@ on:
   merge_group:
     types:
       - checks_requested
+  # Every night, and by hand from the Actions tab: the full fixture UI suite,
+  # plus the live suite when the JANUARY_API_KEY secret is set.
+  schedule:
+    - cron: '17 7 * * *'
+  workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # The event is in the group so a nightly or manual run and a push to main
+  # never cancel each other.
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
   MAESTRO_VERSION: '2.7.0'
   MAESTRO_SHA256: 'a4ccab6b604617e7aef6db4f885666056eabe5cfa32befaa3bc994041b8fcbb5'
 
+# Time limits come from the recent runs: the slowest successful job plus about
+# 30%, rounded up to the minute. Recompute them when the shards grow.
 jobs:
+  # Decides what the rest of the run does. A pull request that changes only
+  # documentation skips the builds and the UI shards; their required checks
+  # still pass, and lint still validates the docs. Every other change, and
+  # every push, merge queue, nightly, or manual run, runs everything.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+      live: ${{ steps.live.outputs.live }}
+
+    steps:
+      - name: Checkout
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The pull request's test merge commit and its parents. The first
+          # parent is the base branch, so the diff between the two is exactly
+          # what the pull request changes.
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Find what changed
+        id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [[ "$EVENT" != pull_request ]]; then
+            echo "code=true" | tee -a "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # --no-renames lists both sides of a move, so moving code into docs/
+          # still counts as a code change.
+          git -c core.quotePath=false diff --name-only --no-renames HEAD^1 HEAD > "$RUNNER_TEMP/changed"
+          echo "Changed files:"
+          cat "$RUNNER_TEMP/changed"
+          code=false
+          [[ -s "$RUNNER_TEMP/changed" ]] || code=true
+          while IFS= read -r file; do
+            case "$file" in
+              *.md | Documentation/* | docs/* | LICENSE | .github/ISSUE_TEMPLATE/*) ;;
+              *) code=true ;;
+            esac
+          done < "$RUNNER_TEMP/changed"
+          echo "code=$code" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Check for the live suite's API key
+        id: live
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        env:
+          JANUARY_API_KEY: ${{ secrets.JANUARY_API_KEY }}
+        run: |
+          if [[ -n "$JANUARY_API_KEY" ]]; then
+            echo "live=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::The JANUARY_API_KEY secret is not set, so the live suite is skipped."
+          fi
+
   lint:
     runs-on: ubuntu-latest
 
@@ -54,36 +121,58 @@ jobs:
       - name: Run unit tests
         run: yarn test --maxWorkers=2 --coverage
 
+  # The build jobs are required checks, so on a documentation-only pull
+  # request they still run and pass, with every step skipped.
   build-library:
+    needs: changes
     runs-on: ubuntu-latest
+    # Takes under a minute; the limit leaves room for a cold dependency install.
+    timeout-minutes: 10
 
     steps:
+      - name: Skip for a documentation-only change
+        if: needs.changes.outputs.code != 'true'
+        run: echo "Only documentation changed, so the package build is skipped."
+
       - name: Checkout
+        if: needs.changes.outputs.code == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup
+        if: needs.changes.outputs.code == 'true'
         uses: ./.github/actions/setup
 
       - name: Build package
+        if: needs.changes.outputs.code == 'true'
         run: |
           yarn prepare
           npm pack --dry-run
 
   build-android:
+    needs: changes
     runs-on: ubuntu-latest
+    # The slowest of the last ten builds that compiled took 13.1 minutes.
+    timeout-minutes: 18
 
     env:
       TURBO_CACHE_DIR: .turbo/android
       APK: example/android/app/build/outputs/apk/debug/app-debug.apk
 
     steps:
+      - name: Skip for a documentation-only change
+        if: needs.changes.outputs.code != 'true'
+        run: echo "Only documentation changed, so the Android build is skipped."
+
       - name: Checkout
+        if: needs.changes.outputs.code == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup
+        if: needs.changes.outputs.code == 'true'
         uses: ./.github/actions/setup
 
       - name: Cache turborepo for Android
+        if: needs.changes.outputs.code == 'true'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.TURBO_CACHE_DIR }}
@@ -96,20 +185,24 @@ jobs:
             ${{ runner.os }}-turborepo-android-${{ hashFiles('yarn.lock', 'turbo.json') }}-
 
       - name: Install JDK
+        if: needs.changes.outputs.code == 'true'
         uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: 'zulu'
           java-version: '17'
 
       - name: Finalize Android SDK
+        if: needs.changes.outputs.code == 'true'
         run: |
           /bin/bash -c "yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null"
 
       - name: Prebuild expo app for Android
+        if: needs.changes.outputs.code == 'true'
         run: |
           yarn example expo prebuild --platform android
 
       - name: Cache Gradle
+        if: needs.changes.outputs.code == 'true'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
@@ -120,6 +213,7 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Build example for Android
+        if: needs.changes.outputs.code == 'true'
         # Turborepo skips the build and restores the APK when nothing relevant
         # changed. A cache entry written before the APK was a declared output
         # restores nothing, so build again in that case.
@@ -133,6 +227,7 @@ jobs:
           test -f "$APK"
 
       - name: Upload the Android app for the UI suite
+        if: needs.changes.outputs.code == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: android-app
@@ -141,7 +236,12 @@ jobs:
           retention-days: 1
 
   build-ios:
-    runs-on: macos-latest
+    needs: changes
+    # A documentation-only pull request only needs this check to pass, so it
+    # does not wait for a macOS runner.
+    runs-on: ${{ needs.changes.outputs.code == 'true' && 'macos-latest' || 'ubuntu-latest' }}
+    # The slowest of the last ten builds that compiled took 19.6 minutes.
+    timeout-minutes: 26
 
     env:
       XCODE_VERSION: 26
@@ -151,13 +251,20 @@ jobs:
       APP: example/ios/build/Build/Products/Debug-iphonesimulator/JanuarySDKDemo.app
 
     steps:
+      - name: Skip for a documentation-only change
+        if: needs.changes.outputs.code != 'true'
+        run: echo "Only documentation changed, so the iOS build is skipped."
+
       - name: Checkout
+        if: needs.changes.outputs.code == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup
+        if: needs.changes.outputs.code == 'true'
         uses: ./.github/actions/setup
 
       - name: Cache turborepo for iOS
+        if: needs.changes.outputs.code == 'true'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.TURBO_CACHE_DIR }}
@@ -170,26 +277,31 @@ jobs:
             ${{ runner.os }}-turborepo-ios-${{ hashFiles('yarn.lock', 'turbo.json') }}-
 
       - name: Use appropriate Xcode version
+        if: needs.changes.outputs.code == 'true'
         uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
         with:
           xcode-version: ${{ env.XCODE_VERSION }}
 
       - name: Prebuild expo app for iOS
+        if: needs.changes.outputs.code == 'true'
         run: |
           yarn example expo prebuild --platform ios
 
       - name: Install iOS pods
+        if: needs.changes.outputs.code == 'true'
         run: |
           cd example/ios
           pod install
 
       - name: Show the inputs Turborepo hashes for iOS
+        if: needs.changes.outputs.code == 'true'
         # Printed so two runs can be compared when the cache unexpectedly misses.
         run: |
           yarn turbo run build:ios --cache-dir="${{ env.TURBO_CACHE_DIR }}" --dry=json \
             | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const t=JSON.parse(d).tasks[0];console.log("task hash",t.hash);for(const [f,h] of Object.entries(t.inputs).sort())console.log(h.slice(0,12),f)})'
 
       - name: Build example for iOS
+        if: needs.changes.outputs.code == 'true'
         # Turborepo skips the build and restores the app when nothing relevant
         # changed. The generated example/ios is among the inputs, so the hash
         # is only meaningful after prebuild; a cache entry written before the
@@ -202,10 +314,12 @@ jobs:
           test -d "$APP"
 
       - name: Pack the iOS app for the UI suite
+        if: needs.changes.outputs.code == 'true'
         # tar keeps the executable bits that upload-artifact would drop.
         run: tar -czf "$RUNNER_TEMP/ios-app.tgz" -C "$(dirname "$APP")" "$(basename "$APP")"
 
       - name: Upload the iOS app for the UI suite
+        if: needs.changes.outputs.code == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ios-app
@@ -214,16 +328,26 @@ jobs:
           retention-days: 1
 
   build-web:
+    needs: changes
     runs-on: ubuntu-latest
+    # Takes about a minute; the limit leaves room for a cold dependency install.
+    timeout-minutes: 10
 
     steps:
+      - name: Skip for a documentation-only change
+        if: needs.changes.outputs.code != 'true'
+        run: echo "Only documentation changed, so the web build is skipped."
+
       - name: Checkout
+        if: needs.changes.outputs.code == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup
+        if: needs.changes.outputs.code == 'true'
         uses: ./.github/actions/setup
 
       - name: Build example for Web
+        if: needs.changes.outputs.code == 'true'
         run: |
           yarn example build:web
 
@@ -233,9 +357,13 @@ jobs:
   # are uploaded with the JUnit results.
   ui-test-android:
     name: ui-test-android (shard ${{ matrix.shard }} of 6)
-    needs: build-android
+    needs: [changes, build-android]
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # The slowest successful shard in the last ten runs took 18.2 minutes. A
+    # shard well past that has a hung flow (one stalled 23 minutes on
+    # 2026-09-23), so it fails instead of holding the run.
+    timeout-minutes: 24
 
     strategy:
       fail-fast: false
@@ -303,9 +431,11 @@ jobs:
 
   ui-test-ios:
     name: ui-test-ios (shard ${{ matrix.shard }} of 4)
-    needs: build-ios
+    needs: [changes, build-ios]
+    if: needs.changes.outputs.code == 'true'
     runs-on: macos-latest
-    timeout-minutes: 45
+    # The slowest successful shard in the last ten runs took 35.2 minutes.
+    timeout-minutes: 46
 
     strategy:
       fail-fast: false
@@ -392,16 +522,130 @@ jobs:
             ${{ runner.temp }}/metro-ios.log
 
   # One check that summarizes every shard, so branch protection can require a
-  # single stable name.
+  # single stable name. On a documentation-only pull request the shards are
+  # skipped on purpose, and that passes too.
   ui-tests:
-    needs: [ui-test-android, ui-test-ios]
+    needs: [changes, ui-test-android, ui-test-ios]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Every UI shard passed
         env:
+          CHANGES: ${{ needs.changes.result }}
+          CODE: ${{ needs.changes.outputs.code }}
           ANDROID: ${{ needs.ui-test-android.result }}
           IOS: ${{ needs.ui-test-ios.result }}
         run: |
-          echo "android=$ANDROID ios=$IOS"
-          test "$ANDROID" = "success" && test "$IOS" = "success"
+          if [[ "$CODE" == true ]]; then
+            expected=success
+          else
+            expected=skipped
+            echo "Only documentation changed, so the UI shards were skipped."
+          fi
+          echo "changes=$CHANGES code=$CODE android=$ANDROID ios=$IOS (expected $expected)"
+          [[ "$CHANGES" == success && "$ANDROID" == "$expected" && "$IOS" == "$expected" ]]
+
+  # Nightly, and on a manual run: the live flows on an Android emulator against
+  # the January API. Client tokens come from the January Token Relay, started
+  # in this job with the JANUARY_API_KEY repository secret; without the secret
+  # this job is skipped. The flows log water, food, and weight for the end user
+  # below, which is reserved for this job.
+  ui-test-live:
+    name: ui-test-live (Android)
+    needs: [changes, build-android]
+    if: needs.changes.outputs.live == 'true'
+    runs-on: ubuntu-latest
+    # No live run to time yet. A fixture shard of the same size takes about 17
+    # minutes; the live flows also pause 30 seconds apart and wait on the API.
+    timeout-minutes: 60
+
+    env:
+      EXPO_PUBLIC_JANUARY_TOKEN_ENDPOINT: http://127.0.0.1:8787/api/january/client-token
+      EXPO_PUBLIC_DEMO_END_USER_ID: january-sdk-react-native-nightly
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Install JDK
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Install Maestro
+        run: |
+          archive="$RUNNER_TEMP/maestro.zip"
+          curl --fail --location --silent --show-error --retry 3 \
+            "https://github.com/mobile-dev-inc/Maestro/releases/download/cli-${MAESTRO_VERSION}/maestro.zip" \
+            --output "$archive"
+          echo "${MAESTRO_SHA256}  ${archive}" | shasum -a 256 --check
+          unzip -q "$archive" -d "$RUNNER_TEMP/maestro"
+          "$RUNNER_TEMP/maestro/maestro/bin/maestro" --version
+          echo "$RUNNER_TEMP/maestro/maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Download the Android app
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: android-app
+          path: ${{ runner.temp }}/android-app
+
+      - name: Check out the token relay
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: January-ai/january-token-relay
+          ref: 65aa6dfc96e4ad0092e48130bba6fc5c3acea648
+          path: token-relay
+          persist-credentials: false
+
+      - name: Start the token relay
+        env:
+          JANUARY_API_KEY: ${{ secrets.JANUARY_API_KEY }}
+        # The relay stays on 127.0.0.1, so no relay token is needed. Its banner
+        # shows the first and last characters of the key, so its output goes
+        # to a file that is never uploaded, and is printed only with anything
+        # key-like removed.
+        run: |
+          node token-relay/server.js > "$RUNNER_TEMP/token-relay.log" 2>&1 &
+          for _ in $(seq 1 30); do
+            if curl --fail --silent --output /dev/null http://127.0.0.1:8787/; then
+              echo "The token relay is running."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::The token relay did not start."
+          sed -E 's/sk-[^[:space:]]*/sk-<redacted>/g' "$RUNNER_TEMP/token-relay.log"
+          exit 1
+
+      - name: Enable KVM group permissions
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run the live suite
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          # The same emulator as the fixture shards.
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back emulated -memory 4096
+          script: .github/scripts/android-live-suite.sh "$RUNNER_TEMP/android-app/app-debug.apk"
+
+      - name: Show the token relay's log
+        if: failure()
+        run: sed -E 's/sk-[^[:space:]]*/sk-<redacted>/g' "$RUNNER_TEMP/token-relay.log" || true
+
+      - name: Upload live UI artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: maestro-android-live
+          path: |
+            example/.maestro/artifacts
+            ${{ runner.temp }}/metro-android-live.log
