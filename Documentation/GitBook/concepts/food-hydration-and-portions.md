@@ -29,7 +29,7 @@ export async function selectFood(
 }
 ```
 
-`quantity` is how many of that serving were eaten. Take serving IDs from
+`quantity` is how many of that serving were eaten: for a "6 oz" serving, `1` is 6 oz and `0.5` is 3 oz. Take serving IDs from
 `food.servings` as returned; don't build them from labels.
 
 A [food analysis](../guides/meal-analysis.md) detection already carries a
