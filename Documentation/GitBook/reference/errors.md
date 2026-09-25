@@ -29,7 +29,7 @@ Besides the token-provider retries, the SDK retries only one thing: after
 `401 token_expired` it gets a new token and replays the call once. Retry
 `rate_limited` and `5xx` codes yourself, with backoff; the rejection doesn't
 include `Retry-After`. Never retry `request_limit_exceeded` or
-`credit_limit_exceeded` before the monthly reset. Before you retry a create
+`credit_limit_exceeded` before your billing period resets. Before you retry a create
 that timed out, check whether it was recorded
 ([food logs](../guides/food-logs.md#create),
 [water and weight logs](../guides/water-and-weight-logs.md#water)).
