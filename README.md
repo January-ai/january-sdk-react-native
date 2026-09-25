@@ -114,7 +114,7 @@ demo. The first run takes about ten minutes.
     native code, so the demo runs as a development build, not in Expo Go.
 
 11. When the app opens, search for `banana`. Terminal 1 prints
-    `minted=true status=200` the first time the app asks for a token.
+    `minted=true status=201` the first time the app asks for a token.
 
 #### If something goes wrong
 
@@ -188,16 +188,22 @@ shows both snippets.
 For an Expo application:
 
 ```bash
-npx expo install @januaryai/react-native expo-build-properties
+npx expo install @januaryai/react-native
+```
+
+Add `"@januaryai/react-native"` to `expo.plugins` in `app.json`; the plugin
+enables core library desugaring for Android. Then regenerate the native
+projects and build:
+
+```bash
+npx expo prebuild --clean
 npx expo run:ios
 # or
 npx expo run:android
 ```
 
-The SDK contains custom native code and requires an Expo development build. It
-does not run in Expo Go. Configure `expo-build-properties` with Android
-`minSdkVersion: 24` or higher and add `"@januaryai/react-native"` to
-`expo.plugins` so the build enables core library desugaring; the
+The SDK contains custom native code and requires an Expo development build (Expo
+SDK 55 or later). It does not run in Expo Go. The
 [installation guide](Documentation/GitBook/getting-started/installation.md)
 contains the complete configuration.
 
@@ -208,7 +214,7 @@ import { JanuaryClient } from '@januaryai/react-native';
 
 const january = new JanuaryClient({
   endUserId: session.user.id,
-  timezone: 'America/New_York',
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   clientTokenProvider: async (_endUserId) => {
     const response = await fetch('https://api.example.com/january/client-token', {
       method: 'POST',
@@ -241,11 +247,16 @@ npm run ios
 npm run android
 ```
 
-Your production endpoint authenticates the app session, derives its stable
-end-user ID without trusting a client-supplied ID, chooses scopes on the server,
-and returns `{ "token": "ct-…", "expiresIn": 1800 }`. See the
+Your production endpoint authenticates the app session, takes the end-user ID
+from that session (never from the request), mints the token with the scopes
+your app uses, and returns January's response unchanged. See the
 [backend token endpoint guide](Documentation/GitBook/getting-started/backend-token-endpoint.md)
+and [Your token endpoint](https://docs.january.ai/docs/authentication#your-token-endpoint)
 for the complete contract.
+January's response has `expires_in`, and the React Native SDK reads
+`expiresIn`, so your token provider maps the field, as the
+[authentication guide](Documentation/GitBook/getting-started/authentication.md)
+shows.
 
 ## Documentation
 
