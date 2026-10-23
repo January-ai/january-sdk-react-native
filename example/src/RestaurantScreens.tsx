@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Keyboard,
@@ -107,6 +107,8 @@ export function RestaurantScreens({
     []
   );
   const [menuResults, setMenuResults] = useState<MenuItemView[]>([]);
+  const menuLoad = useRef(0);
+  const menuQuery = useRef('');
   const [restaurantMenu, setRestaurantMenu] = useState<MenuItemView[]>([]);
   const stack = useScreenStack();
   const openMenuItem = (item: MenuItemView) => {
@@ -164,6 +166,7 @@ export function RestaurantScreens({
   };
 
   const openRestaurant = (restaurant: RestaurantView) => {
+    menuQuery.current = '';
     setSelectedRestaurant(restaurant);
     navigateTo(stack, 'RestaurantDetail');
     loadRestaurantMenu(restaurant).catch(() => undefined);
@@ -171,11 +174,21 @@ export function RestaurantScreens({
 
   // Fixture mode: a search with "menu error" makes the menu fail once, "menu
   // empty" makes it empty, and "menu loading" makes it slow.
-  async function loadRestaurantMenu(restaurant: RestaurantView) {
+  async function loadRestaurantMenu(
+    restaurant: RestaurantView,
+    dishQuery = menuQuery.current
+  ) {
+    menuQuery.current = dishQuery;
+    const loadID = ++menuLoad.current;
+    setMenuState('loading');
+    setRestaurantMenu([]);
     setMenuError(undefined);
     if (fixturesEnabled) {
       const normalized = query.toLowerCase();
-      setRestaurantMenu([fixtureMenuItem]);
+      const matches = fixtureMenuItem.name
+        .toLocaleLowerCase()
+        .includes(dishQuery.toLocaleLowerCase());
+      setRestaurantMenu(matches ? [fixtureMenuItem] : []);
       if (
         normalized.includes('menu error') &&
         fixtureFailsFirstTime(`menu-${normalized}`)
@@ -187,23 +200,37 @@ export function RestaurantScreens({
       } else if (normalized.includes('menu loading')) {
         setMenuState('loading');
         await fixtureDelay(SLOW_FIXTURE_DELAY);
+        if (menuLoad.current !== loadID) return;
         setMenuState('success');
       } else {
-        setMenuState('success');
+        setMenuState(matches ? 'success' : 'empty');
       }
       return;
     }
     setMenuState('loading');
     try {
-      const response = await client.restaurants.getMenuItems({
-        restaurantId: restaurant.id,
-      });
-      const items = response.items.map((item) =>
-        toRestaurantMenuView(item, restaurant.name)
-      );
+      const items: MenuItemView[] = [];
+      let offset = 0;
+      while (true) {
+        const response = await client.restaurants.getMenuItems({
+          restaurantId: restaurant.id,
+          query: dishQuery,
+          limit: 100,
+          offset,
+        });
+        if (menuLoad.current !== loadID) return;
+        items.push(
+          ...response.items.map((item) =>
+            toRestaurantMenuView(item, restaurant.name)
+          )
+        );
+        offset += response.items.length;
+        if (response.items.length < 100) break;
+      }
       setRestaurantMenu(items);
       setMenuState(items.length ? 'success' : 'empty');
     } catch (caught) {
+      if (menuLoad.current !== loadID) return;
       setMenuError(errorMessage(caught));
       setMenuState('error');
     }
@@ -418,6 +445,7 @@ export function RestaurantScreens({
       screens={{
         RestaurantDetail: selectedRestaurant ? (
           <RestaurantDetail
+            key={selectedRestaurant.id}
             items={restaurantMenu}
             menuError={menuError}
             menuState={menuState}
@@ -427,6 +455,11 @@ export function RestaurantScreens({
               loadRestaurantMenu(selectedRestaurant).catch(() => undefined)
             }
             restaurant={selectedRestaurant}
+            onSearch={(value) => {
+              loadRestaurantMenu(selectedRestaurant, value).catch(
+                () => undefined
+              );
+            }}
           />
         ) : null,
         MenuItem: selectedMenuItem ? (
@@ -528,6 +561,7 @@ function RestaurantDetail({
   onBack,
   onMenuItem,
   onRetry,
+  onSearch,
   restaurant,
 }: {
   items: MenuItemView[];
@@ -536,8 +570,15 @@ function RestaurantDetail({
   onBack: () => void;
   onMenuItem: (item: MenuItemView) => void;
   onRetry: () => void;
+  onSearch: (query: string) => void;
   restaurant: RestaurantView;
 }) {
+  const [draft, setDraft] = useState('');
+  const [submitted, setSubmitted] = useState('');
+  const searchMenu = () => {
+    setSubmitted(draft.trim());
+    onSearch(draft.trim());
+  };
   return (
     <View style={sharedStyles.screen} testID="restaurant-detail-screen">
       <CompactHeader
@@ -559,6 +600,43 @@ function RestaurantDetail({
           <Text style={styles.detailBody}>{restaurant.address}</Text>
         </View>
         <SectionLabel>Menu items</SectionLabel>
+        <View style={styles.searchField}>
+          <TextInput
+            accessibilityLabel="Search this menu"
+            autoCapitalize="none"
+            maxLength={256}
+            onChangeText={setDraft}
+            onSubmitEditing={searchMenu}
+            placeholder="Dish name, e.g. burger"
+            placeholderTextColor={palette.muted}
+            returnKeyType="search"
+            style={styles.searchInput}
+            testID="restaurant-menu-search"
+            value={draft}
+          />
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          onPress={searchMenu}
+          style={sharedStyles.card}
+          testID="restaurant-menu-search-submit"
+        >
+          <Text style={styles.rowTitle}>Search menu</Text>
+        </Pressable>
+        {draft || submitted ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              setDraft('');
+              setSubmitted('');
+              onSearch('');
+            }}
+            style={sharedStyles.card}
+            testID="restaurant-menu-search-clear"
+          >
+            <Text style={styles.rowTitle}>Show full menu</Text>
+          </Pressable>
+        ) : null}
         {menuState === 'loading' ? (
           <View
             style={[sharedStyles.card, styles.loadingCard]}
@@ -575,7 +653,11 @@ function RestaurantDetail({
           />
         ) : menuState === 'empty' ? (
           <EmptyState
-            body="January did not return menu items for this restaurant."
+            body={
+              submitted
+                ? `No dishes match “${submitted}”. Try another name or show the full menu.`
+                : 'January did not return menu items for this restaurant.'
+            }
             testID="menu-empty"
             title="No menu items found"
           />

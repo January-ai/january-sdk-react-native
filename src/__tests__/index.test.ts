@@ -229,7 +229,8 @@ describe('January React Native SDK', () => {
       expect.any(String),
       'restaurant-1',
       100,
-      0
+      0,
+      null
     );
   });
 
@@ -496,6 +497,35 @@ describe('January React Native SDK', () => {
     }
     expect(mockNativeModule.foodsAutocomplete).not.toHaveBeenCalled();
     expect(mockNativeModule.foodsSearch).not.toHaveBeenCalled();
+  });
+
+  it('passes menu filtering and pagination through the native bridge', async () => {
+    const client = new JanuaryClient({
+      clientTokenProvider: async () => ({ token: 'ct-test', expiresIn: 1_800 }),
+      endUserId: 'demo-user',
+    });
+    await client.restaurants.getMenuItems({
+      restaurantId: 'cafe-123',
+      query: 'Burger & fries',
+      limit: 500,
+      offset: 100,
+    });
+    expect(mockNativeModule.restaurantMenuItems).toHaveBeenCalledWith(
+      expect.any(String),
+      'cafe-123',
+      500,
+      100,
+      'Burger & fries'
+    );
+    await expect(
+      client.restaurants.getMenuItems({
+        restaurantId: 'cafe-123',
+        query: 'x'.repeat(257),
+      })
+    ).rejects.toThrow('query must contain at most 256 characters.');
+    await expect(
+      client.restaurants.getMenuItems({ restaurantId: 'cafe-123', limit: 501 })
+    ).rejects.toThrow('limit must be an integer between 1 and 500.');
   });
 
   it('validates restaurant requests before crossing the native bridge', async () => {

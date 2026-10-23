@@ -189,10 +189,11 @@
                 restaurantId:(NSString *)restaurantId
                        limit:(double)limit
                       offset:(double)offset
+                       query:(NSString * _Nullable)query
                      resolve:(RCTPromiseResolveBlock)resolve
                       reject:(RCTPromiseRejectBlock)reject
 {
-  [_bridge restaurantMenuItems:clientId restaurantId:restaurantId limit:(NSInteger)limit offset:(NSInteger)offset completion:^(NSString *json, NSError *error) {
+  [_bridge restaurantMenuItems:clientId restaurantId:restaurantId limit:(NSInteger)limit offset:(NSInteger)offset query:query completion:^(NSString *json, NSError *error) {
     if (error) { reject(error.userInfo[@"code"] ?: @"january_error", error.localizedDescription, error); return; }
     resolve(json);
   }];

@@ -331,11 +331,12 @@ class JanuaryReactNativeModule(reactContext: ReactApplicationContext) :
     restaurantId: String,
     limit: Double,
     offset: Double,
+    query: String?,
     promise: Promise,
   ) {
     withClient(clientId, promise) { client ->
       client.restaurants.getMenuItems(
-        GetRestaurantMenuItemsRequest(restaurantId, limit.toInt(), offset.toInt()),
+        GetRestaurantMenuItemsRequest(restaurantId, limit.toInt(), offset.toInt(), query = query),
       ).toJsonObject()
     }
   }

@@ -411,10 +411,20 @@ export class JanuaryClient {
         this.assertActive();
         const restaurantId = request.restaurantId.trim();
         if (!restaurantId) throw new Error('restaurantId is required.');
+        if (!/^[A-Za-z0-9_-]{1,64}$/.test(restaurantId))
+          throw new Error(
+            'restaurantId must contain 1–64 letters, digits, underscores or hyphens.'
+          );
+        if (
+          request.query !== undefined &&
+          (typeof request.query !== 'string' || [...request.query].length > 256)
+        ) {
+          throw new Error('query must contain at most 256 characters.');
+        }
         const limit = request.limit ?? 100;
         const offset = request.offset ?? 0;
-        if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
-          throw new Error('limit must be an integer between 1 and 100.');
+        if (!Number.isInteger(limit) || limit < 1 || limit > 500) {
+          throw new Error('limit must be an integer between 1 and 500.');
         }
         if (!Number.isInteger(offset) || offset < 0) {
           throw new Error('offset must be a non-negative integer.');
@@ -424,7 +434,8 @@ export class JanuaryClient {
             this.clientId,
             restaurantId,
             limit,
-            offset
+            offset,
+            request.query ?? null
           )
         );
       },
