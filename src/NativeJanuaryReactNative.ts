@@ -88,7 +88,8 @@ export interface Spec extends TurboModule {
     clientId: string,
     restaurantId: string,
     limit: number,
-    offset: number
+    offset: number,
+    query: string | null
   ): Promise<string>;
   foodAnalysisAnalyzePhoto(
     clientId: string,

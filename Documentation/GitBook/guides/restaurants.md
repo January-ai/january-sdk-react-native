@@ -29,7 +29,7 @@ location. Ask for permission in your app before reading the device's position.
 ## A restaurant's menu
 
 `getMenuItems` returns one page of a restaurant's menu: `limit` defaults to
-100 (the maximum) and `offset` to 0. The response has no total, so keep paging
+100 by default (up to 500) and `offset` to 0. The response has no total, so keep paging
 until a page comes back shorter than `limit`:
 
 ```ts
@@ -50,3 +50,14 @@ if (nearest) {
   const menu = await loadMenu(january, nearest.id);
 }
 ```
+
+## Search this restaurant’s menu
+
+```typescript
+const dishes = await client.restaurants.getMenuItems({ restaurantId, query: 'burger' });
+```
+
+Omit `query` or pass an empty string to show the full menu. Dish-name matching
+is case insensitive and accepts up to 256 characters. Pagination (`limit` 1–500,
+default 100; `offset` starting at zero) applies to the matching dishes. Stop at
+a page shorter than the requested limit; restart at offset zero for a new query.

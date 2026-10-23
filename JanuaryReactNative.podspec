@@ -15,7 +15,7 @@ Pod::Spec.new do |s|
 
   s.source_files = "ios/**/*.{h,m,mm,swift,cpp}"
   s.private_header_files = "ios/**/*.h"
-  s.dependency "January", "0.3.1"
+  s.dependency "January", "0.3.3"
 
   if respond_to?(:install_modules_dependencies, true)
     install_modules_dependencies(s)

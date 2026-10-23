@@ -286,17 +286,18 @@ public final class JanuaryNativeBridge: NSObject, @unchecked Sendable {
         }
     }
 
-    @objc(restaurantMenuItems:restaurantId:limit:offset:completion:)
+    @objc(restaurantMenuItems:restaurantId:limit:offset:query:completion:)
     public func restaurantMenuItems(
         _ clientID: String,
         restaurantID: String,
         limit: Int,
         offset: Int,
+        query: String?,
         completion: @escaping (NSString?, NSError?) -> Void
     ) {
         perform(clientID, completion: completion) { client in
             try await client.restaurants.getMenuItems(
-                .init(restaurantID: restaurantID, limit: limit, offset: offset)
+                .init(restaurantID: restaurantID, limit: limit, offset: offset, query: query)
             )
         }
     }

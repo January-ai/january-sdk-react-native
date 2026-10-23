@@ -232,6 +232,8 @@ export interface SearchRestaurantMenuItemsResponse {
 }
 
 export interface GetRestaurantMenuItemsRequest {
+  /** Optional case-insensitive dish-name filter; blank lists the whole menu. */
+  query?: string;
   limit?: number;
   offset?: number;
   restaurantId: string;
